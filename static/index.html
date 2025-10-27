@@ -152,6 +152,7 @@
             height: 100%;
             background: linear-gradient(90deg, #dc3545 0%, #ffc107 50%, #28a745 100%);
             transition: width 0.5s ease;
+            width: 0%; /* Start at 0%, will be updated by JavaScript */
         }
 
         .loading {
@@ -168,7 +169,7 @@
 
         <form id="validationForm">
             <div class="form-group">
-                <label for="numbers">Enter your random numbers (comma-separated):</label>
+                <label for="numbers">Enter your random numbers:</label>
                 <textarea
                     id="numbers"
                     name="numbers"
@@ -176,14 +177,18 @@
                     placeholder="Example: 42, 17, 89, 3, 56, 91, 23, 67"
                     required
                 ></textarea>
-                <div class="help-text">Enter positive integers separated by commas</div>
+                <div class="help-text">Enter positive integers (use any delimiter: commas, spaces, newlines, etc.)</div>
             </div>
 
             <button type="submit">Validate Numbers</button>
+            <div class="help-text" style="margin-top: 10px; text-align: center;">
+                Uses comprehensive NIST Statistical Test Suite for validation
+            </div>
         </form>
 
         <div class="loading" id="loading">
-            <p>Analyzing your numbers...</p>
+            <p>Running comprehensive NIST statistical analysis...</p>
+            <p style="margin-top: 10px; font-size: 0.9em;">This may take a few seconds</p>
         </div>
 
         <div id="results">
@@ -204,7 +209,7 @@
 
             <div class="result-item" id="nistResultsContainer" style="display: none;">
                 <div class="result-label">NIST Test Results:</div>
-                <div id="nistResults"></div>
+                <pre id="nistResults" style="white-space: pre-wrap; font-family: monospace; font-size: 0.9em; background: rgba(0,0,0,0.05); padding: 10px; border-radius: 5px; margin-top: 10px;"></pre>
             </div>
         </div>
     </div>
@@ -227,7 +232,7 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ numbers }),
+                    body: JSON.stringify({ numbers, use_nist: true }),
                 });
 
                 const data = await response.json();

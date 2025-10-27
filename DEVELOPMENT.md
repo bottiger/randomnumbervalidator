@@ -125,19 +125,45 @@ To add a new statistical test:
 
 ## NIST Integration
 
-The NIST Statistical Test Suite is included but requires manual compilation.
+The NIST Statistical Test Suite is now fully integrated and automated!
 
-**To enable:**
+**Setup:**
 ```bash
+make nist
+# or
 cd nist/sts-2.1.2/sts-2.1.2
 make
 ```
 
-**Future Work:**
-- Automate NIST test execution
-- Parse NIST output files
-- Display detailed NIST results in UI
-- Support batch processing
+**How it works:**
+1. User submits numbers with `use_nist: true`
+2. Backend converts numbers to binary format
+3. Writes binary data to NIST-compatible file in `nist/sts-2.1.2/sts-2.1.2/data/`
+4. Spawns NIST `assess` binary with automated stdin input
+5. Waits for NIST tests to complete
+6. Parses results from `experiments/AlgorithmTesting/` directory
+7. Returns summary with pass/fail status and p-values
+
+**Requirements:**
+- Minimum 100 bits (approximately 4 random numbers)
+- NIST assess binary must be compiled
+
+**Implementation details:**
+- `src/nist_wrapper.rs` - Full NIST integration
+  - `run_tests()` - Executes NIST assess with automated input
+  - `prepare_input_file()` - Converts bits to NIST ASCII format
+  - `parse_all_results()` - Parses all 15 test results
+  - `parse_test_result()` - Extracts p-values and pass/fail status
+
+**Testing NIST Integration:**
+```bash
+./test_nist.sh  # Check if NIST is set up
+cargo run --bin server
+# Then test via web UI or:
+curl -X POST http://127.0.0.1:3000/api/validate \
+  -H "Content-Type: application/json" \
+  -d '{"numbers":"42,17,89,3,56,91,23,67","use_nist":true}'
+```
 
 ## Debugging
 

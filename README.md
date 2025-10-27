@@ -49,7 +49,32 @@ cargo run --bin server
 http://127.0.0.1:3000
 ```
 
-4. Enter comma-separated numbers (e.g., `42, 17, 89, 3, 56`) and click "Validate Numbers"
+4. Enter numbers separated by any delimiter (e.g., `42, 17, 89, 3, 56` or `42\n17\n89\n3\n56`) and click "Validate Numbers"
+
+### Logging
+
+The application includes comprehensive logging. Control log level with the `RUST_LOG` environment variable:
+
+```bash
+# Info level (default)
+cargo run --bin server
+
+# Debug level (detailed logs)
+RUST_LOG=debug cargo run --bin server
+
+# Trace level (very detailed, including HTTP requests)
+RUST_LOG=trace cargo run --bin server
+
+# Specific module logging
+RUST_LOG=randomnumbervalidator=debug,tower_http=info cargo run --bin server
+```
+
+Log output includes:
+- Server startup and shutdown events
+- HTTP request/response logging
+- Validation request details
+- NIST test execution progress
+- Error conditions and warnings
 
 ## Development
 
@@ -110,11 +135,13 @@ randomnumbervalidator/
    - Combines metrics into overall quality score
 3. **Results**: Displays quality score and validation status
 
-## NIST Test Suite (Optional)
+## NIST Test Suite Integration
 
-The application includes a wrapper for the NIST Statistical Test Suite for more comprehensive analysis.
+The application uses the **NIST Statistical Test Suite** by default for comprehensive randomness analysis.
 
-To build NIST tests:
+### Setup NIST Tests
+
+Build the NIST test suite:
 ```bash
 make nist
 ```
@@ -125,7 +152,56 @@ cd nist/sts-2.1.2/sts-2.1.2
 make
 ```
 
-Note: The NIST test suite requires interactive setup. Full automation is planned for future releases.
+### Using NIST Tests
+
+**From the Web Interface:**
+1. Enter your numbers (minimum 4 numbers for 100+ bits)
+2. Click "Validate Numbers"
+3. Results will include detailed NIST test analysis
+
+NIST tests are **always enabled** and run automatically on all validations.
+
+**From the API:**
+```bash
+# NIST tests run by default
+curl -X POST http://127.0.0.1:3000/api/validate \
+  -H "Content-Type: application/json" \
+  -d '{"numbers":"42,17,89,3,56,91,23,67"}'
+
+# Or explicitly enable (same result)
+curl -X POST http://127.0.0.1:3000/api/validate \
+  -H "Content-Type: application/json" \
+  -d '{"numbers":"42,17,89,3,56,91,23,67","use_nist":true}'
+
+# Disable NIST (basic tests only)
+curl -X POST http://127.0.0.1:3000/api/validate \
+  -H "Content-Type: application/json" \
+  -d '{"numbers":"42,17,89,3,56,91,23,67","use_nist":false}'
+```
+
+### NIST Test Results
+
+The NIST integration runs 15 different statistical tests including:
+- Frequency (Monobit) Test
+- Block Frequency Test
+- Cumulative Sums Test
+- Runs Test
+- Longest Run of Ones Test
+- Binary Matrix Rank Test
+- Discrete Fourier Transform Test
+- Non-overlapping Template Matching Test
+- Overlapping Template Matching Test
+- Maurer's Universal Statistical Test
+- Approximate Entropy Test
+- Random Excursions Test
+- Random Excursions Variant Test
+- Serial Test
+- Linear Complexity Test
+
+Results include:
+- Pass/Fail status for each test
+- Average p-values
+- Overall success rate
 
 ## API Endpoints
 
@@ -140,15 +216,22 @@ Validates a sequence of random numbers.
 }
 ```
 
+Note: `use_nist` defaults to `true`. NIST tests run automatically unless explicitly disabled.
+
 **Response:**
 ```json
 {
   "valid": true,
   "quality_score": 0.75,
   "message": "Analyzed 160 bits",
-  "nist_results": "NIST test suite integration pending"
+  "nist_results": "NIST Statistical Tests Summary\n================================\nTests Passed: 12/15\nSuccess Rate: 80.0%\n..."
 }
 ```
+
+Response includes:
+- Basic quality score (0.0 to 1.0)
+- Pass/fail validation
+- Detailed NIST test results with pass/fail status and p-values for all 15 tests
 
 ## Testing the Application
 
@@ -161,9 +244,12 @@ Validates a sequence of random numbers.
    - Poor randomness: `1, 1, 1, 1, 1, 1, 1, 1`
    - Large sequence: Generate 50+ random numbers
 
+Note: NIST tests run automatically on all validations and may take 3-5 seconds.
+
 ### From Command Line (API)
 
 ```bash
+# NIST tests run by default
 curl -X POST http://127.0.0.1:3000/api/validate \
   -H "Content-Type: application/json" \
   -d '{"numbers":"42,17,89,3,56"}'
@@ -174,6 +260,7 @@ curl -X POST http://127.0.0.1:3000/api/validate \
 **Server won't start:**
 - Check if port 3000 is available
 - Try `cargo clean` and rebuild
+- Enable debug logging: `RUST_LOG=debug cargo run --bin server`
 
 **Tests failing:**
 - Ensure you're using Rust 1.70 or newer
@@ -181,16 +268,23 @@ curl -X POST http://127.0.0.1:3000/api/validate \
 
 **NIST tests not working:**
 - The NIST test suite requires compilation: `make nist`
-- Full integration requires additional setup (documented in nist/ directory)
+- Check logs with `RUST_LOG=debug` to see detailed error messages
+- Verify the assess binary exists: `ls nist/sts-2.1.2/sts-2.1.2/assess`
+
+**Debugging issues:**
+- Enable detailed logging: `RUST_LOG=debug cargo run --bin server`
+- Check logs for error messages and stack traces
+- Logs show: request details, validation progress, NIST execution, errors
 
 ## Future Enhancements
 
-- [ ] Automated NIST test suite integration
+- [x] ~~Automated NIST test suite integration~~ **COMPLETED**
 - [ ] Support for different input formats (binary, hex)
-- [ ] Additional statistical tests
-- [ ] Test result visualization
+- [ ] Additional custom statistical tests
+- [ ] Test result visualization with charts
 - [ ] Batch processing capabilities
 - [ ] API rate limiting and authentication
+- [ ] Caching of NIST results for repeated tests
 
 ## License
 

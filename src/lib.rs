@@ -1,10 +1,19 @@
 use serde::{Deserialize, Serialize};
 
+#[allow(unused_imports)]
+use tracing::{debug, info, warn};
+
 pub mod nist_wrapper;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ValidationRequest {
     pub numbers: String,
+    #[serde(default = "default_use_nist")]
+    pub use_nist: bool,
+}
+
+fn default_use_nist() -> bool {
+    true
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -16,11 +25,19 @@ pub struct ValidationResponse {
 }
 
 /// Parse the input string and convert to binary format for NIST tests
+/// Accepts any non-numeric character as delimiter (spaces, commas, newlines, etc.)
+/// Rejects input containing letters
 pub fn prepare_input_for_nist(input: &str) -> Result<Vec<u8>, String> {
-    // Parse comma-separated numbers
+    // First check for letters (a-z, A-Z) which should be an error
+    if input.chars().any(|c| c.is_alphabetic()) {
+        return Err("Input contains letters - only numbers and delimiters are allowed".to_string());
+    }
+
+    // Extract all sequences of digits, treating everything else as delimiter
     let numbers: Result<Vec<u32>, _> = input
-        .split(',')
-        .map(|s| s.trim().parse::<u32>())
+        .split(|c: char| !c.is_ascii_digit())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.parse::<u32>())
         .collect();
 
     match numbers {
@@ -42,12 +59,24 @@ pub fn prepare_input_for_nist(input: &str) -> Result<Vec<u8>, String> {
     }
 }
 
-/// Validate random numbers and return quality assessment
+/// Validate random numbers and return quality assessment (defaults to using NIST)
 pub fn validate_random_numbers(input: &str) -> ValidationResponse {
+    validate_random_numbers_with_nist(input, true)
+}
+
+/// Validate random numbers with optional NIST test suite integration
+pub fn validate_random_numbers_with_nist(input: &str, use_nist: bool) -> ValidationResponse {
+    debug!("Starting validation: input_length={}, use_nist={}", input.len(), use_nist);
+
     // Prepare input for NIST
     let bits = match prepare_input_for_nist(input) {
-        Ok(b) => b,
+        Ok(b) => {
+            debug!("Successfully parsed {} numbers into {} bits",
+                   input.split(',').count(), b.len());
+            b
+        },
         Err(e) => {
+            warn!("Failed to parse input: {}", e);
             return ValidationResponse {
                 valid: false,
                 quality_score: 0.0,
@@ -59,12 +88,38 @@ pub fn validate_random_numbers(input: &str) -> ValidationResponse {
 
     // Basic validation: calculate simple randomness metrics
     let quality_score = calculate_basic_quality(&bits);
+    debug!("Basic quality score calculated: {:.4}", quality_score);
+
+    // Run NIST tests if requested and available
+    let nist_results = if use_nist {
+        info!("NIST tests requested, initializing wrapper");
+        let wrapper = nist_wrapper::NistWrapper::new();
+        match wrapper.run_tests(&bits) {
+            Ok(results) => {
+                info!("NIST tests completed successfully");
+                Some(results)
+            },
+            Err(e) => {
+                warn!("NIST tests failed: {}", e);
+                Some(format!("NIST tests could not be run: {}", e))
+            },
+        }
+    } else {
+        debug!("NIST tests not requested");
+        Some("NIST tests not requested. Use NIST option to enable comprehensive testing.".to_string())
+    };
+
+    let is_valid = quality_score > 0.3;
+    info!(
+        "Validation complete: valid={}, quality_score={:.4}, bits={}",
+        is_valid, quality_score, bits.len()
+    );
 
     ValidationResponse {
-        valid: quality_score > 0.3,
+        valid: is_valid,
         quality_score,
         message: format!("Analyzed {} bits", bits.len()),
-        nist_results: Some("NIST test suite integration pending".to_string()),
+        nist_results,
     }
 }
 
@@ -111,6 +166,38 @@ mod tests {
     fn test_prepare_input_invalid() {
         let result = prepare_input_for_nist("1,abc,3");
         assert!(result.is_err());
+        assert!(result.unwrap_err().contains("letters"));
+    }
+
+    #[test]
+    fn test_prepare_input_newline_delimiter() {
+        let result = prepare_input_for_nist("1\n2\n3");
+        assert!(result.is_ok());
+        let bits = result.unwrap();
+        assert_eq!(bits.len(), 96); // 3 numbers * 32 bits
+    }
+
+    #[test]
+    fn test_prepare_input_space_delimiter() {
+        let result = prepare_input_for_nist("1 2 3");
+        assert!(result.is_ok());
+        let bits = result.unwrap();
+        assert_eq!(bits.len(), 96); // 3 numbers * 32 bits
+    }
+
+    #[test]
+    fn test_prepare_input_mixed_delimiters() {
+        let result = prepare_input_for_nist("1, 2\n3\t4;5");
+        assert!(result.is_ok());
+        let bits = result.unwrap();
+        assert_eq!(bits.len(), 160); // 5 numbers * 32 bits
+    }
+
+    #[test]
+    fn test_prepare_input_reject_letters() {
+        let result = prepare_input_for_nist("123abc456");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("letters"));
     }
 
     #[test]
