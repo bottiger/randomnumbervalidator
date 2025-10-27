@@ -1,15 +1,15 @@
+use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use std::collections::HashMap;
 
 #[allow(unused_imports)]
-use tracing::{debug, info, warn, error};
+use tracing::{debug, error, info, warn};
 
 /// Wrapper for NIST Statistical Test Suite
 pub struct NistWrapper {
-    project_root: PathBuf,  // Store project root to avoid path issues
+    project_root: PathBuf, // Store project root to avoid path issues
     nist_path: PathBuf,
     data_dir: PathBuf,
     experiments_dir: PathBuf,
@@ -69,8 +69,7 @@ impl NistWrapper {
             if i > 0 && i % 25 == 0 {
                 writeln!(file).map_err(|e| format!("Failed to write newline: {}", e))?;
             }
-            write!(file, "{}", bit)
-                .map_err(|e| format!("Failed to write bit: {}", e))?;
+            write!(file, "{}", bit).map_err(|e| format!("Failed to write bit: {}", e))?;
         }
         writeln!(file).map_err(|e| format!("Failed to write final newline: {}", e))?;
 
@@ -87,7 +86,10 @@ impl NistWrapper {
         let assess_path = self.nist_path.join("assess");
 
         if !self.is_available() {
-            error!("NIST test suite not available at: {}", assess_path.display());
+            error!(
+                "NIST test suite not available at: {}",
+                assess_path.display()
+            );
             return Err(format!(
                 "NIST test suite not found at: {}\nProject root: {}\nRun 'make nist' to compile the test suite.",
                 assess_path.display(),
@@ -121,10 +123,7 @@ impl NistWrapper {
         // 1. Generator option (0 = input from file)
         // 2. Filename (relative to data directory - just the filename!)
         // 3. Test selection (0 = all tests)
-        let automated_input = format!(
-            "0\ndata/{}\n0\n",
-            filename
-        );
+        let automated_input = format!("0\ndata/{}\n0\n", filename);
 
         // Run assess with automated input
         debug!("Spawning NIST assess process");
@@ -150,12 +149,10 @@ impl NistWrapper {
 
         // Wait for completion
         debug!("Waiting for NIST assess to complete");
-        let result = child
-            .wait_with_output()
-            .map_err(|e| {
-                error!("Failed to wait for assess: {}", e);
-                format!("Failed to wait for assess: {}", e)
-            })?;
+        let result = child.wait_with_output().map_err(|e| {
+            error!("Failed to wait for assess: {}", e);
+            format!("Failed to wait for assess: {}", e)
+        })?;
 
         // Capture output
         let stdout = String::from_utf8_lossy(&result.stdout);

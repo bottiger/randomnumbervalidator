@@ -4,7 +4,9 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use randomnumbervalidator::{validate_random_numbers_with_nist, ValidationRequest, ValidationResponse};
+use randomnumbervalidator::{
+    validate_random_numbers_with_nist, ValidationRequest, ValidationResponse,
+};
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing::{info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -43,9 +45,7 @@ async fn serve_index() -> impl IntoResponse {
     Html(include_str!("../../static/index.html"))
 }
 
-async fn validate_handler(
-    Json(payload): Json<ValidationRequest>,
-) -> Json<ValidationResponse> {
+async fn validate_handler(Json(payload): Json<ValidationRequest>) -> Json<ValidationResponse> {
     info!(
         "Validation request received: {} numbers, NIST={}",
         payload.numbers.split(',').count(),

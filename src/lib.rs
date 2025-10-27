@@ -66,15 +66,22 @@ pub fn validate_random_numbers(input: &str) -> ValidationResponse {
 
 /// Validate random numbers with optional NIST test suite integration
 pub fn validate_random_numbers_with_nist(input: &str, use_nist: bool) -> ValidationResponse {
-    debug!("Starting validation: input_length={}, use_nist={}", input.len(), use_nist);
+    debug!(
+        "Starting validation: input_length={}, use_nist={}",
+        input.len(),
+        use_nist
+    );
 
     // Prepare input for NIST
     let bits = match prepare_input_for_nist(input) {
         Ok(b) => {
-            debug!("Successfully parsed {} numbers into {} bits",
-                   input.split(',').count(), b.len());
+            debug!(
+                "Successfully parsed {} numbers into {} bits",
+                input.split(',').count(),
+                b.len()
+            );
             b
-        },
+        }
         Err(e) => {
             warn!("Failed to parse input: {}", e);
             return ValidationResponse {
@@ -82,7 +89,7 @@ pub fn validate_random_numbers_with_nist(input: &str, use_nist: bool) -> Validat
                 quality_score: 0.0,
                 message: e,
                 nist_results: None,
-            }
+            };
         }
     };
 
@@ -98,21 +105,26 @@ pub fn validate_random_numbers_with_nist(input: &str, use_nist: bool) -> Validat
             Ok(results) => {
                 info!("NIST tests completed successfully");
                 Some(results)
-            },
+            }
             Err(e) => {
                 warn!("NIST tests failed: {}", e);
                 Some(format!("NIST tests could not be run: {}", e))
-            },
+            }
         }
     } else {
         debug!("NIST tests not requested");
-        Some("NIST tests not requested. Use NIST option to enable comprehensive testing.".to_string())
+        Some(
+            "NIST tests not requested. Use NIST option to enable comprehensive testing."
+                .to_string(),
+        )
     };
 
     let is_valid = quality_score > 0.3;
     info!(
         "Validation complete: valid={}, quality_score={:.4}, bits={}",
-        is_valid, quality_score, bits.len()
+        is_valid,
+        quality_score,
+        bits.len()
     );
 
     ValidationResponse {
@@ -144,7 +156,8 @@ fn calculate_basic_quality(bits: &[u8]) -> f64 {
         }
     }
     let expected_runs = bits.len() / 2;
-    let runs_score = 1.0 - ((runs as f64 - expected_runs as f64).abs() / expected_runs as f64).min(1.0);
+    let runs_score =
+        1.0 - ((runs as f64 - expected_runs as f64).abs() / expected_runs as f64).min(1.0);
 
     // Average the metrics
     (balance + runs_score) / 2.0

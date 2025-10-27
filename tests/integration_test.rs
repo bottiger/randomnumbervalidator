@@ -1,4 +1,4 @@
-use randomnumbervalidator::{validate_random_numbers, prepare_input_for_nist};
+use randomnumbervalidator::{prepare_input_for_nist, validate_random_numbers};
 
 #[test]
 fn test_integration_basic_validation() {
