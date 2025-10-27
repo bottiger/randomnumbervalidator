@@ -276,9 +276,45 @@ curl -X POST http://127.0.0.1:3000/api/validate \
 - Check logs for error messages and stack traces
 - Logs show: request details, validation progress, NIST execution, errors
 
+## Deployment
+
+This application can be deployed to Google Cloud Platform (GCP) for free using the Always Free tier.
+
+### Quick Deploy to GCP
+
+**Automated Setup:**
+```bash
+./scripts/setup-gcp.sh
+```
+
+**Manual Setup:**
+See [DEPLOYMENT.md](DEPLOYMENT.md) for complete instructions including:
+- GCP project setup
+- Terraform infrastructure deployment
+- GitHub Actions CI/CD configuration
+- Monitoring and maintenance
+
+### Free Tier Hosting
+
+The application runs perfectly on GCP's Always Free tier:
+- **e2-micro** instance (1 vCPU, 1GB RAM)
+- **30GB** standard persistent disk
+- Available in us-west1, us-central1, or us-east1
+- **$0/month** forever ✅
+
+### Deployment Methods
+
+1. **Terraform** (Recommended): Infrastructure as code
+2. **GitHub Actions**: Automated CI/CD pipeline
+3. **Docker**: Containerized deployment (Cloud Run compatible)
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
+
 ## Future Enhancements
 
 - [x] ~~Automated NIST test suite integration~~ **COMPLETED**
+- [x] ~~Flexible input delimiter support~~ **COMPLETED**
+- [x] ~~Cloud deployment configuration~~ **COMPLETED**
 - [ ] Support for different input formats (binary, hex)
 - [ ] Additional custom statistical tests
 - [ ] Test result visualization with charts

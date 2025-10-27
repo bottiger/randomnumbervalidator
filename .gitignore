@@ -41,3 +41,17 @@ nist/
 # OS
 .DS_Store
 Thumbs.db
+
+# GCP and Terraform sensitive files
+*.json
+!package.json
+!tsconfig.json
+terraform.tfvars
+terraform.tfstate
+terraform.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Environment files
+.env
+.env.local
