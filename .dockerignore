@@ -8,3 +8,11 @@ Makefile
 terraform/
 .env
 *.log
+.claude/
+docker-compose.yml
+tests/
+examples/
+*.swp
+*.swo
+*~
+.DS_Store

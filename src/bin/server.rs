@@ -30,13 +30,16 @@ async fn main() {
         .layer(TraceLayer::new_for_http())
         .layer(CorsLayer::permissive());
 
-    let addr = "127.0.0.1:3000";
+    // Allow configuring host via environment variable for Docker compatibility
+    let host = std::env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
+    let port = std::env::var("PORT").unwrap_or_else(|_| "3000".to_string());
+    let addr = format!("{}:{}", host, port);
+
     info!("Server listening on http://{}", addr);
     println!("Server running on http://{}", addr);
-    println!("Open http://127.0.0.1:3000 in your browser");
     println!("Set RUST_LOG=debug for detailed logging");
 
-    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
 
