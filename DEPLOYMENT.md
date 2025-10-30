@@ -145,6 +145,8 @@ Go to your GitHub repository → Settings → Secrets and variables → Actions
 
 Add the following secrets:
 
+#### GCP Secrets
+
 | Secret Name | Value | How to Get |
 |-------------|-------|------------|
 | `GCP_SA_KEY` | Service account JSON key | Content of `~/terraform-key.json` |
@@ -158,6 +160,45 @@ Add the following secrets:
 cat ~/terraform-key.json
 # Paste into GitHub secret value (entire JSON)
 ```
+
+#### Cloudflare Secrets (for Cloudflare Tunnel)
+
+The deploy workflow sets up a Cloudflare Tunnel to provide HTTPS access to your application.
+
+| Secret Name | Value | How to Get |
+|-------------|-------|------------|
+| `CLOUDFLARE_ACCOUNT_ID` | Your Cloudflare Account ID | Found in Cloudflare Dashboard → Account → Account ID |
+| `CLOUDFLARE_API_TOKEN` | API token with tunnel permissions | Create in Cloudflare Dashboard → My Profile → API Tokens |
+
+**To get your Cloudflare Account ID:**
+1. Log in to [Cloudflare Dashboard](https://dash.cloudflare.com)
+2. Click on any domain or go to Account Home
+3. Scroll down to find your Account ID on the right side
+4. Copy the Account ID value
+
+**To create a Cloudflare API Token:**
+1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com) → My Profile → API Tokens
+2. Click "Create Token"
+3. Use the "Create Custom Token" template
+4. Set the following permissions:
+   - **Account** → **Cloudflare Tunnel** → **Edit**
+   - **Zone** → **DNS** → **Edit** (if using custom domain)
+5. Set Account Resources: Include → Your account
+6. Click "Continue to summary" → "Create Token"
+7. Copy the token and add it as `CLOUDFLARE_API_TOKEN` secret in GitHub
+
+**Optional: Custom Domain Configuration**
+
+To use a custom domain with your Cloudflare Tunnel:
+
+1. Add your domain to Cloudflare (if not already added)
+2. Go to your GitHub repository → Settings → Variables and secrets → Variables
+3. Add a new repository variable:
+   - Name: `DOMAIN_NAME`
+   - Value: `yourdomain.com` (or subdomain like `randomvalidator.yourdomain.com`)
+4. The deploy workflow will automatically configure DNS
+
+Without `DOMAIN_NAME` configured, your application will still be accessible via the GCP instance IP.
 
 ### 3. GitHub Actions Workflows
 
