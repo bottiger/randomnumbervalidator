@@ -53,8 +53,8 @@ jobs:
               fi
 
               # Build NIST test suite
-              cd /opt/randomvalidator/nist/sts-2.1.2/sts-2.1.2
               echo 'Building NIST test suite...'
+              cd /opt/randomvalidator/nist/sts-2.1.2/sts-2.1.2
               make clean && make
 
               # Build Rust application

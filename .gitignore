@@ -27,10 +27,11 @@ target
 
 
 # NIST build artifacts (keep source, ignore built files)
-#nist/sts-2.1.2/sts-2.1.2/obj/
-#nist/sts-2.1.2/sts-2.1.2/assess
-#nist/sts-2.1.2/sts-2.1.2/experiments/
-nist/
+nist/sts-2.1.2/sts-2.1.2/obj/
+nist/sts-2.1.2/sts-2.1.2/assess
+nist/sts-2.1.2/sts-2.1.2/experiments/AlgorithmTesting/
+nist/sts-2.1.2/sts-2.1.2/data/
+nist/*.zip
 
 # IDE
 .vscode/
