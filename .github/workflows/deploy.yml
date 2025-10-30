@@ -33,14 +33,45 @@ jobs:
             --zone=${{ secrets.GCP_ZONE }} \
             --command="
               set -e
-              cd /opt/randomvalidator
-              git pull origin main
-              cd nist/sts-2.1.2/sts-2.1.2
+
+              # Create directory if it doesn't exist
+              if [ ! -d /opt/randomvalidator ]; then
+                echo 'Setting up /opt/randomvalidator for first time...'
+                sudo mkdir -p /opt/randomvalidator
+                sudo chown \$USER:\$USER /opt/randomvalidator
+              fi
+
+              # Clone or update repository
+              if [ ! -d /opt/randomvalidator/.git ]; then
+                echo 'Cloning repository...'
+                git clone ${{ github.server_url }}/${{ github.repository }}.git /opt/randomvalidator
+              else
+                echo 'Updating repository...'
+                cd /opt/randomvalidator
+                git fetch origin
+                git reset --hard origin/main
+              fi
+
+              # Build NIST test suite
+              cd /opt/randomvalidator/nist/sts-2.1.2/sts-2.1.2
+              echo 'Building NIST test suite...'
               make clean && make
+
+              # Build Rust application
               cd /opt/randomvalidator
+              source \$HOME/.cargo/env || curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
               source \$HOME/.cargo/env
+              echo 'Building application...'
               cargo build --release --bin server
-              sudo systemctl restart randomvalidator
+
+              # Restart service if it exists, otherwise just report success
+              if sudo systemctl status randomvalidator >/dev/null 2>&1; then
+                echo 'Restarting service...'
+                sudo systemctl restart randomvalidator
+              else
+                echo 'Service not configured yet - binary built successfully at target/release/server'
+              fi
+
               echo 'Deployment complete!'
             "
 
