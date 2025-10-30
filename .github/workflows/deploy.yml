@@ -83,27 +83,67 @@ jobs:
           TUNNEL_NAME="randomvalidator-tunnel"
 
           # Check if tunnel exists
-          TUNNEL_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/cfd_tunnel" \
+          TUNNELS_RESPONSE=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/cfd_tunnel" \
             -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
-            -H "Content-Type: application/json" | jq -r ".result[] | select(.name==\"${TUNNEL_NAME}\") | .id")
+            -H "Content-Type: application/json")
 
-          if [ -z "$TUNNEL_ID" ] || [ "$TUNNEL_ID" = "null" ]; then
+          # Check if API call succeeded
+          if [ $? -ne 0 ]; then
+            echo "Error: Failed to connect to Cloudflare API"
+            exit 1
+          fi
+
+          # Check for API errors
+          API_SUCCESS=$(echo "$TUNNELS_RESPONSE" | jq -r '.success // false')
+          if [ "$API_SUCCESS" != "true" ]; then
+            echo "Error: Cloudflare API returned an error"
+            echo "$TUNNELS_RESPONSE" | jq -r '.errors[]?.message // "Unknown error"'
+            exit 1
+          fi
+
+          TUNNEL_ID=$(echo "$TUNNELS_RESPONSE" | jq -r ".result[]? | select(.name==\"${TUNNEL_NAME}\") | .id // empty")
+
+          if [ -z "$TUNNEL_ID" ]; then
             echo "Creating new tunnel..."
             RESPONSE=$(curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/cfd_tunnel" \
               -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
               -H "Content-Type: application/json" \
               --data "{\"name\":\"${TUNNEL_NAME}\",\"tunnel_secret\":\"$(openssl rand -base64 32)\"}")
 
-            TUNNEL_ID=$(echo "$RESPONSE" | jq -r '.result.id')
+            API_SUCCESS=$(echo "$RESPONSE" | jq -r '.success // false')
+            if [ "$API_SUCCESS" != "true" ]; then
+              echo "Error: Failed to create tunnel"
+              echo "$RESPONSE" | jq -r '.errors[]?.message // "Unknown error"'
+              exit 1
+            fi
+
+            TUNNEL_ID=$(echo "$RESPONSE" | jq -r '.result.id // empty')
+            if [ -z "$TUNNEL_ID" ]; then
+              echo "Error: No tunnel ID in response"
+              exit 1
+            fi
             echo "Created tunnel with ID: $TUNNEL_ID"
           else
             echo "Using existing tunnel: $TUNNEL_ID"
           fi
 
           # Get tunnel token
-          TUNNEL_TOKEN=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/cfd_tunnel/${TUNNEL_ID}/token" \
+          TOKEN_RESPONSE=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/cfd_tunnel/${TUNNEL_ID}/token" \
             -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
-            -H "Content-Type: application/json" | jq -r '.result')
+            -H "Content-Type: application/json")
+
+          API_SUCCESS=$(echo "$TOKEN_RESPONSE" | jq -r '.success // false')
+          if [ "$API_SUCCESS" != "true" ]; then
+            echo "Error: Failed to get tunnel token"
+            echo "$TOKEN_RESPONSE" | jq -r '.errors[]?.message // "Unknown error"'
+            exit 1
+          fi
+
+          TUNNEL_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.result // empty')
+          if [ -z "$TUNNEL_TOKEN" ]; then
+            echo "Error: No tunnel token in response"
+            exit 1
+          fi
 
           # Deploy to instance
           gcloud compute ssh randomvalidator-instance \
@@ -148,16 +188,38 @@ jobs:
           TUNNEL_NAME="randomvalidator-tunnel"
 
           # Get tunnel ID
-          TUNNEL_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/cfd_tunnel" \
+          TUNNELS_RESPONSE=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/cfd_tunnel" \
             -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
-            -H "Content-Type: application/json" | jq -r ".result[] | select(.name==\"${TUNNEL_NAME}\") | .id")
+            -H "Content-Type: application/json")
+
+          API_SUCCESS=$(echo "$TUNNELS_RESPONSE" | jq -r '.success // false')
+          if [ "$API_SUCCESS" != "true" ]; then
+            echo "Error: Failed to get tunnel information"
+            echo "$TUNNELS_RESPONSE" | jq -r '.errors[]?.message // "Unknown error"'
+            exit 1
+          fi
+
+          TUNNEL_ID=$(echo "$TUNNELS_RESPONSE" | jq -r ".result[]? | select(.name==\"${TUNNEL_NAME}\") | .id // empty")
+          if [ -z "$TUNNEL_ID" ]; then
+            echo "Error: Could not find tunnel ${TUNNEL_NAME}"
+            exit 1
+          fi
 
           # Get zone ID for domain
-          ZONE_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=${{ vars.DOMAIN_NAME }}" \
+          ZONES_RESPONSE=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=${{ vars.DOMAIN_NAME }}" \
             -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
-            -H "Content-Type: application/json" | jq -r '.result[0].id')
+            -H "Content-Type: application/json")
 
-          if [ -z "$ZONE_ID" ] || [ "$ZONE_ID" = "null" ]; then
+          API_SUCCESS=$(echo "$ZONES_RESPONSE" | jq -r '.success // false')
+          if [ "$API_SUCCESS" != "true" ]; then
+            echo "Error: Failed to get zone information"
+            echo "$ZONES_RESPONSE" | jq -r '.errors[]?.message // "Unknown error"'
+            exit 1
+          fi
+
+          ZONE_ID=$(echo "$ZONES_RESPONSE" | jq -r '.result[0].id // empty')
+
+          if [ -z "$ZONE_ID" ]; then
             echo "Warning: Could not find zone for domain ${{ vars.DOMAIN_NAME }}"
             echo "Please add DNS record manually in Cloudflare dashboard:"
             echo "  Type: CNAME"
@@ -168,9 +230,18 @@ jobs:
           fi
 
           # Check if DNS record exists
-          RECORD_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records?type=CNAME&name=${{ vars.DOMAIN_NAME }}" \
+          RECORDS_RESPONSE=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records?type=CNAME&name=${{ vars.DOMAIN_NAME }}" \
             -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
-            -H "Content-Type: application/json" | jq -r '.result[0].id')
+            -H "Content-Type: application/json")
+
+          API_SUCCESS=$(echo "$RECORDS_RESPONSE" | jq -r '.success // false')
+          if [ "$API_SUCCESS" != "true" ]; then
+            echo "Warning: Failed to check existing DNS records"
+            echo "$RECORDS_RESPONSE" | jq -r '.errors[]?.message // "Unknown error"'
+            RECORD_ID=""
+          else
+            RECORD_ID=$(echo "$RECORDS_RESPONSE" | jq -r '.result[0].id // empty')
+          fi
 
           if [ -z "$RECORD_ID" ] || [ "$RECORD_ID" = "null" ]; then
             echo "Creating DNS record for ${{ vars.DOMAIN_NAME }}..."
