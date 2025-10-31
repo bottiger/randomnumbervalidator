@@ -117,10 +117,7 @@ fn test_integration_without_nist() {
     assert!(response.quality_score >= 0.0);
     assert!(response.quality_score <= 1.0);
     assert!(response.nist_results.is_some());
-    assert!(response
-        .nist_results
-        .unwrap()
-        .contains("not requested"));
+    assert!(response.nist_results.unwrap().contains("not requested"));
 }
 
 #[test]
@@ -191,9 +188,9 @@ fn test_integration_alternating_pattern() {
 #[test]
 fn test_integration_whitespace_handling() {
     let inputs = vec![
-        "  1  ,  2  ,  3  ",     // spaces around numbers
-        "\n1\n,\n2\n,\n3\n",     // newlines everywhere
-        "\t1,\t2,\t3",           // tabs before numbers
+        "  1  ,  2  ,  3  ",      // spaces around numbers
+        "\n1\n,\n2\n,\n3\n",      // newlines everywhere
+        "\t1,\t2,\t3",            // tabs before numbers
         "  \n\t1 , 2\n,\t 3  \n", // mixed whitespace
     ];
 

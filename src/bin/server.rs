@@ -8,12 +8,12 @@ use axum::{
 use randomnumbervalidator::{
     validate_random_numbers_with_nist, ValidationRequest, ValidationResponse,
 };
-use tower_http::{cors::CorsLayer, trace::TraceLayer};
-use tracing::{error, info, warn};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::net::SocketAddr;
 use std::time::Instant;
+use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tracing::{error, info, warn};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() {
@@ -29,16 +29,11 @@ async fn main() {
     info!("Starting Random Number Validator server");
 
     // Set up database connection pool (optional - will work without database)
-    let database_url = std::env::var("DATABASE_URL")
-        .ok();
+    let database_url = std::env::var("DATABASE_URL").ok();
 
     let pool = if let Some(url) = database_url {
         info!("Connecting to database...");
-        match PgPoolOptions::new()
-            .max_connections(5)
-            .connect(&url)
-            .await
-        {
+        match PgPoolOptions::new().max_connections(5).connect(&url).await {
             Ok(pool) => {
                 info!("Database connection established");
                 // Run migrations
@@ -207,7 +202,11 @@ async fn log_query_to_database(
     let numbers_truncated = request.numbers.len() > MAX_SAMPLE_SIZE;
 
     // Count numbers and calculate total bits
-    let total_numbers_count = request.numbers.split(|c: char| !c.is_numeric()).filter(|s| !s.is_empty()).count() as i32;
+    let total_numbers_count = request
+        .numbers
+        .split(|c: char| !c.is_numeric())
+        .filter(|s| !s.is_empty())
+        .count() as i32;
     let total_bits_count = total_numbers_count * 32; // Each u32 is 32 bits
 
     // Parse NIST results for summary metrics
@@ -229,7 +228,7 @@ async fn log_query_to_database(
             $11, $12, $13,
             $14, NULL
         )
-        "#
+        "#,
     )
     .bind(query_id)
     .bind(client_ip)
@@ -268,7 +267,8 @@ fn parse_nist_summary(nist_results: Option<&str>) -> (Option<i32>, Option<i32>, 
 
                         // Try to extract percentage if available
                         let avg_p = if i + 3 < parts.len() {
-                            let pct_str = parts[i + 3].trim_matches(|c| c == '(' || c == ')' || c == '%');
+                            let pct_str =
+                                parts[i + 3].trim_matches(|c| c == '(' || c == ')' || c == '%');
                             pct_str.parse::<f64>().ok().map(|v| v / 100.0)
                         } else {
                             None
