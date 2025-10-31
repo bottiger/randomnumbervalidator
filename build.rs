@@ -3,7 +3,7 @@ use std::process::Command;
 fn main() {
     // Capture git commit hash
     let git_hash = Command::new("git")
-        .args(&["rev-parse", "--short", "HEAD"])
+        .args(["rev-parse", "--short", "HEAD"])
         .output()
         .ok()
         .and_then(|output| String::from_utf8(output.stdout).ok())
@@ -12,7 +12,7 @@ fn main() {
 
     // Capture git commit date
     let git_date = Command::new("git")
-        .args(&["log", "-1", "--format=%cd", "--date=short"])
+        .args(["log", "-1", "--format=%cd", "--date=short"])
         .output()
         .ok()
         .and_then(|output| String::from_utf8(output.stdout).ok())
