@@ -45,7 +45,17 @@ async fn main() {
 
 async fn serve_index() -> impl IntoResponse {
     info!("Serving index page");
-    Html(include_str!("../../static/index.html"))
+
+    // Inject git revision info into HTML
+    let html = include_str!("../../static/index.html");
+    let git_hash = env!("GIT_HASH");
+    let git_date = env!("GIT_DATE");
+
+    let html_with_version = html
+        .replace("{{GIT_HASH}}", git_hash)
+        .replace("{{GIT_DATE}}", git_date);
+
+    Html(html_with_version)
 }
 
 async fn validate_handler(Json(payload): Json<ValidationRequest>) -> Json<ValidationResponse> {
