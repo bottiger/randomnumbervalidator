@@ -305,8 +305,23 @@ The application runs perfectly on GCP's Always Free tier:
 ### Deployment Methods
 
 1. **Terraform** (Recommended): Infrastructure as code
-2. **GitHub Actions**: Automated CI/CD pipeline
+2. **GitHub Actions**: Automated CI/CD pipeline with domain validation
 3. **Docker**: Containerized deployment (Cloud Run compatible)
+
+### Custom Domain with SSL (Optional)
+
+Enable free SSL with Cloudflare Tunnel:
+
+1. Add domain to [Cloudflare](https://cloudflare.com) (free plan works)
+2. Go to **GitHub repository → Settings → Variables and secrets → Variables**
+3. Add variable: `DOMAIN_NAME` = `your-domain.com`
+4. The deployment will automatically:
+   - ✅ Create Cloudflare Tunnel
+   - ✅ Configure DNS records
+   - ✅ Validate domain is accessible
+   - ✅ Fail deployment with clear error if domain setup fails
+
+**Note**: Deployment now validates that your domain is responding correctly. If domain validation fails, check [CLOUDFLARE-SETUP.md](CLOUDFLARE-SETUP.md) for troubleshooting.
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
 

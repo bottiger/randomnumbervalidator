@@ -56,15 +56,22 @@ After deployment completes (2-3 minutes):
 
 1. Check the Actions log for:
    ```
-   🌐 Domain access: https://your-domain.com
+   ✅ Domain is accessible at https://your-domain.com
    ```
 
-2. Visit your domain (may take a few minutes for DNS propagation):
+2. Visit your domain:
    ```
    https://your-domain.com
    ```
 
 3. You should see your Random Number Validator with a valid SSL certificate!
+
+**Important**: The deployment now automatically validates your domain. If the domain is not accessible within 60 seconds, the deployment will fail with a clear error message. This ensures you know immediately if there's a configuration problem.
+
+If validation fails, the error message will include:
+- Possible reasons for failure
+- Commands to debug the issue
+- Links to troubleshooting steps
 
 ## What This Does
 
@@ -78,18 +85,45 @@ The deployment will:
 
 ## Troubleshooting
 
+### Domain validation fails during deployment
+
+If you see: `❌ Error: Domain https://your-domain.com is not accessible after 60 seconds`
+
+This usually means:
+
+1. **Domain not in Cloudflare**: Make sure you've added your domain to Cloudflare and nameservers are pointed correctly
+2. **DNS propagation delay**: First deployment may take longer. Wait 5 minutes and re-run the workflow
+3. **Tunnel not running**: SSH to instance and check:
+   ```bash
+   gcloud compute ssh randomvalidator-instance --zone=YOUR_ZONE \
+     --command="sudo systemctl status cloudflared"
+   ```
+
 ### DNS not resolving
-- Wait 5-10 minutes for DNS propagation
+- Wait 5-10 minutes for DNS propagation (especially on first setup)
 - Check Cloudflare dashboard → DNS → Records for the CNAME entry
+- Verify domain status is **Active** in Cloudflare
 
 ### 502 Bad Gateway
 - Check tunnel status: `sudo systemctl status cloudflared`
 - Check application status: `sudo systemctl status randomvalidator`
+- View logs: `sudo journalctl -u cloudflared -n 50`
 - Restart: `sudo systemctl restart cloudflared`
 
 ### Tunnel not created
 - Verify API token permissions (see Step 1)
-- Check GitHub Actions logs for error messages
+- Check GitHub Actions logs for detailed error messages
+- Ensure `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` secrets are set correctly
+
+### Domain not found in Cloudflare account
+
+If you see: `❌ Error: Domain example.com not found in your Cloudflare account`
+
+1. Go to https://dash.cloudflare.com
+2. Click **Add site** and follow the wizard
+3. Update your domain's nameservers to Cloudflare's nameservers
+4. Wait for status to show **Active**
+5. Re-run the GitHub Actions workflow
 
 ## Manual DNS Setup (if automated setup fails)
 
