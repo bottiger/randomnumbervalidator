@@ -91,7 +91,7 @@ jobs:
             "
 
       - name: Configure DNS for Cloudflare Tunnel
-        if: vars.DOMAIN_NAME != ''
+        if: secrets.DOMAIN_NAME != ''
         run: |
           # Run DNS configuration from instance (where it has correct IP for Cloudflare API)
           gcloud compute ssh randomvalidator-instance \
@@ -100,9 +100,11 @@ jobs:
               set -e
 
               TUNNEL_NAME='randomvalidator-tunnel'
-              DOMAIN_NAME='${{ vars.DOMAIN_NAME }}'
+              DOMAIN_NAME='${{ secrets.DOMAIN_NAME }}'
               ACCOUNT_ID='${{ secrets.CLOUDFLARE_ACCOUNT_ID }}'
               API_TOKEN='${{ secrets.CLOUDFLARE_API_TOKEN }}'
+
+              echo 'Configuring DNS for domain: \${DOMAIN_NAME}'
 
               # Get tunnel ID
               TUNNELS_RESPONSE=\$(curl -s -X GET \"https://api.cloudflare.com/client/v4/accounts/\${ACCOUNT_ID}/cfd_tunnel\" \
@@ -111,9 +113,11 @@ jobs:
 
               TUNNEL_ID=\$(echo \"\$TUNNELS_RESPONSE\" | jq -r \".result[]? | select(.name==\\\"\${TUNNEL_NAME}\\\") | .id // empty\")
               if [ -z \"\$TUNNEL_ID\" ]; then
-                echo 'Error: Could not find tunnel'
+                echo '❌ Error: Could not find tunnel \${TUNNEL_NAME}'
+                echo 'Response: '\$TUNNELS_RESPONSE
                 exit 1
               fi
+              echo '✓ Found tunnel: '\$TUNNEL_ID
 
               # Get zone ID
               ZONES_RESPONSE=\$(curl -s -X GET \"https://api.cloudflare.com/client/v4/zones?name=\${DOMAIN_NAME}\" \
@@ -122,9 +126,12 @@ jobs:
 
               ZONE_ID=\$(echo \"\$ZONES_RESPONSE\" | jq -r '.result[0].id // empty')
               if [ -z \"\$ZONE_ID\" ]; then
-                echo 'Warning: Could not find zone for domain'
-                exit 0
+                echo '❌ Error: Domain \${DOMAIN_NAME} not found in your Cloudflare account'
+                echo 'Make sure the domain is added to Cloudflare first'
+                echo 'Response: '\$ZONES_RESPONSE | jq '.'
+                exit 1
               fi
+              echo '✓ Found zone: '\$ZONE_ID
 
               # Check if DNS record exists
               RECORDS_RESPONSE=\$(curl -s -X GET \"https://api.cloudflare.com/client/v4/zones/\${ZONE_ID}/dns_records?type=CNAME&name=\${DOMAIN_NAME}\" \
@@ -135,13 +142,20 @@ jobs:
 
               if [ -z \"\$RECORD_ID\" ]; then
                 echo 'Creating DNS record...'
-                curl -s -X POST \"https://api.cloudflare.com/client/v4/zones/\${ZONE_ID}/dns_records\" \
+                CREATE_RESPONSE=\$(curl -s -X POST \"https://api.cloudflare.com/client/v4/zones/\${ZONE_ID}/dns_records\" \
                   -H \"Authorization: Bearer \${API_TOKEN}\" \
                   -H \"Content-Type: application/json\" \
-                  --data \"{\\\"type\\\":\\\"CNAME\\\",\\\"name\\\":\\\"\${DOMAIN_NAME}\\\",\\\"content\\\":\\\"\${TUNNEL_ID}.cfargotunnel.com\\\",\\\"proxied\\\":true}\"
-                echo 'DNS record created!'
+                  --data \"{\\\"type\\\":\\\"CNAME\\\",\\\"name\\\":\\\"\${DOMAIN_NAME}\\\",\\\"content\\\":\\\"\${TUNNEL_ID}.cfargotunnel.com\\\",\\\"proxied\\\":true}\")
+
+                if echo \"\$CREATE_RESPONSE\" | jq -e '.success == true' > /dev/null; then
+                  echo '✓ DNS record created successfully!'
+                else
+                  echo '❌ Error: Failed to create DNS record'
+                  echo \"\$CREATE_RESPONSE\" | jq '.'
+                  exit 1
+                fi
               else
-                echo 'DNS record already exists'
+                echo '✓ DNS record already exists'
               fi
             "
 
@@ -153,16 +167,56 @@ jobs:
           echo "✅ Application deployed!"
           echo "📍 Direct IP access: http://$INSTANCE_IP:3000"
 
-          if [ -n "${{ vars.DOMAIN_NAME }}" ]; then
-            echo "🌐 Domain access: https://${{ vars.DOMAIN_NAME }}"
-            echo "⏳ DNS propagation may take a few minutes..."
+          # Wait for application to start
+          echo "Waiting for application to start..."
+          sleep 10
+
+          # Verify application is running on direct IP
+          if curl -f -s "http://$INSTANCE_IP:3000" > /dev/null; then
+            echo "✓ Application is responding on direct IP"
           else
-            echo "💡 To enable custom domain with SSL:"
-            echo "   1. Go to Settings → Variables → New repository variable"
-            echo "   2. Name: DOMAIN_NAME"
-            echo "   3. Value: your-domain.com"
-            echo "   4. Re-run this workflow"
+            echo "❌ Error: Application is not responding on http://$INSTANCE_IP:3000"
+            exit 1
           fi
 
-          sleep 10
-          curl -f "http://$INSTANCE_IP:3000" || echo "⚠️  Warning: Application may still be starting"
+          if [ -n "${{ secrets.DOMAIN_NAME }}" ]; then
+            DOMAIN="${{ secrets.DOMAIN_NAME }}"
+            echo ""
+            echo "🌐 Domain: https://$DOMAIN"
+            echo "⏳ Waiting for DNS propagation and tunnel connection..."
+
+            # Wait up to 60 seconds for domain to become accessible
+            MAX_ATTEMPTS=12
+            ATTEMPT=1
+            while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+              echo "Attempt $ATTEMPT/$MAX_ATTEMPTS: Checking https://$DOMAIN..."
+
+              if curl -f -s -m 5 "https://$DOMAIN" > /dev/null 2>&1; then
+                echo "✅ Domain is accessible at https://$DOMAIN"
+                break
+              fi
+
+              if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+                echo "❌ Error: Domain https://$DOMAIN is not accessible after 60 seconds"
+                echo "This could mean:"
+                echo "  1. DNS has not propagated yet (can take up to 5 minutes)"
+                echo "  2. Cloudflare tunnel is not running properly"
+                echo "  3. Domain is not configured correctly in Cloudflare"
+                echo ""
+                echo "To debug, SSH to the instance and run:"
+                echo "  sudo systemctl status cloudflared"
+                echo "  sudo journalctl -u cloudflared -n 50"
+                exit 1
+              fi
+
+              sleep 5
+              ATTEMPT=$((ATTEMPT + 1))
+            done
+          else
+            echo ""
+            echo "💡 To enable custom domain with SSL:"
+            echo "   1. Go to Settings → Secrets and variables → Actions → Secrets"
+            echo "   2. Add new repository secret: DOMAIN_NAME"
+            echo "   3. Value: your-domain.com (must be added to your Cloudflare account)"
+            echo "   4. Re-run this workflow"
+          fi
