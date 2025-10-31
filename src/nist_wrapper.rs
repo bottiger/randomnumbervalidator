@@ -59,6 +59,10 @@ impl NistWrapper {
     /// Prepare input file for NIST tests
     /// NIST expects ASCII '0' and '1' characters
     pub fn prepare_input_file(&self, bits: &[u8], filename: &str) -> Result<PathBuf, String> {
+        // Ensure the data directory exists
+        fs::create_dir_all(&self.data_dir)
+            .map_err(|e| format!("Failed to create data directory: {}", e))?;
+
         let output_path = self.data_dir.join(filename);
         let mut file = fs::File::create(&output_path)
             .map_err(|e| format!("Failed to create input file: {}", e))?;

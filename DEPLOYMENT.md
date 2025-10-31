@@ -1,279 +1,285 @@
-# Deployment Guide - GCP
+# Multi-Cloud Deployment Guide
 
-This guide covers deploying the Random Number Validator to Google Cloud Platform (GCP) using Terraform and GitHub Actions.
+This guide covers deploying the Random Number Validator application using:
+- **Google Cloud Platform (GCP)** for compute (e2-micro free tier)
+- **Azure** for managed PostgreSQL database (B1ms free tier)
 
-## Table of Contents
+## Architecture
 
-1. [Prerequisites](#prerequisites)
-2. [GCP Setup](#gcp-setup)
-3. [Local Terraform Deployment](#local-terraform-deployment)
-4. [GitHub Actions CI/CD Setup](#github-actions-cicd-setup)
-5. [Monitoring and Maintenance](#monitoring-and-maintenance)
-6. [Cost Analysis](#cost-analysis)
-7. [Troubleshooting](#troubleshooting)
-
----
+```
+┌─────────────────────┐         ┌──────────────────────┐
+│   GCP (us-central1) │         │  Azure (centralus)   │
+│                     │         │                      │
+│  ┌──────────────┐   │         │  ┌────────────────┐  │
+│  │  e2-micro    │   │────────>│  │  PostgreSQL    │  │
+│  │  VM Instance │   │  SSL    │  │  Flexible      │  │
+│  │              │   │  5432   │  │  Server (B1ms) │  │
+│  └──────────────┘   │         │  └────────────────┘  │
+│                     │         │                      │
+└─────────────────────┘         └──────────────────────┘
+```
 
 ## Prerequisites
 
-- **GCP Account**: Sign up at [cloud.google.com](https://cloud.google.com)
-- **GCP Free Tier**: $300 credit for 90 days + Always Free tier
-- **Tools**:
-  - [gcloud CLI](https://cloud.google.com/sdk/docs/install)
-  - [Terraform](https://www.terraform.io/downloads) (>= 1.0)
-  - [Git](https://git-scm.com/downloads)
+### 1. GCP Account Setup
+- Create a Google Cloud account at https://console.cloud.google.com
+- Create a new project or use an existing one
+- Enable billing (free tier is available)
+- Install `gcloud` CLI: https://cloud.google.com/sdk/docs/install
 
----
+### 2. Azure Account Setup
+- Create an Azure account at https://portal.azure.com
+- Free tier includes 750 hours/month of B1ms PostgreSQL
+- Install `az` CLI: https://learn.microsoft.com/en-us/cli/azure/install-azure-cli
 
-## GCP Setup
-
-### 1. Create a GCP Project
-
+### 3. Terraform Installation
 ```bash
-# Create new project
-gcloud projects create randomvalidator-PROJECT_ID --name="Random Number Validator"
+# macOS
+brew install terraform
 
-# Set as default project
-gcloud config set project randomvalidator-PROJECT_ID
-
-# Enable billing (required, but free tier available)
-# Go to: https://console.cloud.google.com/billing
+# Linux
+wget https://releases.hashicorp.com/terraform/1.6.0/terraform_1.6.0_linux_amd64.zip
+unzip terraform_1.6.0_linux_amd64.zip
+sudo mv terraform /usr/local/bin/
 ```
 
-### 2. Enable Required APIs
+## Authentication Setup
 
+### GCP Authentication
 ```bash
-gcloud services enable compute.googleapis.com
-gcloud services enable cloudresourcemanager.googleapis.com
+# Login to GCP
+gcloud auth application-default login
+
+# Set your project
+gcloud config set project YOUR_PROJECT_ID
 ```
 
-### 3. Create Service Account for Terraform
-
+### Azure Authentication
 ```bash
-# Create service account
-gcloud iam service-accounts create terraform \
-  --display-name="Terraform Service Account"
+# Login to Azure
+az login
 
-# Grant necessary permissions
-gcloud projects add-iam-policy-binding randomvalidator-PROJECT_ID \
-  --member="serviceAccount:terraform@randomvalidator-PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/compute.admin"
-
-gcloud projects add-iam-policy-binding randomvalidator-PROJECT_ID \
-  --member="serviceAccount:terraform@randomvalidator-PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/iam.serviceAccountUser"
-
-# Create and download key
-gcloud iam service-accounts keys create ~/terraform-key.json \
-  --iam-account=terraform@randomvalidator-PROJECT_ID.iam.gserviceaccount.com
-
-# Set environment variable
-export GOOGLE_APPLICATION_CREDENTIALS=~/terraform-key.json
+# Get your subscription ID
+az account show --query id -o tsv
 ```
 
----
+## Deployment Steps
 
-## Local Terraform Deployment
+### 1. Configure Variables
 
-### 1. Configure Terraform Variables
-
-```bash
-cd terraform
-cp terraform.tfvars.example terraform.tfvars
-```
-
-Edit `terraform.tfvars`:
+Create a `terraform.tfvars` file in the `terraform/` directory:
 
 ```hcl
-project_id     = "randomvalidator-PROJECT_ID"
+# GCP Configuration
+project_id     = "your-gcp-project-id"
 region         = "us-central1"  # Must be us-west1, us-central1, or us-east1 for free tier
 zone           = "us-central1-a"
 repository_url = "https://github.com/yourusername/randomnumbervalidator.git"
+
+# Azure Configuration
+azure_subscription_id = "your-azure-subscription-id"
+azure_location        = "centralus"  # Close to GCP us-central1
+
+# Database Configuration
+db_admin_username = "dbadmin"
+db_admin_password = "YourSecurePassword123!"  # Min 8 chars, use strong password
 ```
 
-### 2. Initialize and Deploy
+**IMPORTANT**: Never commit `terraform.tfvars` to git. Add it to `.gitignore`.
+
+### 2. Initialize Terraform
 
 ```bash
-# Initialize Terraform
+cd terraform/
 terraform init
+```
 
-# Preview changes
+This will download the required providers:
+- Google Cloud (for compute resources)
+- Azure (for PostgreSQL database)
+- Random (for generating unique names)
+
+### 3. Review the Plan
+
+```bash
 terraform plan
+```
 
-# Apply infrastructure
+Review the resources that will be created:
+- **Azure Resources**:
+  - Resource group
+  - PostgreSQL Flexible Server (B1ms, 32GB storage)
+  - Database named "randomvalidator"
+  - Firewall rules (allow GCP instance IP)
+- **GCP Resources**:
+  - Compute instance (e2-micro)
+  - Static IP address
+  - Firewall rules (HTTP, SSH)
+
+### 4. Apply Configuration
+
+```bash
 terraform apply
-
-# Note the outputs
-terraform output instance_ip
-terraform output application_url
 ```
 
-### 3. Access Your Application
+Type `yes` when prompted. This will:
+1. Create Azure resource group and PostgreSQL server (~5-10 minutes)
+2. Create database and configure firewall
+3. Create GCP compute instance
+4. Configure GCP firewall rules
+5. Deploy your application with database connection
 
-After deployment completes (5-10 minutes for initial setup):
+### 5. Verify Deployment
 
-```bash
-# Get the application URL
-terraform output application_url
+After successful deployment, Terraform will output:
 
-# Example: http://34.123.45.67:3000
+```
+Outputs:
+
+instance_ip = "XX.XX.XX.XX"
+database_host = "randomvalidator-db-XXXXXX.postgres.database.azure.com"
+database_name = "randomvalidator"
+application_url = "http://XX.XX.XX.XX:3000"
 ```
 
-Open the URL in your browser!
+Visit the application URL to verify it's running.
 
----
+## Cost Breakdown
 
-## GitHub Actions CI/CD Setup
+### Free Tier Eligible Resources
 
-### 1. Prepare GitHub Repository
+#### GCP (Always Free)
+- **e2-micro instance**: 1 instance free per month (us-west1, us-central1, us-east1)
+- **30GB standard disk**: Free
+- **Static IP**: $0 while in use
+- **Network egress**: 1GB/month free
 
-```bash
-# Initialize git if not already done
-git init
-git add .
-git commit -m "Initial commit"
+#### Azure (12-month free trial + Always Free)
+- **PostgreSQL B1ms**: 750 hours/month free (≈31 days)
+- **Storage**: 32GB free
+- **Backup**: 32GB free
 
-# Create GitHub repository and push
-git remote add origin https://github.com/yourusername/randomnumbervalidator.git
-git branch -M main
-git push -u origin main
+### Potential Costs
+- GCP to Azure data transfer (after 1GB/month free): ~$0.12/GB
+- If you exceed 750 hours/month on Azure DB (unlikely with single instance)
+- Static IP when GCP instance is stopped: ~$0.01/hour
+
+**Estimated monthly cost**: **$0-$5** depending on usage
+
+## Database Access
+
+### From Your Application
+The application automatically connects using the `DATABASE_URL` environment variable set by Terraform:
+```
+postgresql://dbadmin:password@hostname:5432/randomvalidator?sslmode=require
 ```
 
-### 2. Configure GitHub Secrets
+This is configured in the systemd service at `/etc/systemd/system/randomvalidator.service`.
 
-Go to your GitHub repository → Settings → Secrets and variables → Actions
+### Manual Connection (for debugging)
 
-Add the following secrets:
-
-#### GCP Secrets
-
-| Secret Name | Value | How to Get |
-|-------------|-------|------------|
-| `GCP_SA_KEY` | Service account JSON key | Content of `~/terraform-key.json` |
-| `GCP_PROJECT_ID` | Your GCP project ID | `randomvalidator-PROJECT_ID` |
-| `GCP_REGION` | GCP region | `us-central1` |
-| `GCP_ZONE` | GCP zone | `us-central1-a` |
-
-**To add `GCP_SA_KEY`:**
 ```bash
-# Copy the entire contents of the JSON file
-cat ~/terraform-key.json
-# Paste into GitHub secret value (entire JSON)
+# Get connection details from Terraform
+cd terraform/
+terraform output database_host
+
+# Connect using psql (from your local machine or GCP instance)
+psql "postgresql://dbadmin:YourPassword@randomvalidator-db-XXXXXX.postgres.database.azure.com:5432/randomvalidator?sslmode=require"
+
+# List tables
+\dt
+
+# Check database version
+SELECT version();
+
+# Exit
+\q
 ```
 
-#### Cloudflare Secrets (for Cloudflare Tunnel)
+### Using Azure Portal
+1. Go to https://portal.azure.com
+2. Navigate to "Azure Database for PostgreSQL flexible servers"
+3. Click on your server: `randomvalidator-db-XXXXXX`
+4. Use "Connect" blade for connection strings and settings
 
-The deploy workflow sets up a Cloudflare Tunnel to provide HTTPS access to your application.
+## Database Schema Management
 
-| Secret Name | Value | How to Get |
-|-------------|-------|------------|
-| `CLOUDFLARE_ACCOUNT_ID` | Your Cloudflare Account ID | Found in Cloudflare Dashboard → Account → Account ID |
-| `CLOUDFLARE_API_TOKEN` | API token with tunnel permissions | Create in Cloudflare Dashboard → My Profile → API Tokens |
-
-**To get your Cloudflare Account ID:**
-1. Log in to [Cloudflare Dashboard](https://dash.cloudflare.com)
-2. Click on any domain or go to Account Home
-3. Scroll down to find your Account ID on the right side
-4. Copy the Account ID value
-
-**To create a Cloudflare API Token:**
-1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com) → My Profile → API Tokens
-2. Click "Create Token"
-3. Use the "Create Custom Token" template
-4. Set the following permissions:
-   - **Account** → **Cloudflare Tunnel** → **Edit**
-   - **Zone** → **DNS** → **Edit** (if using custom domain)
-5. Set Account Resources: Include → Your account
-6. Click "Continue to summary" → "Create Token"
-7. Copy the token and add it as `CLOUDFLARE_API_TOKEN` secret in GitHub
-
-**Optional: Custom Domain Configuration**
-
-To use a custom domain with your Cloudflare Tunnel:
-
-1. Add your domain to Cloudflare (if not already added)
-2. Go to your GitHub repository → Settings → Variables and secrets → Variables
-3. Add a new repository variable:
-   - Name: `DOMAIN_NAME`
-   - Value: `yourdomain.com` (or subdomain like `randomvalidator.yourdomain.com`)
-4. The deploy workflow will automatically configure DNS
-
-Without `DOMAIN_NAME` configured, your application will still be accessible via the GCP instance IP.
-
-### 3. GitHub Actions Workflows
-
-Three workflows are configured:
-
-#### a) **CI Workflow** (`.github/workflows/ci.yml`)
-- Runs on every push and PR
-- Executes tests
-- Checks formatting and linting
-- Builds release binary
-
-#### b) **Terraform Workflow** (`.github/workflows/terraform.yml`)
-- Runs when `terraform/` changes
-- Plans infrastructure changes
-- Applies changes on merge to main
-- Posts plan summary on PRs
-
-#### c) **Deploy Workflow** (`.github/workflows/deploy.yml`)
-- Runs on push to main
-- SSH into instance
-- Pulls latest code
-- Rebuilds application
-- Restarts service
-
-### 4. Trigger Initial Deployment
+### Using sqlx-cli for Migrations
 
 ```bash
-# Push to main triggers deployment
-git push origin main
+# Install sqlx-cli
+cargo install sqlx-cli --no-default-features --features postgres
 
-# Or manually trigger from GitHub Actions UI
+# Set DATABASE_URL locally
+export DATABASE_URL="postgresql://dbadmin:password@hostname:5432/randomvalidator?sslmode=require"
+
+# Create a migration
+sqlx migrate add create_results_table
+
+# Run migrations
+sqlx migrate run
+
+# Revert last migration
+sqlx migrate revert
 ```
 
-### 5. Monitor Deployment
+### Example Migration
 
-Go to your repository → Actions tab to see workflow progress.
+Create `migrations/001_create_results_table.sql`:
 
----
+```sql
+CREATE TABLE validation_results (
+    id SERIAL PRIMARY KEY,
+    input_numbers TEXT NOT NULL,
+    test_results JSONB NOT NULL,
+    quality_score DECIMAL(5,2),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
-## Monitoring and Maintenance
+CREATE INDEX idx_created_at ON validation_results(created_at);
+```
 
-### Check Application Status
+## Monitoring & Logs
 
+### Application Logs
 ```bash
-# SSH into instance
+# SSH into GCP instance
 gcloud compute ssh randomvalidator-instance --zone=us-central1-a
 
-# Check service status
-sudo systemctl status randomvalidator
-
-# View logs
+# View live logs
 sudo journalctl -u randomvalidator -f
 
-# Check NIST binary
-cd /opt/randomvalidator/nist/sts-2.1.2/sts-2.1.2
-ls -la assess
+# View last 100 lines
+sudo journalctl -u randomvalidator -n 100
 
-# Exit SSH
-exit
+# View logs since specific time
+sudo journalctl -u randomvalidator --since "1 hour ago"
 ```
 
-### View Application Logs
+### Database Monitoring (Azure Portal)
+1. Go to your PostgreSQL server in Azure Portal
+2. Click "Metrics" to view:
+   - Active connections
+   - CPU percentage
+   - Storage used
+   - Network I/O
+3. Set up alerts for high CPU or connections
 
+### Check Database Connection
 ```bash
-# Stream logs
-gcloud compute ssh randomvalidator-instance --zone=us-central1-a \
-  --command="sudo journalctl -u randomvalidator -f"
+# From GCP instance
+gcloud compute ssh randomvalidator-instance --zone=us-central1-a
 
-# View recent logs
-gcloud compute ssh randomvalidator-instance --zone=us-central1-a \
-  --command="sudo journalctl -u randomvalidator -n 100"
+# Test database connection
+psql "$DATABASE_URL" -c "SELECT 1;"
+
+# Check active connections
+psql "$DATABASE_URL" -c "SELECT count(*) FROM pg_stat_activity;"
 ```
 
-### Manual Deployment
+## Updating the Application
 
+### Code Changes Only
 ```bash
 # SSH into instance
 gcloud compute ssh randomvalidator-instance --zone=us-central1-a
@@ -282,164 +288,218 @@ gcloud compute ssh randomvalidator-instance --zone=us-central1-a
 cd /opt/randomvalidator
 git pull
 
-# Rebuild NIST
-cd nist/sts-2.1.2/sts-2.1.2
-make clean && make
-
-# Rebuild application
-cd /opt/randomvalidator
+# Rebuild
 source $HOME/.cargo/env
 cargo build --release --bin server
 
 # Restart service
 sudo systemctl restart randomvalidator
 
-# Exit
+# Verify it's running
+sudo systemctl status randomvalidator
+
 exit
 ```
 
-### Update Instance Configuration
-
+### Infrastructure Changes
 ```bash
-# Modify terraform/main.tf or variables
-cd terraform
+cd terraform/
 
-# Plan changes
+# Review changes
 terraform plan
 
 # Apply changes
 terraform apply
 ```
 
----
-
-## Cost Analysis
-
-### Free Tier Limits (Always Free)
-
-- **Compute**: 1 e2-micro instance in us-west1, us-central1, or us-east1
-- **Storage**: 30GB standard persistent disk
-- **Network**: 1GB egress per month (North America)
-- **Static IP**: Free while in use
-
-### Estimated Costs (After Free Tier)
-
-| Resource | Free Tier | After Free Tier |
-|----------|-----------|-----------------|
-| e2-micro instance | Free | ~$7/month |
-| 30GB disk | Free | ~$2/month |
-| Static IP | Free | ~$3/month |
-| Egress (>1GB) | 1GB free | $0.12/GB |
-
-**Total if staying in free tier**: $0/month ✅
-
----
+### Database Schema Changes
+```bash
+# Create and run migration (see Database Schema Management above)
+sqlx migrate add your_migration_name
+# Edit the generated SQL file
+sqlx migrate run
+```
 
 ## Troubleshooting
 
-### Application Not Accessible
+### Application Won't Start
 
 ```bash
-# Check firewall rules
-gcloud compute firewall-rules list
-
-# Verify instance is running
-gcloud compute instances list
-
-# Check if service is running
+# Check service status
 gcloud compute ssh randomvalidator-instance --zone=us-central1-a \
   --command="sudo systemctl status randomvalidator"
+
+# Check logs for errors
+gcloud compute ssh randomvalidator-instance --zone=us-central1-a \
+  --command="sudo journalctl -u randomvalidator -n 50"
+
+# Common issues:
+# 1. Database connection failed → check DATABASE_URL
+# 2. NIST binary missing → rebuild NIST suite
+# 3. Port already in use → check for other processes
 ```
 
-### NIST Tests Failing
+### Database Connection Issues
 
 ```bash
 # SSH into instance
 gcloud compute ssh randomvalidator-instance --zone=us-central1-a
 
-# Check NIST binary
-cd /opt/randomvalidator/nist/sts-2.1.2/sts-2.1.2
-ls -la assess
+# Check if DATABASE_URL is set
+sudo systemctl show randomvalidator | grep DATABASE_URL
 
-# Rebuild if needed
-make clean && make
+# Test connection manually
+psql "$DATABASE_URL" -c "SELECT version();"
 
-# Restart service
-sudo systemctl restart randomvalidator
-exit
+# Common issues:
+# 1. Firewall rule not allowing GCP IP
+#    → Check Azure Portal firewall rules
+# 2. Wrong password
+#    → Verify terraform.tfvars matches
+# 3. SSL required
+#    → Ensure connection string has ?sslmode=require
 ```
 
-### Deployment Failed
+### Azure Database Firewall Issues
 
 ```bash
-# Check GitHub Actions logs in repository
+# Get current GCP instance IP
+cd terraform/
+terraform output instance_ip
 
-# Manually trigger startup script
-gcloud compute instances add-metadata randomvalidator-instance \
-  --zone=us-central1-a \
-  --metadata=startup-script="$(cat terraform/startup-script.sh)"
-
-gcloud compute instances reset randomvalidator-instance --zone=us-central1-a
+# Verify in Azure Portal:
+# 1. Go to PostgreSQL server
+# 2. Click "Networking"
+# 3. Check firewall rules include GCP instance IP
+# 4. Add rule manually if needed
 ```
+
+### Free Tier Usage Issues
+
+**GCP**:
+```bash
+# Check instance region (must be us-west1, us-central1, or us-east1)
+gcloud compute instances list
+
+# Check machine type (must be e2-micro)
+gcloud compute instances describe randomvalidator-instance --zone=us-central1-a
+```
+
+**Azure**:
+- Check usage: Azure Portal → Cost Management → Cost Analysis
+- PostgreSQL B1ms: 750 hours/month = ~31 days (should be fine)
+- Monitor monthly usage to stay within limits
 
 ### Terraform State Issues
 
 ```bash
-# If terraform state gets out of sync
-cd terraform
+cd terraform/
 
 # Refresh state
 terraform refresh
 
-# Import existing resources if needed
-terraform import google_compute_instance.randomvalidator randomvalidator-instance
+# View current state
+terraform show
+
+# If Azure resources exist but not in state
+terraform import azurerm_resource_group.randomvalidator /subscriptions/SUB_ID/resourceGroups/randomvalidator-rg
 ```
 
-### SSH Access Issues
+## Security Best Practices
+
+### Production Recommendations
+
+1. **Remove wide-open database firewall rule**
+
+   Edit `terraform/azure.tf` and remove:
+   ```hcl
+   resource "azurerm_postgresql_flexible_server_firewall_rule" "allow_local" {
+     # Remove this entire block in production
+   }
+   ```
+
+2. **Use strong passwords**
+   ```bash
+   # Generate strong password
+   openssl rand -base64 32
+   ```
+
+3. **Enable SSL enforcement**
+   Already configured with `?sslmode=require` in connection string
+
+4. **Secrets management**
+   - Store `terraform.tfvars` securely (never commit to git)
+   - Consider using GCP Secret Manager or Azure Key Vault
+   - Rotate passwords regularly
+
+5. **Network security**
+   - Restrict SSH access to specific IPs
+   - Consider using Cloud IAP for SSH instead of public access
+   - Use VPN or Private Link for database access in production
+
+6. **Monitoring & Alerts**
+   - Set up Azure Monitor alerts for database
+   - Configure GCP Monitoring for compute instance
+   - Enable audit logging
+
+## Cleanup
+
+To destroy all resources:
 
 ```bash
-# Add SSH key
-gcloud compute config-ssh
-
-# Or use browser-based SSH
-# Go to: https://console.cloud.google.com/compute/instances
-# Click "SSH" button next to instance
-```
-
----
-
-## Cleanup / Destroy Infrastructure
-
-**Warning**: This will delete all resources!
-
-```bash
-cd terraform
-
-# Preview what will be destroyed
-terraform plan -destroy
-
-# Destroy all resources
+cd terraform/
 terraform destroy
-
-# Confirm by typing: yes
 ```
 
----
+Type `yes` to confirm. This will delete:
+- ✅ Azure PostgreSQL server and database
+- ✅ Azure resource group
+- ✅ GCP compute instance
+- ✅ GCP static IP
+- ✅ All firewall rules
+
+**Warning**: This deletes all data permanently!
+
+## GitHub Actions CI/CD (Optional)
+
+To set up automated deployments:
+
+1. Add GitHub secrets:
+   - `GCP_SA_KEY`: Service account JSON
+   - `AZURE_CREDENTIALS`: Azure service principal JSON
+   - `DB_PASSWORD`: Database password
+
+2. Workflows will:
+   - Run tests on every push
+   - Deploy to GCP on merge to main
+   - Apply Terraform changes on infrastructure updates
+
+See `.github/workflows/` for workflow definitions.
+
+## Next Steps
+
+- ✅ Set up database migrations with sqlx
+- ✅ Implement actual validation result storage
+- ✅ Add database connection pooling
+- ✅ Set up automated backups (Azure Portal)
+- ✅ Configure monitoring and alerts
+- ✅ Add domain name and SSL certificate
+- ✅ Implement proper error handling for DB connection failures
 
 ## Additional Resources
 
 - [GCP Free Tier](https://cloud.google.com/free)
+- [Azure Free Tier](https://azure.microsoft.com/en-us/pricing/free-services/)
 - [Terraform GCP Provider](https://registry.terraform.io/providers/hashicorp/google/latest/docs)
-- [GitHub Actions Documentation](https://docs.github.com/en/actions)
-- [GCP Compute Engine Docs](https://cloud.google.com/compute/docs)
-
----
+- [Terraform Azure Provider](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs)
+- [sqlx Documentation](https://github.com/launchbadge/sqlx)
+- [Azure PostgreSQL Docs](https://learn.microsoft.com/en-us/azure/postgresql/)
 
 ## Support
 
 If you encounter issues:
-
 1. Check the [Troubleshooting](#troubleshooting) section
-2. Review GitHub Actions logs
-3. Check GCP console logs
-4. Open an issue on GitHub
+2. Review Terraform logs: `terraform apply` output
+3. Check application logs: `sudo journalctl -u randomvalidator -f`
+4. Verify Azure Portal for database status
+5. Check GCP Console for instance status
