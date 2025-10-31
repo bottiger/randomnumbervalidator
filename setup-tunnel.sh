@@ -63,7 +63,15 @@ fi
 # Create config directory
 sudo mkdir -p /etc/cloudflared
 
+# Check if service already exists and uninstall it
+if sudo systemctl list-unit-files | grep -q "cloudflared.service"; then
+    echo "Removing existing cloudflared service..."
+    sudo cloudflared service uninstall || true
+    sleep 1
+fi
+
 # Install service with token (this is the correct way to use the tunnel token)
+echo "Installing cloudflared service..."
 sudo cloudflared service install "${TUNNEL_TOKEN}"
 
 # The service install command automatically:
@@ -71,8 +79,9 @@ sudo cloudflared service install "${TUNNEL_TOKEN}"
 # - Enables it
 # - Starts it
 # So we just need to check status
-sleep 2
-sudo systemctl status cloudflared || true
+echo "Waiting for service to start..."
+sleep 3
+sudo systemctl status cloudflared --no-pager || echo "Service status check failed, but may still be starting"
 
 echo ""
 echo "✅ Cloudflare Tunnel configured successfully!"
