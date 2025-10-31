@@ -24,27 +24,3 @@ variable "repository_url" {
   description = "GitHub repository URL for the application"
   type        = string
 }
-
-# Azure Variables
-variable "azure_subscription_id" {
-  description = "Azure Subscription ID"
-  type        = string
-}
-
-variable "azure_location" {
-  description = "Azure region for resources (should be close to GCP region)"
-  type        = string
-  default     = "centralus"  # Close to GCP us-central1
-}
-
-variable "db_admin_username" {
-  description = "PostgreSQL administrator username"
-  type        = string
-  default     = "dbadmin"
-}
-
-variable "db_admin_password" {
-  description = "PostgreSQL administrator password (min 8 chars)"
-  type        = string
-  sensitive   = true
-}

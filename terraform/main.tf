@@ -5,10 +5,6 @@ terraform {
       source  = "hashicorp/google"
       version = "~> 5.0"
     }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.0"
-    }
   }
 }
 
@@ -70,16 +66,13 @@ resource "google_compute_firewall" "allow_ssh" {
 
 # Create startup script
 locals {
-  # Database connection string (will be available after Azure DB is created)
-  database_url = "postgresql://${var.db_admin_username}:${var.db_admin_password}@${azurerm_postgresql_flexible_server.randomvalidator.fqdn}:5432/${azurerm_postgresql_flexible_server_database.randomvalidator.name}?sslmode=require"
-
   startup_script = <<-EOF
     #!/bin/bash
     set -e
 
     # Update system
     apt-get update
-    apt-get install -y build-essential curl git postgresql-client
+    apt-get install -y build-essential curl git
 
     # Install Rust
     if ! command -v rustc &> /dev/null; then
@@ -119,7 +112,6 @@ locals {
     User=root
     WorkingDirectory=/opt/randomvalidator
     Environment="RUST_LOG=info"
-    Environment="DATABASE_URL=${local.database_url}"
     ExecStart=/opt/randomvalidator/target/release/server
     Restart=always
     RestartSec=10
@@ -169,9 +161,7 @@ resource "google_compute_instance" "randomvalidator" {
   depends_on = [
     google_project_service.compute,
     google_compute_firewall.allow_http,
-    google_compute_firewall.allow_ssh,
-    azurerm_postgresql_flexible_server.randomvalidator,
-    azurerm_postgresql_flexible_server_database.randomvalidator
+    google_compute_firewall.allow_ssh
   ]
 }
 
