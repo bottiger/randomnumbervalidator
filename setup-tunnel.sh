@@ -63,22 +63,16 @@ fi
 # Create config directory
 sudo mkdir -p /etc/cloudflared
 
-# Write config file
-sudo tee /etc/cloudflared/config.yml > /dev/null << EOF
-tunnel: ${TUNNEL_ID}
-credentials-file: /etc/cloudflared/credentials.json
+# Install service with token (this is the correct way to use the tunnel token)
+sudo cloudflared service install "${TUNNEL_TOKEN}"
 
-ingress:
-  - service: http://localhost:3000
-EOF
-
-# Write tunnel token
-echo "${TUNNEL_TOKEN}" | sudo tee /etc/cloudflared/credentials.json > /dev/null
-
-# Install and start service
-sudo cloudflared service install
-sudo systemctl enable cloudflared
-sudo systemctl restart cloudflared
+# The service install command automatically:
+# - Creates the systemd service
+# - Enables it
+# - Starts it
+# So we just need to check status
+sleep 2
+sudo systemctl status cloudflared || true
 
 echo ""
 echo "✅ Cloudflare Tunnel configured successfully!"
