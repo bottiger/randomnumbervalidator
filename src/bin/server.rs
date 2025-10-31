@@ -238,7 +238,7 @@ async fn log_query_to_database(
     .bind(total_numbers_count)
     .bind(total_bits_count)
     .bind(response.valid)
-    .bind(response.quality_score as f64)
+    .bind(response.quality_score)
     .bind(request.use_nist)
     .bind(nist_tests_passed)
     .bind(nist_tests_total)
