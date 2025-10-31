@@ -235,4 +235,151 @@ mod tests {
         let score = calculate_basic_quality(&bits);
         assert!(score < 0.5);
     }
+
+    #[test]
+    fn test_basic_quality_all_ones() {
+        // Poor randomness: all ones
+        let bits = vec![1, 1, 1, 1, 1, 1, 1, 1];
+        let score = calculate_basic_quality(&bits);
+        assert!(score < 0.5);
+    }
+
+    #[test]
+    fn test_basic_quality_empty() {
+        // Edge case: empty bits
+        let bits = vec![];
+        let score = calculate_basic_quality(&bits);
+        assert_eq!(score, 0.0);
+    }
+
+    #[test]
+    fn test_prepare_input_single_number() {
+        let result = prepare_input_for_nist("42");
+        assert!(result.is_ok());
+        let bits = result.unwrap();
+        assert_eq!(bits.len(), 32); // 1 number * 32 bits
+    }
+
+    #[test]
+    fn test_prepare_input_zero() {
+        let result = prepare_input_for_nist("0");
+        assert!(result.is_ok());
+        let bits = result.unwrap();
+        assert_eq!(bits.len(), 32);
+        // All bits should be 0
+        assert!(bits.iter().all(|&b| b == 0));
+    }
+
+    #[test]
+    fn test_prepare_input_max_u32() {
+        let result = prepare_input_for_nist("4294967295"); // u32::MAX
+        assert!(result.is_ok());
+        let bits = result.unwrap();
+        assert_eq!(bits.len(), 32);
+        // All bits should be 1 for max value
+        assert!(bits.iter().all(|&b| b == 1));
+    }
+
+    #[test]
+    fn test_prepare_input_overflow() {
+        // Number larger than u32::MAX should fail
+        let result = prepare_input_for_nist("4294967296");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_prepare_input_empty_string() {
+        let result = prepare_input_for_nist("");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("No numbers"));
+    }
+
+    #[test]
+    fn test_prepare_input_whitespace_only() {
+        let result = prepare_input_for_nist("   \n\t  ");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("No numbers"));
+    }
+
+    #[test]
+    fn test_prepare_input_special_characters() {
+        // Should treat special chars as delimiters
+        let result = prepare_input_for_nist("1!@#2$%^3");
+        assert!(result.is_ok());
+        let bits = result.unwrap();
+        assert_eq!(bits.len(), 96); // 3 numbers * 32 bits
+    }
+
+    #[test]
+    fn test_prepare_input_negative_sign() {
+        // Negative numbers should work (the minus is treated as delimiter)
+        let result = prepare_input_for_nist("-5,-10");
+        assert!(result.is_ok());
+        let bits = result.unwrap();
+        assert_eq!(bits.len(), 64); // 2 numbers: 5 and 10
+    }
+
+    #[test]
+    fn test_validate_invalid_input() {
+        let response = validate_random_numbers("abc");
+        assert!(!response.valid);
+        assert_eq!(response.quality_score, 0.0);
+        assert!(response.message.contains("letters"));
+    }
+
+    #[test]
+    fn test_validate_with_nist_disabled() {
+        let response = validate_random_numbers_with_nist("1,2,3,4,5", false);
+        assert!(response.quality_score >= 0.0);
+        assert!(response.nist_results.is_some());
+        let nist_msg = response.nist_results.unwrap();
+        assert!(nist_msg.contains("not requested"));
+    }
+
+    #[test]
+    fn test_validate_quality_threshold() {
+        // Test that quality_score > 0.3 determines validity
+        let response = validate_random_numbers("1,2,3,4,5");
+        if response.quality_score > 0.3 {
+            assert!(response.valid);
+        } else {
+            assert!(!response.valid);
+        }
+    }
+
+    #[test]
+    fn test_prepare_input_leading_zeros() {
+        // Numbers with leading zeros should be parsed correctly
+        let result = prepare_input_for_nist("007,042,0100");
+        assert!(result.is_ok());
+        let bits = result.unwrap();
+        assert_eq!(bits.len(), 96); // 3 numbers * 32 bits
+    }
+
+    #[test]
+    fn test_validation_response_structure() {
+        let response = validate_random_numbers("1,2,3,4,5");
+        // Verify all fields are populated
+        assert!(response.quality_score >= 0.0 && response.quality_score <= 1.0);
+        assert!(!response.message.is_empty());
+        assert!(response.nist_results.is_some());
+    }
+
+    #[test]
+    fn test_basic_quality_single_bit() {
+        let bits = vec![1];
+        let score = calculate_basic_quality(&bits);
+        assert!(score >= 0.0 && score <= 1.0);
+    }
+
+    #[test]
+    fn test_prepare_input_large_sequence() {
+        // Test with many numbers
+        let numbers: Vec<String> = (1..=100).map(|n| n.to_string()).collect();
+        let input = numbers.join(",");
+        let result = prepare_input_for_nist(&input);
+        assert!(result.is_ok());
+        let bits = result.unwrap();
+        assert_eq!(bits.len(), 3200); // 100 numbers * 32 bits
+    }
 }

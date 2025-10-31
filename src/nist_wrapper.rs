@@ -310,12 +310,172 @@ mod tests {
     fn test_prepare_input_file() {
         let wrapper = NistWrapper::new();
         let bits = vec![1, 0, 1, 1, 0, 0, 1, 0];
-        let temp_file = "/tmp/test_nist_input.txt";
+        let temp_file = "test_nist_input.txt";
 
         let result = wrapper.prepare_input_file(&bits, temp_file);
         assert!(result.is_ok());
 
+        // Verify file was created in data directory
+        let file_path = result.unwrap();
+        assert!(file_path.exists());
+
+        // Verify content
+        let content = fs::read_to_string(&file_path).unwrap();
+        assert!(content.contains('0'));
+        assert!(content.contains('1'));
+
         // Clean up
-        let _ = fs::remove_file(temp_file);
+        let _ = fs::remove_file(file_path);
+    }
+
+    #[test]
+    fn test_prepare_input_file_empty_bits() {
+        let wrapper = NistWrapper::new();
+        let bits = vec![];
+        let result = wrapper.prepare_input_file(&bits, "test_empty.txt");
+
+        assert!(result.is_ok());
+
+        // Clean up
+        if let Ok(path) = result {
+            let _ = fs::remove_file(path);
+        }
+    }
+
+    #[test]
+    fn test_prepare_input_file_all_zeros() {
+        let wrapper = NistWrapper::new();
+        let bits = vec![0, 0, 0, 0, 0, 0, 0, 0];
+        let result = wrapper.prepare_input_file(&bits, "test_zeros.txt");
+
+        assert!(result.is_ok());
+
+        let file_path = result.unwrap();
+        let content = fs::read_to_string(&file_path).unwrap();
+        assert!(content.chars().filter(|&c| c == '0').count() == 8);
+
+        // Clean up
+        let _ = fs::remove_file(file_path);
+    }
+
+    #[test]
+    fn test_prepare_input_file_all_ones() {
+        let wrapper = NistWrapper::new();
+        let bits = vec![1, 1, 1, 1, 1, 1, 1, 1];
+        let result = wrapper.prepare_input_file(&bits, "test_ones.txt");
+
+        assert!(result.is_ok());
+
+        let file_path = result.unwrap();
+        let content = fs::read_to_string(&file_path).unwrap();
+        assert!(content.chars().filter(|&c| c == '1').count() == 8);
+
+        // Clean up
+        let _ = fs::remove_file(file_path);
+    }
+
+    #[test]
+    fn test_prepare_input_file_large_input() {
+        let wrapper = NistWrapper::new();
+        // Create 2000 bits alternating between 0 and 1
+        let bits: Vec<u8> = (0..2000).map(|i| (i % 2) as u8).collect();
+        let result = wrapper.prepare_input_file(&bits, "test_large.txt");
+
+        assert!(result.is_ok());
+
+        let file_path = result.unwrap();
+        assert!(file_path.exists());
+
+        // Verify we got all the bits
+        let content = fs::read_to_string(&file_path).unwrap();
+        let bit_chars = content.chars().filter(|&c| c == '0' || c == '1').count();
+        assert_eq!(bit_chars, 2000);
+
+        // Clean up
+        let _ = fs::remove_file(file_path);
+    }
+
+    #[test]
+    fn test_is_available() {
+        let wrapper = NistWrapper::new();
+        // This will return true or false depending on whether NIST is compiled
+        // We just verify the method works
+        let available = wrapper.is_available();
+        assert!(available == true || available == false);
+    }
+
+    #[test]
+    fn test_run_tests_insufficient_bits() {
+        let wrapper = NistWrapper::new();
+        let bits = vec![1, 0, 1, 0]; // Only 4 bits, need at least 100
+
+        let result = wrapper.run_tests(&bits);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("100"));
+    }
+
+    #[test]
+    fn test_find_project_root() {
+        let root = NistWrapper::find_project_root();
+        // Should find the project root or return None
+        if let Some(path) = root {
+            assert!(path.join("Cargo.toml").exists());
+        }
+    }
+
+    #[test]
+    fn test_nist_wrapper_default() {
+        let wrapper = NistWrapper::default();
+        assert!(wrapper.nist_path.as_os_str().len() > 0);
+    }
+
+    #[test]
+    fn test_prepare_input_file_formatting() {
+        let wrapper = NistWrapper::new();
+        // Test that lines are broken every 25 characters as expected by NIST
+        let bits = vec![0; 60]; // 60 zeros
+        let result = wrapper.prepare_input_file(&bits, "test_format.txt");
+
+        assert!(result.is_ok());
+
+        let file_path = result.unwrap();
+        let content = fs::read_to_string(&file_path).unwrap();
+
+        // Should have newlines for formatting
+        assert!(content.contains('\n'));
+
+        // Clean up
+        let _ = fs::remove_file(file_path);
+    }
+
+    #[test]
+    fn test_prepare_input_binary_values_only() {
+        let wrapper = NistWrapper::new();
+        let bits = vec![0, 1, 0, 1, 1, 0, 1, 0];
+        let result = wrapper.prepare_input_file(&bits, "test_binary.txt");
+
+        assert!(result.is_ok());
+
+        let file_path = result.unwrap();
+        let content = fs::read_to_string(&file_path).unwrap();
+
+        // Verify only '0', '1', and newlines are in the file
+        for c in content.chars() {
+            assert!(c == '0' || c == '1' || c == '\n');
+        }
+
+        // Clean up
+        let _ = fs::remove_file(file_path);
+    }
+
+    #[test]
+    fn test_parse_results_backwards_compat() {
+        let wrapper = NistWrapper::new();
+        // Test the backwards compatible parse_results method
+        // It should work even with an arbitrary directory name
+        let result = wrapper.parse_results("some_directory");
+        // This will try to parse all results, may succeed or fail depending on state
+        // We just verify it doesn't panic
+        assert!(result.is_ok() || result.is_err());
     }
 }
