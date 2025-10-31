@@ -77,17 +77,17 @@ jobs:
 
       - name: Setup Cloudflare Tunnel
         run: |
-          # Copy setup script to instance
-          gcloud compute scp setup-tunnel.sh randomvalidator-instance:/tmp/setup-tunnel.sh --zone=${{ secrets.GCP_ZONE }}
+          # Copy setup script to instance (to home directory to avoid permission issues)
+          gcloud compute scp setup-tunnel.sh randomvalidator-instance:~/setup-tunnel.sh --zone=${{ secrets.GCP_ZONE }}
 
           # Run setup script on instance (where it has correct IP for Cloudflare API)
           gcloud compute ssh randomvalidator-instance \
             --zone=${{ secrets.GCP_ZONE }} \
             --command="
               set -e
-              chmod +x /tmp/setup-tunnel.sh
-              /tmp/setup-tunnel.sh '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}' '${{ secrets.CLOUDFLARE_API_TOKEN }}'
-              rm /tmp/setup-tunnel.sh
+              chmod +x ~/setup-tunnel.sh
+              ~/setup-tunnel.sh '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}' '${{ secrets.CLOUDFLARE_API_TOKEN }}'
+              rm ~/setup-tunnel.sh
             "
 
       - name: Configure DNS for Cloudflare Tunnel
