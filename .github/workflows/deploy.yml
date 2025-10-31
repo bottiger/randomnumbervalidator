@@ -133,14 +133,38 @@ jobs:
               fi
               echo '✓ Found zone: '\$ZONE_ID
 
-              # Check if DNS record exists
-              RECORDS_RESPONSE=\$(curl -s -X GET \"https://api.cloudflare.com/client/v4/zones/\${ZONE_ID}/dns_records?type=CNAME&name=\${DOMAIN_NAME}\" \
+              # Check if ANY DNS record exists for this domain (A, AAAA, or CNAME)
+              RECORDS_RESPONSE=\$(curl -s -X GET \"https://api.cloudflare.com/client/v4/zones/\${ZONE_ID}/dns_records?name=\${DOMAIN_NAME}\" \
                 -H \"Authorization: Bearer \${API_TOKEN}\" \
                 -H \"Content-Type: application/json\")
 
               RECORD_ID=\$(echo \"\$RECORDS_RESPONSE\" | jq -r '.result[0].id // empty')
+              RECORD_TYPE=\$(echo \"\$RECORDS_RESPONSE\" | jq -r '.result[0].type // empty')
 
-              if [ -z \"\$RECORD_ID\" ]; then
+              if [ -n \"\$RECORD_ID\" ]; then
+                # Record exists - check if it needs updating
+                CURRENT_CONTENT=\$(echo \"\$RECORDS_RESPONSE\" | jq -r '.result[0].content // empty')
+                TARGET_CONTENT=\"\${TUNNEL_ID}.cfargotunnel.com\"
+
+                if [ \"\$RECORD_TYPE\" = \"CNAME\" ] && [ \"\$CURRENT_CONTENT\" = \"\$TARGET_CONTENT\" ]; then
+                  echo '✓ DNS record already configured correctly'
+                else
+                  echo \"Updating existing \${RECORD_TYPE} record to CNAME...\"
+                  UPDATE_RESPONSE=\$(curl -s -X PUT \"https://api.cloudflare.com/client/v4/zones/\${ZONE_ID}/dns_records/\${RECORD_ID}\" \
+                    -H \"Authorization: Bearer \${API_TOKEN}\" \
+                    -H \"Content-Type: application/json\" \
+                    --data \"{\\\"type\\\":\\\"CNAME\\\",\\\"name\\\":\\\"\${DOMAIN_NAME}\\\",\\\"content\\\":\\\"\${TARGET_CONTENT}\\\",\\\"proxied\\\":true}\")
+
+                  if echo \"\$UPDATE_RESPONSE\" | jq -e '.success == true' > /dev/null; then
+                    echo '✓ DNS record updated successfully!'
+                  else
+                    echo '❌ Error: Failed to update DNS record'
+                    echo \"\$UPDATE_RESPONSE\" | jq '.'
+                    exit 1
+                  fi
+                fi
+              else
+                # No record exists - create one
                 echo 'Creating DNS record...'
                 CREATE_RESPONSE=\$(curl -s -X POST \"https://api.cloudflare.com/client/v4/zones/\${ZONE_ID}/dns_records\" \
                   -H \"Authorization: Bearer \${API_TOKEN}\" \
@@ -154,8 +178,6 @@ jobs:
                   echo \"\$CREATE_RESPONSE\" | jq '.'
                   exit 1
                 fi
-              else
-                echo '✓ DNS record already exists'
               fi
             "
 
