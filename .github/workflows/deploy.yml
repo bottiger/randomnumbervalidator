@@ -27,52 +27,60 @@ jobs:
             --zone=${{ secrets.GCP_ZONE }} \
             --metadata=deployment-trigger="$(date +%s)"
 
-      - name: SSH and deploy
+      - name: Copy deployment script
+        run: |
+          gcloud compute scp deploy.sh randomvalidator-instance:~/deploy.sh \
+            --zone=${{ secrets.GCP_ZONE }}
+
+      - name: Execute deployment
         run: |
           gcloud compute ssh randomvalidator-instance \
             --zone=${{ secrets.GCP_ZONE }} \
+            --ssh-flag="-o ServerAliveInterval=60" \
+            --ssh-flag="-o ServerAliveCountMax=120" \
             --command="
-              set -e
+              chmod +x ~/deploy.sh
+              export GITHUB_REPOSITORY=${{ github.repository }}
+              export REPO_URL=${{ github.server_url }}/${{ github.repository }}.git
 
-              # Create directory if it doesn't exist
-              if [ ! -d /opt/randomvalidator ]; then
-                echo 'Setting up /opt/randomvalidator for first time...'
-                sudo mkdir -p /opt/randomvalidator
-                sudo chown \$USER:\$USER /opt/randomvalidator
-              fi
+              # Run deployment script with nohup to survive potential disconnections
+              nohup ~/deploy.sh > ~/deploy-output.log 2>&1 &
+              DEPLOY_PID=\$!
+              echo \"Deployment started with PID: \$DEPLOY_PID\"
 
-              # Clone or update repository
-              if [ ! -d /opt/randomvalidator/.git ]; then
-                echo 'Cloning repository...'
-                git clone ${{ github.server_url }}/${{ github.repository }}.git /opt/randomvalidator
+              # Wait for deployment to complete (with timeout)
+              TIMEOUT=7200  # 2 hours
+              ELAPSED=0
+              while kill -0 \$DEPLOY_PID 2>/dev/null; do
+                if [ \$ELAPSED -ge \$TIMEOUT ]; then
+                  echo \"Deployment timed out after \$TIMEOUT seconds\"
+                  exit 1
+                fi
+                sleep 10
+                ELAPSED=\$((ELAPSED + 10))
+                # Show progress every minute
+                if [ \$((ELAPSED % 60)) -eq 0 ]; then
+                  echo \"Deployment running... (\$((ELAPSED / 60)) minutes elapsed)\"
+                  tail -n 3 ~/deploy-output.log 2>/dev/null || true
+                fi
+              done
+
+              # Check exit status
+              wait \$DEPLOY_PID
+              EXIT_CODE=\$?
+
+              echo \"\"
+              echo \"=== Deployment output ===\"
+              cat ~/deploy-output.log
+
+              if [ \$EXIT_CODE -eq 0 ]; then
+                echo \"\"
+                echo \"✅ Deployment completed successfully\"
               else
-                echo 'Updating repository...'
-                cd /opt/randomvalidator
-                git fetch origin
-                git reset --hard origin/main
+                echo \"\"
+                echo \"❌ Deployment failed with exit code \$EXIT_CODE\"
+                exit \$EXIT_CODE
               fi
-
-              # Build NIST test suite
-              echo 'Building NIST test suite...'
-              cd /opt/randomvalidator/nist/sts-2.1.2/sts-2.1.2
-              make clean && make
-
-              # Build Rust application
-              cd /opt/randomvalidator
-              source \$HOME/.cargo/env || curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-              source \$HOME/.cargo/env
-              echo 'Building application...'
-              cargo build --release --bin server
-
-              # Restart service if it exists, otherwise just report success
-              if sudo systemctl status randomvalidator >/dev/null 2>&1; then
-                echo 'Restarting service...'
-                sudo systemctl restart randomvalidator
-              else
-                echo 'Service not configured yet - binary built successfully at target/release/server'
-              fi
-
-              echo 'Deployment complete!'
             "
 
       - name: Setup Cloudflare Tunnel
