@@ -56,6 +56,42 @@ impl NistWrapper {
         self.nist_path.join("assess").exists()
     }
 
+    /// Ensure all required experiment directories exist
+    /// NIST assess needs these directories to write test results
+    fn ensure_experiment_dirs(&self) -> Result<(), String> {
+        // Create the main experiments/AlgorithmTesting directory
+        fs::create_dir_all(&self.experiments_dir)
+            .map_err(|e| format!("Failed to create experiments directory: {}", e))?;
+
+        // Create subdirectories for each test type
+        let test_dirs = vec![
+            "Frequency",
+            "BlockFrequency",
+            "Runs",
+            "LongestRun",
+            "Rank",
+            "FFT",
+            "NonOverlappingTemplate",
+            "OverlappingTemplate",
+            "Universal",
+            "LinearComplexity",
+            "Serial",
+            "ApproximateEntropy",
+            "CumulativeSums",
+            "RandomExcursions",
+            "RandomExcursionsVariant",
+        ];
+
+        for test_dir in test_dirs {
+            let dir_path = self.experiments_dir.join(test_dir);
+            fs::create_dir_all(&dir_path)
+                .map_err(|e| format!("Failed to create {} directory: {}", test_dir, e))?;
+        }
+
+        debug!("Experiment directories created successfully");
+        Ok(())
+    }
+
     /// Prepare input file for NIST tests
     /// NIST expects ASCII '0' and '1' characters
     pub fn prepare_input_file(&self, bits: &[u8], filename: &str) -> Result<PathBuf, String> {
@@ -108,6 +144,10 @@ impl NistWrapper {
         }
 
         info!("Running NIST tests on {} bits", bits.len());
+
+        // Ensure experiment directories exist
+        debug!("Ensuring experiment directories exist");
+        self.ensure_experiment_dirs()?;
 
         // Generate unique filename for this test
         let timestamp = std::time::SystemTime::now()
@@ -479,5 +519,58 @@ mod tests {
         // This will try to parse all results, may succeed or fail depending on state
         // We just verify it doesn't panic
         assert!(result.is_ok() || result.is_err());
+    }
+
+    #[test]
+    fn test_ensure_experiment_dirs() {
+        let wrapper = NistWrapper::new();
+
+        // This should create all required directories
+        let result = wrapper.ensure_experiment_dirs();
+        assert!(result.is_ok(), "Failed to create experiment directories: {:?}", result);
+
+        // Verify the main experiments directory exists
+        assert!(wrapper.experiments_dir.exists(), "Experiments directory should exist");
+
+        // Verify all test subdirectories exist
+        let test_dirs = vec![
+            "Frequency",
+            "BlockFrequency",
+            "Runs",
+            "LongestRun",
+            "Rank",
+            "FFT",
+            "NonOverlappingTemplate",
+            "OverlappingTemplate",
+            "Universal",
+            "LinearComplexity",
+            "Serial",
+            "ApproximateEntropy",
+            "CumulativeSums",
+            "RandomExcursions",
+            "RandomExcursionsVariant",
+        ];
+
+        for test_dir in test_dirs {
+            let dir_path = wrapper.experiments_dir.join(test_dir);
+            assert!(
+                dir_path.exists(),
+                "Test directory should exist: {}",
+                test_dir
+            );
+        }
+    }
+
+    #[test]
+    fn test_ensure_experiment_dirs_idempotent() {
+        let wrapper = NistWrapper::new();
+
+        // Call it once
+        let result1 = wrapper.ensure_experiment_dirs();
+        assert!(result1.is_ok());
+
+        // Call it again - should still succeed (idempotent)
+        let result2 = wrapper.ensure_experiment_dirs();
+        assert!(result2.is_ok());
     }
 }

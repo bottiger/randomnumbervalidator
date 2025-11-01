@@ -10,3 +10,4 @@ This is a simple application to validate a sequence of random numbers.
 ** We do not touch this test-suite, but we parse for prepare the input numbers for the tests and present the reuslts of the test.
 
 * Always run tests after making changes to the codebase
+* Do not ask me som many questions about running commands. Just run them unless you are going to delete a large amount of files
