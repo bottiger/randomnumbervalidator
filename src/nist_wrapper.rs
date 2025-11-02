@@ -137,10 +137,15 @@ impl NistWrapper {
             ));
         }
 
-        // Need at least 100 bits for meaningful NIST tests
+        // Need at least 100 bits for basic NIST tests
+        // Some tests require more data, but basic tests like Frequency can work with less
         if bits.len() < 100 {
             warn!("Insufficient bits for NIST tests: {} < 100", bits.len());
-            return Err("Need at least 100 bits for NIST tests (minimum ~4 numbers)".to_string());
+            return Err(format!(
+                "Need at least 100 bits for NIST tests (minimum 4 numbers). You provided {} bits (~{} numbers).",
+                bits.len(),
+                bits.len() / 32
+            ));
         }
 
         info!("Running NIST tests on {} bits", bits.len());
@@ -166,8 +171,10 @@ impl NistWrapper {
         // The NIST assess program expects:
         // 1. Generator option (0 = input from file)
         // 2. Filename (relative to data directory - just the filename!)
-        // 3. Test selection (0 = all tests)
-        let automated_input = format!("0\ndata/{}\n0\n", filename);
+        // 3. Number of bitstreams (1 = single stream)
+        // 4. Input format (0 = ASCII '0' and '1' characters)
+        // 5. Test selection (0 = all tests)
+        let automated_input = format!("0\ndata/{}\n1\n0\n0\n", filename);
 
         // Run assess with automated input
         debug!("Spawning NIST assess process");
@@ -260,6 +267,15 @@ impl NistWrapper {
                 }
                 Err(_) => continue, // Skip if we can't parse this test
             }
+        }
+
+        // Check if any tests ran
+        if total_tests == 0 {
+            return Err(
+                "No NIST test results were generated. The input is too small for comprehensive statistical analysis. \
+                 Different NIST tests have different minimum requirements. Try providing more numbers for better test coverage."
+                    .to_string(),
+            );
         }
 
         // Generate summary

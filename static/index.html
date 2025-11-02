@@ -94,6 +94,156 @@
             margin-top: 5px;
         }
 
+        .input-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 0.9em;
+        }
+
+        .input-counter {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .tier-indicator {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9em;
+            transition: all 0.3s;
+            text-align: right;
+            line-height: 1.4;
+        }
+
+        .tier-label {
+            font-size: 0.85em;
+            display: block;
+            opacity: 0.9;
+        }
+
+        .tier-target {
+            font-size: 1.1em;
+            display: block;
+            margin-top: 2px;
+        }
+
+        .tier-insufficient {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .tier-minimal {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .tier-limited {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .tier-good {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .tier-excellent {
+            background: #e8f5d8;
+            color: #2d5016;
+            font-weight: bold;
+        }
+
+        .guidance-box {
+            margin-top: 15px;
+            padding: 12px;
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            border-radius: 4px;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+
+        .guidance-box strong {
+            color: #1976D2;
+        }
+
+        .tier-chart {
+            margin-top: 15px;
+            margin-bottom: 20px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+
+        .tier-chart-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 0.85em;
+        }
+
+        .tier-row {
+            display: flex;
+            align-items: center;
+            padding: 6px 10px;
+            margin: 4px 0;
+            border-radius: 4px;
+            background: white;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+            font-size: 0.85em;
+        }
+
+        .tier-row.active {
+            border: 2px solid #9fef00;
+            background: #f8ffe8;
+            box-shadow: 0 2px 8px rgba(159, 239, 0, 0.2);
+        }
+
+        .tier-row.completed {
+            opacity: 0.6;
+        }
+
+        .tier-badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.75em;
+            margin-right: 10px;
+            min-width: 70px;
+            text-align: center;
+        }
+
+        .tier-badge.badge-insufficient { background: #f8d7da; color: #721c24; }
+        .tier-badge.badge-minimal { background: #fff3cd; color: #856404; }
+        .tier-badge.badge-limited { background: #d1ecf1; color: #0c5460; }
+        .tier-badge.badge-good { background: #d4edda; color: #155724; }
+        .tier-badge.badge-excellent { background: #e8f5d8; color: #2d5016; }
+
+        .tier-description {
+            flex: 1;
+            color: #495057;
+            line-height: 1.3;
+        }
+
+        .tier-requirement {
+            font-weight: 600;
+            color: #212529;
+        }
+
+        .tier-status {
+            font-weight: 700;
+            color: #9fef00;
+            margin-left: 8px;
+            font-size: 0.9em;
+        }
+
         button {
             background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
             color: white;
@@ -200,11 +350,69 @@
                     required
                 ></textarea>
                 <div class="help-text">Enter positive integers (use any delimiter: commas, spaces, newlines, etc.)</div>
+
+                <div class="input-stats">
+                    <div class="input-counter">
+                        <span id="numberCount">0</span> numbers (<span id="bitCount">0</span> bits)
+                    </div>
+                    <div id="tierIndicator" class="tier-indicator tier-insufficient">
+                        Too Small
+                    </div>
+                </div>
+
+                <div id="guidanceBox" class="guidance-box" style="display: none;">
+                    <strong>Expected Results:</strong>
+                    <div id="guidanceText"></div>
+                </div>
             </div>
 
             <button type="submit">Validate Numbers</button>
             <div class="help-text" style="margin-top: 10px; text-align: center;">
                 Uses comprehensive NIST Statistical Test Suite for validation
+            </div>
+
+            <div class="tier-chart">
+                <div class="tier-chart-title">📊 Test Coverage Tiers</div>
+
+                <div id="tier0" class="tier-row">
+                    <div class="tier-badge badge-insufficient">Too Small</div>
+                    <div class="tier-description">
+                        <span class="tier-requirement">0-3 numbers</span> · No NIST tests
+                    </div>
+                    <div class="tier-status" style="display: none;">← YOU ARE HERE</div>
+                </div>
+
+                <div id="tier1" class="tier-row">
+                    <div class="tier-badge badge-minimal">Minimal</div>
+                    <div class="tier-description">
+                        <span class="tier-requirement">4-31 numbers</span> · Limited NIST
+                    </div>
+                    <div class="tier-status" style="display: none;">← YOU ARE HERE</div>
+                </div>
+
+                <div id="tier2" class="tier-row">
+                    <div class="tier-badge badge-limited">Partial</div>
+                    <div class="tier-description">
+                        <span class="tier-requirement">32-124 numbers</span> · Some tests
+                    </div>
+                    <div class="tier-status" style="display: none;">← YOU ARE HERE</div>
+                </div>
+
+                <div id="tier3" class="tier-row">
+                    <div class="tier-badge badge-good">Good</div>
+                    <div class="tier-description">
+                        <span class="tier-requirement">125-312 numbers</span> · Most tests
+                    </div>
+                    <div class="tier-status" style="display: none;">← YOU ARE HERE</div>
+                </div>
+
+                <div id="tier4" class="tier-row">
+                    <div class="tier-badge badge-excellent">Excellent</div>
+                    <div class="tier-description">
+                        <span class="tier-requirement">313+ numbers</span> · Full coverage
+                    </div>
+                    <div class="tier-status" style="display: none;">← YOU ARE HERE</div>
+                </div>
             </div>
         </form>
 
@@ -237,6 +445,86 @@
     </div>
 
     <script>
+        // Update input statistics in real-time
+        function updateInputStats() {
+            const input = document.getElementById('numbers').value;
+            const numbers = input.split(/[^0-9]+/).filter(s => s.length > 0);
+            const numberCount = numbers.length;
+            const bitCount = numberCount * 32;
+
+            document.getElementById('numberCount').textContent = numberCount;
+            document.getElementById('bitCount').textContent = bitCount;
+
+            // Update tier indicator and guidance
+            const tierIndicator = document.getElementById('tierIndicator');
+            const guidanceBox = document.getElementById('guidanceBox');
+            const guidanceText = document.getElementById('guidanceText');
+
+            // Update tier chart highlighting
+            let currentTier = 0;
+            if (bitCount >= 10000) currentTier = 4;
+            else if (bitCount >= 4000) currentTier = 3;
+            else if (bitCount >= 1000) currentTier = 2;
+            else if (bitCount >= 100) currentTier = 1;
+            else currentTier = 0;
+
+            // Reset all tiers
+            for (let i = 0; i <= 4; i++) {
+                const tierRow = document.getElementById(`tier${i}`);
+                const tierStatus = tierRow.querySelector('.tier-status');
+                tierRow.classList.remove('active', 'completed');
+                tierStatus.style.display = 'none';
+
+                if (i < currentTier) {
+                    tierRow.classList.add('completed');
+                } else if (i === currentTier) {
+                    tierRow.classList.add('active');
+                    tierStatus.style.display = 'inline';
+                }
+            }
+
+            if (bitCount < 100) {
+                const needed = 4 - numberCount;
+                tierIndicator.className = 'tier-indicator tier-insufficient';
+                tierIndicator.innerHTML = `<span class="tier-label">Too Small</span><span class="tier-target">Need ${needed} more for NIST</span>`;
+                guidanceBox.style.display = 'block';
+                guidanceText.innerHTML = `NIST tests cannot run. <strong>Add at least ${needed} more number${needed !== 1 ? 's' : ''}</strong> to enable basic NIST testing (minimum: 4 numbers / 100 bits).`;
+            } else if (bitCount < 1000) {
+                const needed = 32 - numberCount;
+                tierIndicator.className = 'tier-indicator tier-minimal';
+                tierIndicator.innerHTML = `<span class="tier-label">Minimal Coverage</span><span class="tier-target">+${needed} for better tests</span>`;
+                guidanceBox.style.display = 'block';
+                guidanceText.innerHTML = `Limited NIST testing possible. <strong>Add ${needed} more numbers</strong> to reach 32 numbers (1,000 bits) for improved test coverage.`;
+            } else if (bitCount < 4000) {
+                const needed = 125 - numberCount;
+                tierIndicator.className = 'tier-indicator tier-limited';
+                tierIndicator.innerHTML = `<span class="tier-label">Partial Coverage</span><span class="tier-target">+${needed} for most tests</span>`;
+                guidanceBox.style.display = 'block';
+                guidanceText.innerHTML = `Some NIST tests will run. <strong>Add ${needed} more numbers</strong> to reach 125 numbers (4,000 bits) for most tests.`;
+            } else if (bitCount < 10000) {
+                const needed = 313 - numberCount;
+                tierIndicator.className = 'tier-indicator tier-good';
+                tierIndicator.innerHTML = `<span class="tier-label">Good Coverage</span><span class="tier-target">+${needed} for full suite</span>`;
+                guidanceBox.style.display = 'block';
+                guidanceText.innerHTML = `Most NIST tests will run. <strong>Add ${needed} more numbers</strong> to reach 313 numbers (10,000 bits) for comprehensive coverage.`;
+            } else {
+                tierIndicator.className = 'tier-indicator tier-excellent';
+                tierIndicator.innerHTML = `<span class="tier-label">Full Coverage</span><span class="tier-target">✓ All tests available</span>`;
+                guidanceBox.style.display = 'block';
+                guidanceText.innerHTML = '✓ Comprehensive NIST statistical analysis will be performed with full test coverage.';
+            }
+
+            if (numberCount === 0) {
+                guidanceBox.style.display = 'none';
+            }
+        }
+
+        // Add event listener for real-time updates
+        document.getElementById('numbers').addEventListener('input', updateInputStats);
+
+        // Initialize on page load
+        updateInputStats();
+
         document.getElementById('validationForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
