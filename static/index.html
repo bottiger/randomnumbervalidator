@@ -681,110 +681,213 @@
                 ></textarea>
                 <div class="help-text">Enter positive integers (use any delimiter: commas, spaces, newlines, etc.)</div>
 
-                <div class="input-stats">
-                    <div class="input-counter">
-                        <span id="numberCount">0</span> numbers (<span id="bitCount">0</span> bits)
-                    </div>
-                    <div id="tierIndicator" class="tier-indicator tier-insufficient">
-                        Too Small
-                    </div>
-                </div>
+                                <div class="input-stats">
 
-                <!-- Conversion Strategy Selector -->
-                <div style="margin-top: 20px;">
-                    <div style="font-weight: 600; margin-bottom: 10px; color: #333;">
-                        🔧 Bit Conversion Strategy:
-                    </div>
+                                    <div class="input-counter">
 
-                    <div class="strategy-container">
-                        <!-- Left Panel: Custom Range -->
-                        <div class="strategy-panel" id="rangePanel">
-                            <div class="strategy-header">
-                                <input type="radio" name="strategy" id="strategyRange" value="range">
-                                <label for="strategyRange" style="margin-left: 8px; font-weight: 600; cursor: pointer;">
-                                    Custom Range (Base Conversion)
-                                </label>
-                            </div>
-                            <div class="strategy-content">
-                                <div style="font-size: 0.9em; color: #666; margin-bottom: 12px;">
-                                    For RNGs with specific ranges (e.g., 1-100, dice rolls)
-                                </div>
-                                <div style="display: flex; gap: 12px;">
-                                    <div style="flex: 1;">
-                                        <label for="rangeMin" style="font-size: 0.85em; display: block; margin-bottom: 4px; color: #555;">Min:</label>
-                                        <input type="number" id="rangeMin" placeholder="1" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px; font-size: 14px;" min="0">
+                                        <span id="numberCount">0</span> numbers (<span id="bitCount">0</span> bits)
+
                                     </div>
-                                    <div style="flex: 1;">
-                                        <label for="rangeMax" style="font-size: 0.85em; display: block; margin-bottom: 4px; color: #555;">Max:</label>
-                                        <input type="number" id="rangeMax" placeholder="100" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px; font-size: 14px;" min="0">
+
+                                    <div id="tierIndicator" class="tier-indicator tier-insufficient">
+
+                                        Too Small
+
                                     </div>
+
                                 </div>
-                                <div id="rangeInfo" style="margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 4px; font-size: 0.85em; color: #495057; display: none;">
-                                    <strong>Entropy:</strong> <span id="rangeEntropy"></span>
-                                </div>
+
                             </div>
-                        </div>
 
-                        <!-- Right Panel: Fixed Bit-Width -->
-                        <div class="strategy-panel" id="bitwidthPanel">
-                            <div class="strategy-header">
-                                <input type="radio" name="strategy" id="strategyBitwidth" value="bitwidth" checked>
-                                <label for="strategyBitwidth" style="margin-left: 8px; font-weight: 600; cursor: pointer;">
-                                    Fixed Bit-Width
-                                </label>
+                
+
+                            <button type="submit">Validate Numbers</button>
+
+                            <div class="help-text" style="margin-top: 10px; text-align: center;">
+
+                                Uses comprehensive NIST Statistical Test Suite for validation
+
                             </div>
-                            <div class="strategy-content">
-                                <div style="font-size: 0.9em; color: #666; margin-bottom: 12px;">
-                                    For numbers starting at 0 (standard bit widths)
+
+                
+
+                            <!-- Conversion Strategy Selector -->
+
+                            <div style="margin-top: 20px;">
+
+                                <div style="font-weight: 600; margin-bottom: 10px; color: #333;">
+
+                                    🔧 Bit Conversion Strategy:
+
                                 </div>
-                                <div class="bitwidth-options">
-                                    <label class="bitwidth-option">
-                                        <input type="radio" name="bitwidth" value="8" id="bit8">
-                                        <span class="bitwidth-label">
-                                            <strong>8-bit</strong>
-                                            <small>0-255</small>
-                                        </span>
-                                    </label>
-                                    <label class="bitwidth-option">
-                                        <input type="radio" name="bitwidth" value="16" id="bit16">
-                                        <span class="bitwidth-label">
-                                            <strong>16-bit</strong>
-                                            <small>0-65,535</small>
-                                        </span>
-                                    </label>
-                                    <label class="bitwidth-option">
-                                        <input type="radio" name="bitwidth" value="32" id="bit32" checked>
-                                        <span class="bitwidth-label">
-                                            <strong>32-bit</strong>
-                                            <small>0-4B+</small>
-                                        </span>
-                                    </label>
+
+                
+
+                                <div class="strategy-container">
+
+                                    <!-- Left Panel: Custom Range -->
+
+                                    <div class="strategy-panel" id="rangePanel">
+
+                                        <div class="strategy-header">
+
+                                            <input type="radio" name="strategy" id="strategyRange" value="range">
+
+                                            <label for="strategyRange" style="margin-left: 8px; font-weight: 600; cursor: pointer;">
+
+                                                Custom Range (Base Conversion)
+
+                                            </label>
+
+                                        </div>
+
+                                        <div class="strategy-content">
+
+                                            <div style="font-size: 0.9em; color: #666; margin-bottom: 12px;">
+
+                                                For RNGs with specific ranges (e.g., 1-100, dice rolls)
+
+                                            </div>
+
+                                            <div style="display: flex; gap: 12px;">
+
+                                                <div style="flex: 1;">
+
+                                                    <label for="rangeMin" style="font-size: 0.85em; display: block; margin-bottom: 4px; color: #555;">Min:</label>
+
+                                                    <input type="number" id="rangeMin" placeholder="1" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px; font-size: 14px;" min="0">
+
+                                                </div>
+
+                                                <div style="flex: 1;">
+
+                                                    <label for="rangeMax" style="font-size: 0.85em; display: block; margin-bottom: 4px; color: #555;">Max:</label>
+
+                                                    <input type="number" id="rangeMax" placeholder="100" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px; font-size: 14px;" min="0">
+
+                                                </div>
+
+                                            </div>
+
+                                            <div id="rangeInfo" style="margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 4px; font-size: 0.85em; color: #495057; display: none;">
+
+                                                <strong>Entropy:</strong> <span id="rangeEntropy"></span>
+
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+
+                
+
+                                    <!-- Right Panel: Fixed Bit-Width -->
+
+                                    <div class="strategy-panel" id="bitwidthPanel">
+
+                                        <div class="strategy-header">
+
+                                            <input type="radio" name="strategy" id="strategyBitwidth" value="bitwidth" checked>
+
+                                            <label for="strategyBitwidth" style="margin-left: 8px; font-weight: 600; cursor: pointer;">
+
+                                                Fixed Bit-Width
+
+                                            </label>
+
+                                        </div>
+
+                                        <div class="strategy-content">
+
+                                            <div style="font-size: 0.9em; color: #666; margin-bottom: 12px;">
+
+                                                For numbers starting at 0 (standard bit widths)
+
+                                            </div>
+
+                                            <div class="bitwidth-options">
+
+                                                <label class="bitwidth-option">
+
+                                                    <input type="radio" name="bitwidth" value="8" id="bit8">
+
+                                                    <span class="bitwidth-label">
+
+                                                        <strong>8-bit</strong>
+
+                                                        <small>0-255</small>
+
+                                                    </span>
+
+                                                </label>
+
+                                                <label class="bitwidth-option">
+
+                                                    <input type="radio" name="bitwidth" value="16" id="bit16">
+
+                                                    <span class="bitwidth-label">
+
+                                                        <strong>16-bit</strong>
+
+                                                        <small>0-65,535</small>
+
+                                                    </span>
+
+                                                </label>
+
+                                                <label class="bitwidth-option">
+
+                                                    <input type="radio" name="bitwidth" value="32" id="bit32" checked>
+
+                                                    <span class="bitwidth-label">
+
+                                                        <strong>32-bit</strong>
+
+                                                        <small>0-4B+</small>
+
+                                                    </span>
+
+                                                </label>
+
+                                            </div>
+
+                                            <div id="bitwidthWarning" style="margin-top: 8px; padding: 8px; background: #fff3cd; border-radius: 4px; font-size: 0.85em; color: #856404; display: none;">
+
+                                                ⚠️ <span id="bitwidthWarningText"></span>
+
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+
                                 </div>
-                                <div id="bitwidthWarning" style="margin-top: 8px; padding: 8px; background: #fff3cd; border-radius: 4px; font-size: 0.85em; color: #856404; display: none;">
-                                    ⚠️ <span id="bitwidthWarningText"></span>
+
+                
+
+                                <div id="detectedInfo" class="guidance-box" style="display: none; background: #e3f2fd; border-left-color: #2196F3; margin-top: 15px;">
+
+                                    <strong>💡 Auto-detected:</strong>
+
+                                    <div id="detectedText"></div>
+
                                 </div>
+
                             </div>
-                        </div>
-                    </div>
 
-                    <div id="detectedInfo" class="guidance-box" style="display: none; background: #e3f2fd; border-left-color: #2196F3; margin-top: 15px;">
-                        <strong>💡 Auto-detected:</strong>
-                        <div id="detectedText"></div>
-                    </div>
-                </div>
+                
 
-                <div id="guidanceBox" class="guidance-box" style="display: none;">
-                    <strong>Expected Results:</strong>
-                    <div id="guidanceText"></div>
-                </div>
-            </div>
+                            <div id="guidanceBox" class="guidance-box" style="display: none;">
 
-            <button type="submit">Validate Numbers</button>
-            <div class="help-text" style="margin-top: 10px; text-align: center;">
-                Uses comprehensive NIST Statistical Test Suite for validation
-            </div>
+                                <strong>Expected Results:</strong>
 
-            <div class="tier-chart">
+                                <div id="guidanceText"></div>
+
+                            </div>
+
+                
+
+                            <div class="tier-chart">
                 <div class="tier-chart-title">📊 Test Coverage Tiers</div>
 
                 <div id="tier0" class="tier-row">
