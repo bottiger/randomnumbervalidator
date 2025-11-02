@@ -29,7 +29,7 @@ jobs:
 
       - name: Copy deployment script
         run: |
-          gcloud compute scp deploy.sh randomvalidator-instance:~/deploy.sh \
+          gcloud compute scp deploy.sh randomvalidator-instance:/tmp/deploy.sh \
             --zone=${{ secrets.GCP_ZONE }}
 
       - name: Execute deployment
@@ -39,48 +39,15 @@ jobs:
             --ssh-flag="-o ServerAliveInterval=60" \
             --ssh-flag="-o ServerAliveCountMax=120" \
             --command="
-              chmod +x ~/deploy.sh
-              export GITHUB_REPOSITORY=${{ github.repository }}
-              export REPO_URL=${{ github.server_url }}/${{ github.repository }}.git
+              set -e
 
-              # Run deployment script with nohup to survive potential disconnections
-              nohup ~/deploy.sh > ~/deploy-output.log 2>&1 &
-              DEPLOY_PID=\$!
-              echo \"Deployment started with PID: \$DEPLOY_PID\"
+              # Move script to /opt and make executable
+              sudo mv /tmp/deploy.sh /opt/randomvalidator/deploy.sh
+              sudo chmod +x /opt/randomvalidator/deploy.sh
 
-              # Wait for deployment to complete (with timeout)
-              TIMEOUT=7200  # 2 hours
-              ELAPSED=0
-              while kill -0 \$DEPLOY_PID 2>/dev/null; do
-                if [ \$ELAPSED -ge \$TIMEOUT ]; then
-                  echo \"Deployment timed out after \$TIMEOUT seconds\"
-                  exit 1
-                fi
-                sleep 10
-                ELAPSED=\$((ELAPSED + 10))
-                # Show progress every minute
-                if [ \$((ELAPSED % 60)) -eq 0 ]; then
-                  echo \"Deployment running... (\$((ELAPSED / 60)) minutes elapsed)\"
-                  tail -n 3 ~/deploy-output.log 2>/dev/null || true
-                fi
-              done
-
-              # Check exit status
-              wait \$DEPLOY_PID
-              EXIT_CODE=\$?
-
-              echo \"\"
-              echo \"=== Deployment output ===\"
-              cat ~/deploy-output.log
-
-              if [ \$EXIT_CODE -eq 0 ]; then
-                echo \"\"
-                echo \"✅ Deployment completed successfully\"
-              else
-                echo \"\"
-                echo \"❌ Deployment failed with exit code \$EXIT_CODE\"
-                exit \$EXIT_CODE
-              fi
+              # Run deployment script
+              echo '🚀 Starting application deployment...'
+              sudo /opt/randomvalidator/deploy.sh
             "
 
       - name: Setup Cloudflare Tunnel
