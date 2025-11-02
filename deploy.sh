@@ -29,9 +29,23 @@ make clean || true
 make
 
 echo ""
-echo "🦀 Building Rust application..."
+echo "🦀 Preparing Rust environment..."
 cd "$APP_DIR"
 source $HOME/.cargo/env || true
+
+# Fix corrupted Rust toolchain
+echo "  Reinstalling stable toolchain..."
+rustup toolchain uninstall stable || true
+rustup toolchain install stable
+rustup default stable
+
+# Verify installation
+echo "  Verifying Rust installation..."
+rustc --version
+cargo --version
+
+echo ""
+echo "🦀 Building Rust application..."
 cargo build --release --bin server
 
 echo ""
