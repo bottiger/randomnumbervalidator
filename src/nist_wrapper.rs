@@ -527,10 +527,17 @@ mod tests {
 
         // This should create all required directories
         let result = wrapper.ensure_experiment_dirs();
-        assert!(result.is_ok(), "Failed to create experiment directories: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Failed to create experiment directories: {:?}",
+            result
+        );
 
         // Verify the main experiments directory exists
-        assert!(wrapper.experiments_dir.exists(), "Experiments directory should exist");
+        assert!(
+            wrapper.experiments_dir.exists(),
+            "Experiments directory should exist"
+        );
 
         // Verify all test subdirectories exist
         let test_dirs = vec![
