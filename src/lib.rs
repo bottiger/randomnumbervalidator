@@ -26,11 +26,35 @@ fn default_use_nist() -> bool {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct NistTestResult {
+    pub name: String,
+    pub passed: bool,
+    pub p_value: f64,
+    pub p_values: Vec<f64>,
+    pub description: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metrics: Option<Vec<(String, String)>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct NistResults {
+    pub bit_count: usize,
+    pub tests_passed: usize,
+    pub total_tests: usize,
+    pub success_rate: f64,
+    pub individual_tests: Vec<NistTestResult>,
+    pub fallback_message: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ValidationResponse {
     pub valid: bool,
     pub quality_score: f64,
     pub message: String,
-    pub nist_results: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nist_results: Option<String>, // Legacy field for backwards compatibility
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nist_data: Option<NistResults>, // New structured data
 }
 
 /// Parse the input string and convert to binary format for NIST tests
@@ -312,6 +336,7 @@ pub fn validate_random_numbers_with_nist_and_range(
                 quality_score: 0.0,
                 message: e,
                 nist_results: None,
+                nist_data: None,
             };
         }
     };
@@ -321,24 +346,24 @@ pub fn validate_random_numbers_with_nist_and_range(
     debug!("Basic quality score calculated: {:.4}", quality_score);
 
     // Run NIST tests if requested and available
-    let nist_results = if use_nist {
+    let (nist_results, nist_data) = if use_nist {
         info!("NIST tests requested, initializing wrapper");
         let wrapper = nist_wrapper::NistWrapper::new();
         match wrapper.run_tests(&bits) {
             Ok(results) => {
                 info!("NIST tests completed successfully");
-                Some(results)
+                (None, Some(results))
             }
             Err(e) => {
                 warn!("NIST tests failed: {}", e);
-                Some(format!("NIST tests could not be run: {}", e))
+                (Some(format!("NIST tests could not be run: {}", e)), None)
             }
         }
     } else {
         debug!("NIST tests not requested");
-        Some(
-            "NIST tests not requested. Use NIST option to enable comprehensive testing."
-                .to_string(),
+        (
+            Some("NIST tests not requested. Use NIST option to enable comprehensive testing.".to_string()),
+            None
         )
     };
 
@@ -355,6 +380,7 @@ pub fn validate_random_numbers_with_nist_and_range(
         quality_score,
         message: format!("Analyzed {} bits", bits.len()),
         nist_results,
+        nist_data,
     }
 }
 

@@ -1,8 +1,9 @@
 /// Enhanced statistical tests for small datasets
 /// These tests work well with limited data where NIST tests cannot run
 use std::collections::HashMap;
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct StatisticalTestResult {
     pub test_name: String,
     pub passed: bool,
@@ -11,8 +12,17 @@ pub struct StatisticalTestResult {
     pub description: String,
 }
 
-/// Run comprehensive statistical analysis on bit sequence
-pub fn run_enhanced_tests(bits: &[u8]) -> String {
+#[derive(Debug, Serialize, Deserialize)]
+pub struct EnhancedTestResults {
+    pub bit_count: usize,
+    pub tests_run: usize,
+    pub tests_passed: usize,
+    pub pass_rate: f64,
+    pub individual_tests: Vec<StatisticalTestResult>,
+}
+
+/// Run comprehensive statistical analysis and return structured data
+pub fn run_enhanced_tests_structured(bits: &[u8]) -> EnhancedTestResults {
     let mut results = Vec::new();
 
     // Run all tests
@@ -28,6 +38,23 @@ pub fn run_enhanced_tests(bits: &[u8]) -> String {
     let passed_tests = results.iter().filter(|r| r.passed).count();
     let pass_rate = (passed_tests as f64 / total_tests as f64) * 100.0;
 
+    EnhancedTestResults {
+        bit_count: bits.len(),
+        tests_run: total_tests,
+        tests_passed: passed_tests,
+        pass_rate,
+        individual_tests: results,
+    }
+}
+
+/// Run comprehensive statistical analysis on bit sequence (legacy string output)
+pub fn run_enhanced_tests(bits: &[u8]) -> String {
+    let structured = run_enhanced_tests_structured(bits);
+    let mut results = &structured.individual_tests;
+    let total_tests = structured.tests_run;
+    let passed_tests = structured.tests_passed;
+    let pass_rate = structured.pass_rate;
+
     // Generate summary
     let mut summary = format!(
         "Enhanced Statistical Analysis (Small Dataset)\n\
@@ -40,7 +67,7 @@ pub fn run_enhanced_tests(bits: &[u8]) -> String {
         bits.len(), total_tests, passed_tests, total_tests, pass_rate
     );
 
-    for result in &results {
+    for result in results {
         let status = if result.passed { "PASS ✓" } else { "FAIL ✗" };
         let p_val_str = result.p_value
             .map(|p| format!("p={:.4}", p))

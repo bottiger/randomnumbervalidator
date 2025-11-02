@@ -8,6 +8,7 @@ use std::process::{Command, Stdio};
 use tracing::{debug, error, info, warn};
 
 use crate::enhanced_stats;
+use crate::{NistResults, NistTestResult};
 
 /// Wrapper for NIST Statistical Test Suite
 pub struct NistWrapper {
@@ -119,8 +120,13 @@ impl NistWrapper {
     }
 
     /// Run NIST test suite by automating the interactive prompts
-    /// Returns a summary of the test results
-    pub fn run_tests(&self, bits: &[u8]) -> Result<String, String> {
+    /// Returns structured test results
+    pub fn run_tests(&self, bits: &[u8]) -> Result<NistResults, String> {
+        self.run_tests_structured(bits)
+    }
+
+    /// Run NIST tests and return structured data
+    pub fn run_tests_structured(&self, bits: &[u8]) -> Result<NistResults, String> {
         info!("Starting NIST statistical tests");
         debug!("Project root: {}", self.project_root.display());
         debug!("NIST path: {}", self.nist_path.display());
@@ -229,7 +235,7 @@ impl NistWrapper {
     }
 
     /// Parse all NIST test results from the experiments directory
-    fn parse_all_results(&self, bits: &[u8], bit_count: usize) -> Result<String, String> {
+    fn parse_all_results(&self, bits: &[u8], bit_count: usize) -> Result<NistResults, String> {
         let test_names = vec![
             "Frequency",
             "BlockFrequency",
@@ -260,12 +266,12 @@ impl NistWrapper {
             }
 
             match self.parse_test_result(&stats_path) {
-                Ok((success, p_values)) => {
+                Ok((success, p_values, metrics)) => {
                     total_tests += 1;
                     if success {
                         success_count += 1;
                     }
-                    results.insert(test_name.to_string(), (success, p_values));
+                    results.insert(test_name.to_string(), (success, p_values, metrics));
                 }
                 Err(_) => continue, // Skip if we can't parse this test
             }
@@ -275,103 +281,96 @@ impl NistWrapper {
         if total_tests == 0 {
             // NIST couldn't run, so use enhanced statistical tests instead
             info!("NIST tests produced no results, using enhanced statistical analysis instead");
-            let enhanced_results = enhanced_stats::run_enhanced_tests(bits);
+            let enhanced_results = enhanced_stats::run_enhanced_tests_structured(bits);
 
-            // Add coverage tier information
-            let number_count = bit_count / 32;
-            let tier_info = if bit_count < 1000 {
-                format!(
-                    "\n══════════════════════════════════════════════════════\n\
-                     Coverage Tier: Minimal ({} numbers, {} bits)\n\
-                     For comprehensive NIST testing, provide 313+ numbers.\n\
-                     ══════════════════════════════════════════════════════\n",
-                    number_count, bit_count
-                )
-            } else if bit_count < 4000 {
-                format!(
-                    "\n══════════════════════════════════════════════════════\n\
-                     Coverage Tier: Partial ({} numbers, {} bits)\n\
-                     Add {} more numbers for Good Coverage (125+ numbers).\n\
-                     Add {} more numbers for Full NIST testing (313+ numbers).\n\
-                     ══════════════════════════════════════════════════════\n",
-                    number_count, bit_count,
-                    125 - number_count,
-                    313 - number_count
-                )
-            } else if bit_count < 10000 {
-                format!(
-                    "\n══════════════════════════════════════════════════════\n\
-                     Coverage Tier: Good ({} numbers, {} bits)\n\
-                     NIST requires very large datasets. Enhanced tests used instead.\n\
-                     Note: NIST typically needs millions of bits for reliable results.\n\
-                     ══════════════════════════════════════════════════════\n",
-                    number_count, bit_count
-                )
+            // Convert EnhancedTestResults to NistTestResult format
+            let mut nist_tests = Vec::new();
+            for test in enhanced_results.individual_tests {
+                nist_tests.push(NistTestResult {
+                    name: test.test_name,
+                    passed: test.passed,
+                    p_value: test.p_value.unwrap_or(test.statistic),
+                    p_values: vec![test.p_value.unwrap_or(test.statistic)],
+                    description: test.description,
+                    metrics: None, // No metrics from enhanced stats
+                });
+            }
+
+            return Ok(NistResults {
+                bit_count,
+                tests_passed: enhanced_results.tests_passed,
+                total_tests: enhanced_results.tests_run,
+                success_rate: enhanced_results.pass_rate,
+                individual_tests: nist_tests,
+                fallback_message: None,
+            });
+        }
+
+        // Generate structured data
+        let success_rate = if total_tests > 0 {
+            (success_count as f64 / total_tests as f64) * 100.0
+        } else {
+            0.0
+        };
+
+        let mut individual_tests = Vec::new();
+        for (test_name, (success, p_values, metrics)) in &results {
+            let (avg_p_value, description) = if p_values.is_empty() {
+                (0.0, "No p-values found in result".to_string())
             } else {
-                format!(
-                    "\n══════════════════════════════════════════════════════\n\
-                     Coverage Tier: Excellent ({} numbers, {} bits)\n\
-                     NIST suite ran but produced no results.\n\
-                     This may indicate input quality or NIST configuration issues.\n\
-                     Enhanced statistical tests used instead.\n\
-                     ══════════════════════════════════════════════════════\n",
-                    number_count, bit_count
-                )
+                let avg: f64 = p_values.iter().sum::<f64>() / p_values.len() as f64;
+                (avg, format!("{} p-values tested, average: {:.4}", p_values.len(), avg))
             };
 
-            return Ok(format!("{}{}", enhanced_results, tier_info));
+            individual_tests.push(NistTestResult {
+                name: test_name.clone(),
+                passed: *success,
+                p_value: avg_p_value,
+                p_values: p_values.clone(),
+                description,
+                metrics: metrics.clone(),
+            });
         }
 
-        // Generate summary
-        let mut summary = format!(
-            "NIST Statistical Tests Summary\n\
-             ================================\n\
-             Tests Passed: {}/{}\n\
-             Success Rate: {:.1}%\n\n",
-            success_count,
+        // Sort tests by name for consistent display
+        individual_tests.sort_by(|a, b| a.name.cmp(&b.name));
+
+        Ok(NistResults {
+            bit_count,
+            tests_passed: success_count,
             total_tests,
-            if total_tests > 0 {
-                (success_count as f64 / total_tests as f64) * 100.0
-            } else {
-                0.0
-            }
-        );
-
-        summary.push_str("Individual Test Results:\n");
-        summary.push_str("------------------------\n");
-
-        for (test_name, (success, p_values)) in &results {
-            let status = if *success { "PASS" } else { "FAIL" };
-            let avg_p_value: f64 = p_values.iter().sum::<f64>() / p_values.len() as f64;
-            summary.push_str(&format!(
-                "{:25} {} (avg p-value: {:.4})\n",
-                test_name, status, avg_p_value
-            ));
-        }
-
-        Ok(summary)
+            success_rate,
+            individual_tests,
+            fallback_message: None,
+        })
     }
 
     /// Parse a single test result file
-    fn parse_test_result(&self, stats_path: &PathBuf) -> Result<(bool, Vec<f64>), String> {
+    fn parse_test_result(&self, stats_path: &PathBuf) -> Result<(bool, Vec<f64>, Option<Vec<(String, String)>>), String> {
         let content = fs::read_to_string(stats_path)
             .map_err(|e| format!("Failed to read stats file: {}", e))?;
 
+        if content.contains("not applicable") {
+            return Err("Test not applicable".to_string());
+        }
+
         let mut p_values = Vec::new();
         let mut all_success = true;
+        let mut metrics = Vec::new();
 
         for line in content.lines() {
-            // Look for lines like "SUCCESS		p_value = 0.106796"
             if line.contains("p_value") {
                 if line.contains("FAILURE") {
                     all_success = false;
                 }
-
-                if let Some(value_str) = line.split("=").nth(1) {
+                if let Some(value_str) = line.split('=').nth(1) {
                     if let Ok(p_value) = value_str.trim().parse::<f64>() {
                         p_values.push(p_value);
                     }
                 }
+            }
+            if let Some((key, value)) = line.split_once(':') {
+                metrics.push((key.trim().to_string(), value.trim().to_string()));
             }
         }
 
@@ -379,11 +378,11 @@ impl NistWrapper {
             return Err("No p-values found".to_string());
         }
 
-        Ok((all_success, p_values))
+        Ok((all_success, p_values, Some(metrics)))
     }
 
     /// Parse NIST results from a specific directory (for backwards compatibility)
-    pub fn parse_results(&self, _results_dir: &str) -> Result<String, String> {
+    pub fn parse_results(&self, _results_dir: &str) -> Result<NistResults, String> {
         // Use a default bit count for backwards compatibility
         // This is a legacy method, so we assume a reasonable default
         // For legacy calls, we don't have the bits, so pass empty slice

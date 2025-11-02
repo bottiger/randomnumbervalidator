@@ -333,6 +333,198 @@
             display: none;
         }
 
+        /* NIST Results Styling */
+        .nist-fallback {
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .nist-assessment {
+            margin-top: 20px;
+            padding: 25px;
+            border-radius: 12px;
+            background: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .nist-assessment.excellent {
+            border-left: 5px solid #28a745;
+        }
+
+        .nist-assessment.good {
+            border-left: 5px solid #9fef00;
+        }
+
+        .nist-assessment.fair {
+            border-left: 5px solid #ffc107;
+        }
+
+        .nist-assessment.poor {
+            border-left: 5px solid #dc3545;
+        }
+
+        .assessment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .assessment-header h3 {
+            margin: 0;
+            font-size: 1.5em;
+            color: #333;
+        }
+
+        .assessment-score {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .assessment-stats {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+
+        .assessment-stats .stat {
+            text-align: center;
+        }
+
+        .assessment-stats .stat-number {
+            display: block;
+            font-size: 2em;
+            font-weight: bold;
+            color: #9fef00;
+        }
+
+        .assessment-stats .stat-label {
+            display: block;
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .assessment-bar {
+            height: 12px;
+            background: #eee;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+
+        .assessment-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #dc3545 0%, #ffc107 50%, #9fef00 100%);
+            transition: width 0.8s ease;
+        }
+
+        .test-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .test-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+        }
+
+        .test-card:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+
+        .test-card.pass {
+            border-left-color: #28a745;
+        }
+
+        .test-card.fail {
+            border-left-color: #dc3545;
+        }
+
+        .test-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .test-card-header h4 {
+            margin: 0;
+            font-size: 1.1em;
+            color: #333;
+            flex: 1;
+            padding-right: 10px;
+        }
+
+        .test-status {
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            font-weight: 600;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .test-status.pass {
+            background: #28a745;
+            color: white;
+        }
+
+        .test-status.fail {
+            background: #dc3545;
+            color: white;
+        }
+
+        .test-card-body {
+            color: #666;
+        }
+
+        .test-metric {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .metric-label {
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .metric-value {
+            font-family: monospace;
+            font-size: 1em;
+            font-weight: bold;
+        }
+
+        .test-detail {
+            font-size: 0.85em;
+            color: #888;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #eee;
+        }
+
+        .test-metrics {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+        }
+
+        .detail-label {
+            font-style: italic;
+        }
+
         .strategy-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -660,7 +852,7 @@
 
             <div class="result-item" id="nistResultsContainer" style="display: none;">
                 <div class="result-label">NIST Test Results:</div>
-                <pre id="nistResults" style="white-space: pre-wrap; font-family: monospace; font-size: 0.9em; background: rgba(0,0,0,0.05); padding: 10px; border-radius: 5px; margin-top: 10px;"></pre>
+                <div id="nistResults"></div>
             </div>
         </div>
     </div>
@@ -1016,6 +1208,88 @@
         updateInputStats();
         validateInputRealtime();
 
+        // Function to render NIST data with individual test cards
+        function renderNistData(nistData) {
+            // Check if fallback message exists
+            if (nistData.fallback_message) {
+                return `<div class="nist-fallback"><pre>${nistData.fallback_message}</pre></div>`;
+            }
+
+            // Overall assessment
+            const passRate = nistData.success_rate;
+            const assessment = passRate >= 80 ? 'Excellent' : passRate >= 60 ? 'Good' : passRate >= 40 ? 'Fair' : 'Poor';
+            const assessmentClass = passRate >= 80 ? 'excellent' : passRate >= 60 ? 'good' : passRate >= 40 ? 'fair' : 'poor';
+
+            let html = `
+                <div class="nist-assessment ${assessmentClass}">
+                    <div class="assessment-header">
+                        <h3>Overall Assessment: ${assessment}</h3>
+                        <div class="assessment-score">${passRate.toFixed(1)}%</div>
+                    </div>
+                    <div class="assessment-summary">
+                        <strong>${nistData.bit_count} bits</strong> analyzed •
+                        <strong>${nistData.tests_run} tests</strong> run •
+                        <strong>${nistData.tests_passed} passed</strong>
+                    </div>
+                    <div class="assessment-stats">
+                        <div class="stat">
+                            <span class="stat-number">${nistData.tests_passed}</span>
+                            <span class="stat-label">Passed</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-number">${nistData.total_tests - nistData.tests_passed}</span>
+                            <span class="stat-label">Failed</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-number">${nistData.total_tests}</span>
+                            <span class="stat-label">Total Tests</span>
+                        </div>
+                    </div>
+                    <div class="assessment-bar">
+                        <div class="assessment-fill" style="width: ${passRate}%"></div>
+                    </div>
+                </div>
+                <div class="test-cards-grid">`;
+
+            // Individual test cards
+            for (const test of nistData.individual_tests) {
+                const statusClass = test.passed ? 'pass' : 'fail';
+                const statusText = test.passed ? 'PASS ✓' : 'FAIL ✗';
+                const pValueColor = test.p_value < 0.01 ? 'red' : test.p_value > 0.1 ? 'green' : 'orange';
+
+                html += `
+                    <div class="test-card ${statusClass}">
+                        <div class="test-card-header">
+                            <h4>${test.name}</h4>
+                            <span class="test-status ${statusClass}">${statusText}</span>
+                        </div>
+                        <div class="test-card-body">
+                            <div class="test-metric">
+                                <span class="metric-label">P-Value:</span>
+                                <span class="metric-value" style="color: ${pValueColor}">${test.p_value.toFixed(4)}</span>
+                            </div>
+                            ${test.description ? `
+                            <div class="test-detail">
+                                <span class="detail-label">${test.description}</span>
+                            </div>` : ''}
+                            ${test.metrics ? `
+                            <div class="test-metrics">
+                                ${test.metrics.map(metric => `
+                                    <div class="test-metric">
+                                        <span class="metric-label">${metric[0]}:</span>
+                                        <span class="metric-value">${metric[1]}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>`;
+            }
+
+            html += `</div>`;
+            return html;
+        }
+
         document.getElementById('validationForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -1128,9 +1402,14 @@
 
                 document.getElementById('message').textContent = data.message;
 
-                if (data.nist_results) {
+                // Render NIST data if available
+                if (data.nist_data) {
                     document.getElementById('nistResultsContainer').style.display = 'block';
-                    document.getElementById('nistResults').textContent = data.nist_results;
+                    document.getElementById('nistResults').innerHTML = renderNistData(data.nist_data);
+                } else if (data.nist_results) {
+                    // Fallback to old text format
+                    document.getElementById('nistResultsContainer').style.display = 'block';
+                    document.getElementById('nistResults').innerHTML = `<pre style="white-space: pre-wrap;">${data.nist_results}</pre>`;
                 }
 
             } catch (error) {

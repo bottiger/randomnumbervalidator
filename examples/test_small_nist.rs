@@ -8,7 +8,7 @@ fn main() {
     let wrapper = NistWrapper::new();
     match wrapper.run_tests(&bits_160) {
         Ok(results) => {
-            println!("Results:\n{}", results);
+            println!("Results:\n{:?}", results);
         }
         Err(e) => {
             eprintln!("Error: {}", e);
@@ -23,7 +23,7 @@ fn main() {
     println!("Testing NIST with 1000 bits...");
     match wrapper.run_tests(&bits_1000) {
         Ok(results) => {
-            println!("Results:\n{}", results);
+            println!("Results:\n{:?}", results);
         }
         Err(e) => {
             eprintln!("Error: {}", e);

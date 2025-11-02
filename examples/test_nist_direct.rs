@@ -30,7 +30,7 @@ fn main() {
     match wrapper.run_tests(&bits) {
         Ok(results) => {
             println!("\n✓ NIST Tests Completed Successfully!\n");
-            println!("{}", results);
+            println!("{:?}", results);
         }
         Err(e) => {
             println!("\n✗ NIST Tests Failed:\n{}", e);
