@@ -33,12 +33,12 @@ fn test_integration_large_sequence() {
 
 #[test]
 fn test_prepare_input_format() {
-    let result = prepare_input_for_nist("42,17");
+    let result = prepare_input_for_nist("0,42,17");
     assert!(result.is_ok());
 
     let bits = result.unwrap();
-    // 2 numbers * 32 bits = 64 bits
-    assert_eq!(bits.len(), 64);
+    // 3 numbers in range 0-42 uses 8 bits per number = 24 bits
+    assert_eq!(bits.len(), 24);
 
     // Check that all bits are either 0 or 1
     for bit in bits {
@@ -111,7 +111,7 @@ fn test_integration_overflow_number() {
 
 #[test]
 fn test_integration_without_nist() {
-    let input = "1,2,3,4,5,6,7,8,9,10";
+    let input = "0,1,2,3,4,5,6,7,8,9,10";
     let response = validate_random_numbers_with_nist(input, false);
 
     assert!(response.quality_score >= 0.0);
@@ -124,12 +124,16 @@ fn test_integration_without_nist() {
 fn test_integration_validation_request_structure() {
     // Test that ValidationRequest can be created and serialized
     let request = ValidationRequest {
-        numbers: "1,2,3".to_string(),
+        numbers: "0,1,2,3".to_string(),
         use_nist: true,
+        range_min: None,
+        range_max: None,
     };
 
-    assert_eq!(request.numbers, "1,2,3");
+    assert_eq!(request.numbers, "0,1,2,3");
     assert!(request.use_nist);
+    assert_eq!(request.range_min, None);
+    assert_eq!(request.range_max, None);
 
     // Test default use_nist
     let json = r#"{"numbers":"1,2,3"}"#;
@@ -155,8 +159,8 @@ fn test_integration_response_serialization() {
 
 #[test]
 fn test_integration_very_large_input() {
-    // Test with 500 numbers
-    let numbers: Vec<String> = (1..=500).map(|n| n.to_string()).collect();
+    // Test with 500 numbers (0-255 range for 8-bit)
+    let numbers: Vec<String> = (0..500).map(|n| (n % 256).to_string()).collect();
     let input = numbers.join(",");
     let response = validate_random_numbers(&input);
 

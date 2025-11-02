@@ -6,7 +6,7 @@ use axum::{
     Router,
 };
 use randomnumbervalidator::{
-    validate_random_numbers_with_nist, ValidationRequest, ValidationResponse,
+    validate_random_numbers_with_nist_and_range, ValidationRequest, ValidationResponse,
 };
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::net::SocketAddr;
@@ -124,7 +124,12 @@ async fn validate_handler(
     );
 
     // Perform validation
-    let response = validate_random_numbers_with_nist(&payload.numbers, payload.use_nist);
+    let response = validate_random_numbers_with_nist_and_range(
+        &payload.numbers,
+        payload.use_nist,
+        payload.range_min,
+        payload.range_max,
+    );
     let processing_time_ms = start_time.elapsed().as_millis() as i32;
 
     // Log results

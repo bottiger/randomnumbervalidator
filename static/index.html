@@ -332,6 +332,110 @@
             color: #666;
             display: none;
         }
+
+        .strategy-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .strategy-panel {
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            transition: all 0.3s;
+            background: white;
+        }
+
+        .strategy-panel.active {
+            border-color: #9fef00;
+            background: #f8ffe8;
+            box-shadow: 0 4px 12px rgba(159, 239, 0, 0.15);
+        }
+
+        .strategy-panel.inactive {
+            opacity: 0.6;
+        }
+
+        .strategy-panel.inactive .strategy-content {
+            pointer-events: none;
+        }
+
+        .strategy-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .strategy-header input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .strategy-content {
+            margin-top: 10px;
+        }
+
+        .bitwidth-options {
+            display: flex;
+            gap: 8px;
+        }
+
+        .bitwidth-option {
+            flex: 1;
+            display: block;
+            cursor: pointer;
+        }
+
+        .bitwidth-option input[type="radio"] {
+            display: none;
+        }
+
+        .bitwidth-option .bitwidth-label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            background: white;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .bitwidth-option input[type="radio"]:checked + .bitwidth-label {
+            border-color: #9fef00;
+            background: #f8ffe8;
+            font-weight: bold;
+        }
+
+        .bitwidth-option .bitwidth-label:hover {
+            border-color: #9fef00;
+            transform: translateY(-2px);
+        }
+
+        .bitwidth-option .bitwidth-label strong {
+            display: block;
+            color: #333;
+            font-size: 1em;
+        }
+
+        .bitwidth-option .bitwidth-label small {
+            display: block;
+            color: #666;
+            font-size: 0.75em;
+            margin-top: 2px;
+        }
+
+        @media (max-width: 768px) {
+            .strategy-container {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -357,6 +461,89 @@
                     </div>
                     <div id="tierIndicator" class="tier-indicator tier-insufficient">
                         Too Small
+                    </div>
+                </div>
+
+                <!-- Conversion Strategy Selector -->
+                <div style="margin-top: 20px;">
+                    <div style="font-weight: 600; margin-bottom: 10px; color: #333;">
+                        🔧 Bit Conversion Strategy:
+                    </div>
+
+                    <div class="strategy-container">
+                        <!-- Left Panel: Custom Range -->
+                        <div class="strategy-panel" id="rangePanel">
+                            <div class="strategy-header">
+                                <input type="radio" name="strategy" id="strategyRange" value="range">
+                                <label for="strategyRange" style="margin-left: 8px; font-weight: 600; cursor: pointer;">
+                                    Custom Range (Base Conversion)
+                                </label>
+                            </div>
+                            <div class="strategy-content">
+                                <div style="font-size: 0.9em; color: #666; margin-bottom: 12px;">
+                                    For RNGs with specific ranges (e.g., 1-100, dice rolls)
+                                </div>
+                                <div style="display: flex; gap: 12px;">
+                                    <div style="flex: 1;">
+                                        <label for="rangeMin" style="font-size: 0.85em; display: block; margin-bottom: 4px; color: #555;">Min:</label>
+                                        <input type="number" id="rangeMin" placeholder="1" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px; font-size: 14px;" min="0">
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <label for="rangeMax" style="font-size: 0.85em; display: block; margin-bottom: 4px; color: #555;">Max:</label>
+                                        <input type="number" id="rangeMax" placeholder="100" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px; font-size: 14px;" min="0">
+                                    </div>
+                                </div>
+                                <div id="rangeInfo" style="margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 4px; font-size: 0.85em; color: #495057; display: none;">
+                                    <strong>Entropy:</strong> <span id="rangeEntropy"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Panel: Fixed Bit-Width -->
+                        <div class="strategy-panel" id="bitwidthPanel">
+                            <div class="strategy-header">
+                                <input type="radio" name="strategy" id="strategyBitwidth" value="bitwidth" checked>
+                                <label for="strategyBitwidth" style="margin-left: 8px; font-weight: 600; cursor: pointer;">
+                                    Fixed Bit-Width
+                                </label>
+                            </div>
+                            <div class="strategy-content">
+                                <div style="font-size: 0.9em; color: #666; margin-bottom: 12px;">
+                                    For numbers starting at 0 (standard bit widths)
+                                </div>
+                                <div class="bitwidth-options">
+                                    <label class="bitwidth-option">
+                                        <input type="radio" name="bitwidth" value="8" id="bit8">
+                                        <span class="bitwidth-label">
+                                            <strong>8-bit</strong>
+                                            <small>0-255</small>
+                                        </span>
+                                    </label>
+                                    <label class="bitwidth-option">
+                                        <input type="radio" name="bitwidth" value="16" id="bit16">
+                                        <span class="bitwidth-label">
+                                            <strong>16-bit</strong>
+                                            <small>0-65,535</small>
+                                        </span>
+                                    </label>
+                                    <label class="bitwidth-option">
+                                        <input type="radio" name="bitwidth" value="32" id="bit32" checked>
+                                        <span class="bitwidth-label">
+                                            <strong>32-bit</strong>
+                                            <small>0-4B+</small>
+                                        </span>
+                                    </label>
+                                </div>
+                                <div id="bitwidthWarning" style="margin-top: 8px; padding: 8px; background: #fff3cd; border-radius: 4px; font-size: 0.85em; color: #856404; display: none;">
+                                    ⚠️ <span id="bitwidthWarningText"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="detectedInfo" class="guidance-box" style="display: none; background: #e3f2fd; border-left-color: #2196F3; margin-top: 15px;">
+                        <strong>💡 Auto-detected:</strong>
+                        <div id="detectedText"></div>
                     </div>
                 </div>
 
@@ -445,15 +632,131 @@
     </div>
 
     <script>
-        // Update input statistics in real-time
+        let autoDetectedStrategy = 'bitwidth';
+        let autoDetectedBitWidth = 32;
+
+        // Update input statistics and auto-detect strategy
         function updateInputStats() {
+            const input = document.getElementById('numbers').value;
+            const numbers = input.split(/[^0-9]+/).filter(s => s.length > 0).map(n => parseInt(n));
+            const numberCount = numbers.length;
+
+            document.getElementById('numberCount').textContent = numberCount;
+
+            if (numberCount === 0) {
+                document.getElementById('bitCount').textContent = '0';
+                document.getElementById('detectedInfo').style.display = 'none';
+                return;
+            }
+
+            // Detect range
+            const actualMin = Math.min(...numbers);
+            const actualMax = Math.max(...numbers);
+
+            // Auto-detect strategy
+            let detectedText = '';
+            if (actualMin === 0) {
+                // Standard range - suggest bitwidth
+                autoDetectedStrategy = 'bitwidth';
+                if (actualMax <= 255) {
+                    autoDetectedBitWidth = 8;
+                    detectedText = `Numbers range 0-${actualMax} → Suggested <strong>8-bit fixed-width</strong>`;
+                } else if (actualMax <= 65535) {
+                    autoDetectedBitWidth = 16;
+                    detectedText = `Numbers range 0-${actualMax} → Suggested <strong>16-bit fixed-width</strong>`;
+                } else {
+                    autoDetectedBitWidth = 32;
+                    detectedText = `Numbers range 0-${actualMax} → Suggested <strong>32-bit fixed-width</strong>`;
+                }
+
+                // Auto-select detected bitwidth
+                document.getElementById(`bit${autoDetectedBitWidth}`).checked = true;
+
+                // Pre-fill custom range values in case user switches
+                if (!document.getElementById('rangeMin').value) {
+                    document.getElementById('rangeMin').value = actualMin;
+                }
+                if (!document.getElementById('rangeMax').value) {
+                    document.getElementById('rangeMax').value = actualMax;
+                }
+            } else {
+                // Non-standard range - suggest custom range
+                autoDetectedStrategy = 'range';
+                detectedText = `Numbers range ${actualMin}-${actualMax} (doesn't start at 0) → Suggested <strong>custom range</strong>`;
+
+                // Auto-fill range values
+                document.getElementById('rangeMin').value = actualMin;
+                document.getElementById('rangeMax').value = actualMax;
+
+                // Switch to range strategy
+                document.getElementById('strategyRange').checked = true;
+            }
+
+            // Show auto-detection info
+            document.getElementById('detectedInfo').style.display = 'block';
+            document.getElementById('detectedText').innerHTML = detectedText;
+
+            updateStrategyPanels();
+            updateBitCount();
+        }
+
+        // Update panel active states
+        function updateStrategyPanels() {
+            const strategy = document.querySelector('input[name="strategy"]:checked').value;
+            const rangePanel = document.getElementById('rangePanel');
+            const bitwidthPanel = document.getElementById('bitwidthPanel');
+
+            if (strategy === 'range') {
+                rangePanel.classList.add('active');
+                rangePanel.classList.remove('inactive');
+                bitwidthPanel.classList.remove('active');
+                bitwidthPanel.classList.add('inactive');
+            } else {
+                bitwidthPanel.classList.add('active');
+                bitwidthPanel.classList.remove('inactive');
+                rangePanel.classList.remove('active');
+                rangePanel.classList.add('inactive');
+            }
+
+            updateBitCount();
+            checkBitwidthWarnings();
+        }
+
+        // Update bit count based on selected strategy
+        function updateBitCount() {
             const input = document.getElementById('numbers').value;
             const numbers = input.split(/[^0-9]+/).filter(s => s.length > 0);
             const numberCount = numbers.length;
-            const bitCount = numberCount * 32;
 
-            document.getElementById('numberCount').textContent = numberCount;
-            document.getElementById('bitCount').textContent = bitCount;
+            if (numberCount === 0) return;
+
+            const strategy = document.querySelector('input[name="strategy"]:checked').value;
+            let bitCount = 0;
+
+            if (strategy === 'bitwidth') {
+                const bitWidth = parseInt(document.querySelector('input[name="bitwidth"]:checked').value);
+                bitCount = numberCount * bitWidth;
+                document.getElementById('bitCount').textContent = bitCount;
+            } else {
+                // Custom range with base conversion
+                const rangeMin = parseInt(document.getElementById('rangeMin').value) || 0;
+                const rangeMax = parseInt(document.getElementById('rangeMax').value) || 0;
+
+                if (rangeMax > rangeMin) {
+                    const rangeSize = rangeMax - rangeMin + 1;
+                    const bitsPerNumber = Math.log2(rangeSize);
+                    const estimatedBits = Math.ceil(numberCount * bitsPerNumber);
+
+                    document.getElementById('bitCount').textContent = `~${estimatedBits}`;
+
+                    // Show entropy info
+                    document.getElementById('rangeInfo').style.display = 'block';
+                    document.getElementById('rangeEntropy').textContent =
+                        `${bitsPerNumber.toFixed(2)} bits/number, ~${estimatedBits} bits total`;
+                } else {
+                    document.getElementById('rangeInfo').style.display = 'none';
+                }
+            }
 
             // Update tier indicator and guidance
             const tierIndicator = document.getElementById('tierIndicator');
@@ -519,8 +822,62 @@
             }
         }
 
-        // Add event listener for real-time updates
+        // Check if numbers exceed selected bit width
+        function checkBitwidthWarnings() {
+            const strategy = document.querySelector('input[name="strategy"]:checked').value;
+            const warningDiv = document.getElementById('bitwidthWarning');
+            const warningText = document.getElementById('bitwidthWarningText');
+
+            if (strategy !== 'bitwidth') {
+                warningDiv.style.display = 'none';
+                return;
+            }
+
+            const input = document.getElementById('numbers').value;
+            const numbers = input.split(/[^0-9]+/).filter(s => s.length > 0).map(n => parseInt(n));
+
+            if (numbers.length === 0) {
+                warningDiv.style.display = 'none';
+                return;
+            }
+
+            const actualMax = Math.max(...numbers);
+            const actualMin = Math.min(...numbers);
+            const bitWidth = parseInt(document.querySelector('input[name="bitwidth"]:checked').value);
+
+            let maxValue = 0;
+            if (bitWidth === 8) maxValue = 255;
+            else if (bitWidth === 16) maxValue = 65535;
+            else if (bitWidth === 32) maxValue = 4294967295;
+
+            if (actualMax > maxValue) {
+                warningDiv.style.display = 'block';
+                warningText.textContent = `Some numbers exceed ${bitWidth}-bit max (${maxValue}). Select a larger bit width or use custom range.`;
+            } else if (actualMin !== 0) {
+                warningDiv.style.display = 'block';
+                warningText.textContent = `Numbers don't start at 0 (min: ${actualMin}). Consider using custom range for better entropy extraction.`;
+            } else {
+                warningDiv.style.display = 'none';
+            }
+        }
+
+        // Event listeners
         document.getElementById('numbers').addEventListener('input', updateInputStats);
+        document.getElementById('rangeMin').addEventListener('input', updateBitCount);
+        document.getElementById('rangeMax').addEventListener('input', updateBitCount);
+
+        // Strategy radio button listeners
+        document.querySelectorAll('input[name="strategy"]').forEach(radio => {
+            radio.addEventListener('change', updateStrategyPanels);
+        });
+
+        // Bitwidth radio button listeners
+        document.querySelectorAll('input[name="bitwidth"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                updateBitCount();
+                checkBitwidthWarnings();
+            });
+        });
 
         // Initialize on page load
         updateInputStats();
@@ -532,17 +889,52 @@
             const resultsDiv = document.getElementById('results');
             const loadingDiv = document.getElementById('loading');
 
+            // Determine which strategy is selected
+            const strategy = document.querySelector('input[name="strategy"]:checked').value;
+
+            let range_min = null;
+            let range_max = null;
+
+            if (strategy === 'range') {
+                // Custom range is selected
+                const rangeMinInput = document.getElementById('rangeMin');
+                const rangeMaxInput = document.getElementById('rangeMax');
+
+                if (rangeMinInput.value && rangeMaxInput.value) {
+                    range_min = parseInt(rangeMinInput.value);
+                    range_max = parseInt(rangeMaxInput.value);
+
+                    if (range_max <= range_min) {
+                        alert('Range max must be greater than range min');
+                        return;
+                    }
+                } else {
+                    alert('Please specify both min and max for custom range');
+                    return;
+                }
+            }
+
             // Show loading, hide results
             loadingDiv.style.display = 'block';
             resultsDiv.style.display = 'none';
 
             try {
+                const requestBody = {
+                    numbers,
+                    use_nist: true
+                };
+
+                if (range_min !== null && range_max !== null) {
+                    requestBody.range_min = range_min;
+                    requestBody.range_max = range_max;
+                }
+
                 const response = await fetch('/api/validate', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ numbers, use_nist: true }),
+                    body: JSON.stringify(requestBody),
                 });
 
                 const data = await response.json();
