@@ -128,12 +128,14 @@ fn test_integration_validation_request_structure() {
         use_nist: true,
         range_min: None,
         range_max: None,
+        bit_width: None,
     };
 
     assert_eq!(request.numbers, "0,1,2,3");
     assert!(request.use_nist);
     assert_eq!(request.range_min, None);
     assert_eq!(request.range_max, None);
+    assert_eq!(request.bit_width, None);
 
     // Test default use_nist
     let json = r#"{"numbers":"1,2,3"}"#;

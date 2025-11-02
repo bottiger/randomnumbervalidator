@@ -16,6 +16,9 @@ pub struct ValidationRequest {
     pub range_min: Option<u32>,
     /// Optional: specify the maximum value of your RNG range (e.g., 100 for range 1-100)
     pub range_max: Option<u32>,
+    /// Optional: enforce a specific bit-width (8, 16, or 32) for fixed-width encoding
+    /// If specified, all numbers must fit within this bit-width
+    pub bit_width: Option<u8>,
 }
 
 fn default_use_nist() -> bool {
@@ -140,6 +143,90 @@ pub fn prepare_input_for_nist_with_range(
     }
 }
 
+/// Prepare input for NIST with optional bit-width enforcement
+pub fn prepare_input_for_nist_with_range_and_bitwidth(
+    input: &str,
+    range_min: Option<u32>,
+    range_max: Option<u32>,
+    bit_width: Option<u8>,
+) -> Result<Vec<u8>, String> {
+    // Validate bit_width if provided
+    if let Some(bw) = bit_width {
+        if bw != 8 && bw != 16 && bw != 32 {
+            return Err(format!("Invalid bit_width: {}. Must be 8, 16, or 32.", bw));
+        }
+    }
+
+    // First check for letters (a-z, A-Z) which should be an error
+    if input.chars().any(|c| c.is_alphabetic()) {
+        return Err("Input contains letters - only numbers and delimiters are allowed".to_string());
+    }
+
+    // Extract all sequences of digits, treating everything else as delimiter
+    let numbers: Result<Vec<u32>, _> = input
+        .split(|c: char| !c.is_ascii_digit())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.parse::<u32>())
+        .collect();
+
+    let nums = match numbers {
+        Ok(n) if n.is_empty() => return Err("No numbers provided".to_string()),
+        Ok(n) => n,
+        Err(_) => return Err("Invalid number format".to_string()),
+    };
+
+    let _actual_min = *nums.iter().min().unwrap();
+    let actual_max = *nums.iter().max().unwrap();
+
+    // If bit_width is specified, validate and enforce it
+    if let Some(bw) = bit_width {
+        let max_value = match bw {
+            8 => 0xFF,
+            16 => 0xFFFF,
+            32 => 0xFFFF_FFFF,
+            _ => unreachable!(), // Already validated above
+        };
+
+        // Check that numbers fit in the specified bit width
+        if actual_max > max_value {
+            return Err(format!(
+                "Number {} exceeds {}-bit maximum value of {}. Please select a larger bit-width or use custom range.",
+                actual_max, bw, max_value
+            ));
+        }
+
+        // Note: We don't reject if min != 0, as a small sample might just not contain 0
+        // The statistical tests will detect bias if it exists
+        // However, if the range looks systematically constrained (e.g., all numbers 50-200),
+        // the user should use custom range, but we let the results speak for themselves
+
+        // Use the specified bit width
+        info!(
+            "Using enforced bit-width: {} bits (range 0-{})",
+            bw, actual_max
+        );
+
+        let mut bits = Vec::new();
+        for &num in &nums {
+            for i in (0..bw).rev() {
+                bits.push(((num >> i) & 1) as u8);
+            }
+        }
+
+        info!(
+            "Converted {} numbers to {} bits ({} bits per number)",
+            nums.len(),
+            bits.len(),
+            bw
+        );
+
+        return Ok(bits);
+    }
+
+    // No bit_width specified, use existing auto-detection logic
+    prepare_input_for_nist_with_range(input, range_min, range_max)
+}
+
 /// Convert numbers to bits using base conversion (for non-standard ranges)
 /// This extracts the true entropy without bias from leading zeros
 fn convert_to_bits_base_conversion(numbers: &[u32], range_min: u32, range_max: u32) -> Result<Vec<u8>, String> {
@@ -188,7 +275,7 @@ pub fn validate_random_numbers(input: &str) -> ValidationResponse {
 
 /// Validate random numbers with optional NIST test suite integration
 pub fn validate_random_numbers_with_nist(input: &str, use_nist: bool) -> ValidationResponse {
-    validate_random_numbers_with_nist_and_range(input, use_nist, None, None)
+    validate_random_numbers_with_nist_and_range(input, use_nist, None, None, None)
 }
 
 /// Validate random numbers with optional NIST test suite integration and custom range
@@ -197,17 +284,19 @@ pub fn validate_random_numbers_with_nist_and_range(
     use_nist: bool,
     range_min: Option<u32>,
     range_max: Option<u32>,
+    bit_width: Option<u8>,
 ) -> ValidationResponse {
     debug!(
-        "Starting validation: input_length={}, use_nist={}, range={:?}-{:?}",
+        "Starting validation: input_length={}, use_nist={}, range={:?}-{:?}, bit_width={:?}",
         input.len(),
         use_nist,
         range_min,
-        range_max
+        range_max,
+        bit_width
     );
 
     // Prepare input for NIST
-    let bits = match prepare_input_for_nist_with_range(input, range_min, range_max) {
+    let bits = match prepare_input_for_nist_with_range_and_bitwidth(input, range_min, range_max, bit_width) {
         Ok(b) => {
             debug!(
                 "Successfully parsed {} numbers into {} bits",
@@ -644,5 +733,84 @@ mod tests {
         assert!(result.is_ok());
         let bits = result.unwrap();
         assert_eq!(bits.len(), 16); // 2 numbers * 8 bits (not 32!)
+    }
+
+    // ========== Tests for bit-width enforcement ==========
+
+    #[test]
+    fn test_bitwidth_enforced_8bit() {
+        // With bit_width=8, should use 8 bits regardless of actual max
+        let result = prepare_input_for_nist_with_range_and_bitwidth("0,50,100", None, None, Some(8));
+        assert!(result.is_ok());
+        let bits = result.unwrap();
+        assert_eq!(bits.len(), 24); // 3 numbers * 8 bits
+    }
+
+    #[test]
+    fn test_bitwidth_enforced_16bit() {
+        // With bit_width=16, should use 16 bits
+        let result = prepare_input_for_nist_with_range_and_bitwidth("0,256,1000", None, None, Some(16));
+        assert!(result.is_ok());
+        let bits = result.unwrap();
+        assert_eq!(bits.len(), 48); // 3 numbers * 16 bits
+    }
+
+    #[test]
+    fn test_bitwidth_enforced_32bit() {
+        // With bit_width=32, should use 32 bits
+        let result = prepare_input_for_nist_with_range_and_bitwidth("0,65536,100000", None, None, Some(32));
+        assert!(result.is_ok());
+        let bits = result.unwrap();
+        assert_eq!(bits.len(), 96); // 3 numbers * 32 bits
+    }
+
+    #[test]
+    fn test_bitwidth_rejection_exceeds_8bit() {
+        // Number 256 exceeds 8-bit max (255)
+        let result = prepare_input_for_nist_with_range_and_bitwidth("0,100,256", None, None, Some(8));
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.contains("exceeds"));
+        assert!(err.contains("8-bit"));
+        assert!(err.contains("255"));
+    }
+
+    #[test]
+    fn test_bitwidth_rejection_exceeds_16bit() {
+        // Number 65536 exceeds 16-bit max (65535)
+        let result = prepare_input_for_nist_with_range_and_bitwidth("0,1000,65536", None, None, Some(16));
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.contains("exceeds"));
+        assert!(err.contains("16-bit"));
+    }
+
+    #[test]
+    fn test_bitwidth_allows_nonzero_min() {
+        // Numbers starting at 1 (not 0) are allowed - might just be a small sample
+        // The statistical tests will detect bias if it exists
+        let result = prepare_input_for_nist_with_range_and_bitwidth("1,50,100", None, None, Some(8));
+        assert!(result.is_ok());
+        let bits = result.unwrap();
+        assert_eq!(bits.len(), 24); // 3 numbers * 8 bits
+    }
+
+    #[test]
+    fn test_bitwidth_invalid_value() {
+        // bit_width must be 8, 16, or 32
+        let result = prepare_input_for_nist_with_range_and_bitwidth("0,1,2", None, None, Some(12));
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.contains("Invalid bit_width"));
+        assert!(err.contains("12"));
+    }
+
+    #[test]
+    fn test_bitwidth_fallback_to_auto_detection() {
+        // Without bit_width specified, should auto-detect (8-bit for 0-255)
+        let result = prepare_input_for_nist_with_range_and_bitwidth("0,128,255", None, None, None);
+        assert!(result.is_ok());
+        let bits = result.unwrap();
+        assert_eq!(bits.len(), 24); // 3 numbers * 8 bits (auto-detected)
     }
 }

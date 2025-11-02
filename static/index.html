@@ -436,6 +436,40 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* Real-time validation error styles */
+        .validation-error {
+            border-color: #dc3545 !important;
+            background: #fff5f5 !important;
+        }
+
+        .validation-error-message {
+            margin-top: 8px;
+            padding: 10px;
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: #721c24;
+            font-weight: 500;
+        }
+
+        .validation-error-badge {
+            display: inline-block;
+            background: #dc3545;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #6c757d !important;
+        }
     </style>
 </head>
 <body>
@@ -747,6 +781,7 @@
                     const bitsPerNumber = Math.log2(rangeSize);
                     const estimatedBits = Math.ceil(numberCount * bitsPerNumber);
 
+                    bitCount = estimatedBits;
                     document.getElementById('bitCount').textContent = `~${estimatedBits}`;
 
                     // Show entropy info
@@ -786,30 +821,37 @@
                 }
             }
 
+            // Calculate bits per number from already-computed bitCount
+            const bitsPerNumber = numberCount > 0 ? bitCount / numberCount : 32;
+
             if (bitCount < 100) {
-                const needed = 4 - numberCount;
+                const bitsNeeded = 100 - bitCount;
+                const numbersNeeded = Math.ceil(bitsNeeded / bitsPerNumber);
                 tierIndicator.className = 'tier-indicator tier-insufficient';
-                tierIndicator.innerHTML = `<span class="tier-label">Too Small</span><span class="tier-target">Need ${needed} more for NIST</span>`;
+                tierIndicator.innerHTML = `<span class="tier-label">Too Small</span><span class="tier-target">Need ${numbersNeeded} more for NIST</span>`;
                 guidanceBox.style.display = 'block';
-                guidanceText.innerHTML = `NIST tests cannot run. <strong>Add at least ${needed} more number${needed !== 1 ? 's' : ''}</strong> to enable basic NIST testing (minimum: 4 numbers / 100 bits).`;
+                guidanceText.innerHTML = `NIST tests cannot run. <strong>Add at least ${numbersNeeded} more number${numbersNeeded !== 1 ? 's' : ''}</strong> to enable basic NIST testing (minimum: 100 bits).`;
             } else if (bitCount < 1000) {
-                const needed = 32 - numberCount;
+                const bitsNeeded = 1000 - bitCount;
+                const numbersNeeded = Math.ceil(bitsNeeded / bitsPerNumber);
                 tierIndicator.className = 'tier-indicator tier-minimal';
-                tierIndicator.innerHTML = `<span class="tier-label">Minimal Coverage</span><span class="tier-target">+${needed} for better tests</span>`;
+                tierIndicator.innerHTML = `<span class="tier-label">Minimal Coverage</span><span class="tier-target">+${numbersNeeded} for better tests</span>`;
                 guidanceBox.style.display = 'block';
-                guidanceText.innerHTML = `Limited NIST testing possible. <strong>Add ${needed} more numbers</strong> to reach 32 numbers (1,000 bits) for improved test coverage.`;
+                guidanceText.innerHTML = `Limited NIST testing possible. <strong>Add ${numbersNeeded} more number${numbersNeeded !== 1 ? 's' : ''}</strong> to reach 1,000 bits for improved test coverage.`;
             } else if (bitCount < 4000) {
-                const needed = 125 - numberCount;
+                const bitsNeeded = 4000 - bitCount;
+                const numbersNeeded = Math.ceil(bitsNeeded / bitsPerNumber);
                 tierIndicator.className = 'tier-indicator tier-limited';
-                tierIndicator.innerHTML = `<span class="tier-label">Partial Coverage</span><span class="tier-target">+${needed} for most tests</span>`;
+                tierIndicator.innerHTML = `<span class="tier-label">Partial Coverage</span><span class="tier-target">+${numbersNeeded} for most tests</span>`;
                 guidanceBox.style.display = 'block';
-                guidanceText.innerHTML = `Some NIST tests will run. <strong>Add ${needed} more numbers</strong> to reach 125 numbers (4,000 bits) for most tests.`;
+                guidanceText.innerHTML = `Some NIST tests will run. <strong>Add ${numbersNeeded} more number${numbersNeeded !== 1 ? 's' : ''}</strong> to reach 4,000 bits for most tests.`;
             } else if (bitCount < 10000) {
-                const needed = 313 - numberCount;
+                const bitsNeeded = 10000 - bitCount;
+                const numbersNeeded = Math.ceil(bitsNeeded / bitsPerNumber);
                 tierIndicator.className = 'tier-indicator tier-good';
-                tierIndicator.innerHTML = `<span class="tier-label">Good Coverage</span><span class="tier-target">+${needed} for full suite</span>`;
+                tierIndicator.innerHTML = `<span class="tier-label">Good Coverage</span><span class="tier-target">+${numbersNeeded} for full suite</span>`;
                 guidanceBox.style.display = 'block';
-                guidanceText.innerHTML = `Most NIST tests will run. <strong>Add ${needed} more numbers</strong> to reach 313 numbers (10,000 bits) for comprehensive coverage.`;
+                guidanceText.innerHTML = `Most NIST tests will run. <strong>Add ${numbersNeeded} more number${numbersNeeded !== 1 ? 's' : ''}</strong> to reach 10,000 bits for comprehensive coverage.`;
             } else {
                 tierIndicator.className = 'tier-indicator tier-excellent';
                 tierIndicator.innerHTML = `<span class="tier-label">Full Coverage</span><span class="tier-target">✓ All tests available</span>`;
@@ -861,14 +903,104 @@
             }
         }
 
+        // Real-time validation with visual feedback
+        function validateInputRealtime() {
+            const input = document.getElementById('numbers').value;
+            const numberArray = input.split(/[^0-9]+/).filter(s => s.length > 0).map(n => parseInt(n));
+            const submitButton = document.querySelector('button[type="submit"]');
+            const bitwidthPanel = document.getElementById('bitwidthPanel');
+            const rangePanel = document.getElementById('rangePanel');
+
+            // Remove previous error states
+            document.getElementById('numbers').classList.remove('validation-error');
+            document.querySelectorAll('.validation-error-message').forEach(el => el.remove());
+            document.querySelectorAll('.validation-error-badge').forEach(el => el.remove());
+            submitButton.disabled = false;
+
+            if (numberArray.length === 0) {
+                return; // No validation needed for empty input
+            }
+
+            const actualMin = Math.min(...numberArray);
+            const actualMax = Math.max(...numberArray);
+            const strategy = document.querySelector('input[name="strategy"]:checked').value;
+
+            let errorMessage = null;
+            let errorLocation = null;
+
+            if (strategy === 'bitwidth') {
+                const bitWidth = parseInt(document.querySelector('input[name="bitwidth"]:checked').value);
+                let maxValue = 0;
+                if (bitWidth === 8) maxValue = 255;
+                else if (bitWidth === 16) maxValue = 65535;
+                else if (bitWidth === 32) maxValue = 4294967295;
+
+                // Only block if numbers exceed the maximum - this is a hard error
+                if (actualMax > maxValue) {
+                    errorMessage = `❌ Number ${actualMax} exceeds ${bitWidth}-bit max (${maxValue})`;
+                    errorLocation = 'bitwidth';
+                }
+                // Note: Not including 0 in the sequence is OK - it's just a sample
+                // The backend will warn if the range suggests bias, but we don't block here
+            } else {
+                // Custom range validation
+                const rangeMin = parseInt(document.getElementById('rangeMin').value);
+                const rangeMax = parseInt(document.getElementById('rangeMax').value);
+
+                if (rangeMin && rangeMax) {
+                    if (rangeMax <= rangeMin) {
+                        errorMessage = `❌ Max (${rangeMax}) must be greater than min (${rangeMin})`;
+                        errorLocation = 'range';
+                    } else if (actualMin < rangeMin || actualMax > rangeMax) {
+                        errorMessage = `❌ Numbers (${actualMin}-${actualMax}) outside range (${rangeMin}-${rangeMax})`;
+                        errorLocation = 'range';
+                    }
+                }
+            }
+
+            if (errorMessage) {
+                // Show error state
+                document.getElementById('numbers').classList.add('validation-error');
+                submitButton.disabled = true;
+
+                // Add error badge to panel header
+                const targetPanel = errorLocation === 'bitwidth' ? bitwidthPanel : rangePanel;
+                const headerLabel = targetPanel.querySelector('.strategy-header label');
+                const badge = document.createElement('span');
+                badge.className = 'validation-error-badge';
+                badge.textContent = 'INVALID';
+                headerLabel.appendChild(badge);
+
+                // Add error message below the panel
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'validation-error-message';
+                errorDiv.textContent = errorMessage;
+                targetPanel.querySelector('.strategy-content').appendChild(errorDiv);
+            }
+        }
+
         // Event listeners
-        document.getElementById('numbers').addEventListener('input', updateInputStats);
-        document.getElementById('rangeMin').addEventListener('input', updateBitCount);
-        document.getElementById('rangeMax').addEventListener('input', updateBitCount);
+        document.getElementById('numbers').addEventListener('input', () => {
+            updateInputStats();
+            validateInputRealtime();
+        });
+
+        document.getElementById('rangeMin').addEventListener('input', () => {
+            updateBitCount();
+            validateInputRealtime();
+        });
+
+        document.getElementById('rangeMax').addEventListener('input', () => {
+            updateBitCount();
+            validateInputRealtime();
+        });
 
         // Strategy radio button listeners
         document.querySelectorAll('input[name="strategy"]').forEach(radio => {
-            radio.addEventListener('change', updateStrategyPanels);
+            radio.addEventListener('change', () => {
+                updateStrategyPanels();
+                validateInputRealtime();
+            });
         });
 
         // Bitwidth radio button listeners
@@ -876,11 +1008,13 @@
             radio.addEventListener('change', () => {
                 updateBitCount();
                 checkBitwidthWarnings();
+                validateInputRealtime();
             });
         });
 
         // Initialize on page load
         updateInputStats();
+        validateInputRealtime();
 
         document.getElementById('validationForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -889,11 +1023,23 @@
             const resultsDiv = document.getElementById('results');
             const loadingDiv = document.getElementById('loading');
 
+            // Parse numbers for validation
+            const numberArray = numbers.split(/[^0-9]+/).filter(s => s.length > 0).map(n => parseInt(n));
+
+            if (numberArray.length === 0) {
+                alert('Please enter some numbers');
+                return;
+            }
+
+            const actualMin = Math.min(...numberArray);
+            const actualMax = Math.max(...numberArray);
+
             // Determine which strategy is selected
             const strategy = document.querySelector('input[name="strategy"]:checked').value;
 
             let range_min = null;
             let range_max = null;
+            let bit_width = null;
 
             if (strategy === 'range') {
                 // Custom range is selected
@@ -908,10 +1054,33 @@
                         alert('Range max must be greater than range min');
                         return;
                     }
+
+                    // Validate numbers fit in specified range
+                    if (actualMin < range_min || actualMax > range_max) {
+                        alert(`Numbers range from ${actualMin} to ${actualMax}, which is outside your specified range (${range_min}-${range_max}). Please adjust your range or numbers.`);
+                        return;
+                    }
                 } else {
                     alert('Please specify both min and max for custom range');
                     return;
                 }
+            } else {
+                // Fixed bit-width is selected - validate numbers fit
+                bit_width = parseInt(document.querySelector('input[name="bitwidth"]:checked').value);
+
+                let maxValue = 0;
+                if (bit_width === 8) maxValue = 255;
+                else if (bit_width === 16) maxValue = 65535;
+                else if (bit_width === 32) maxValue = 4294967295;
+
+                // Check if numbers exceed bit-width - this is the only hard error
+                if (actualMax > maxValue) {
+                    alert(`Cannot submit: Number ${actualMax} exceeds ${bit_width}-bit maximum (${maxValue}).\n\nPlease either:\n• Select a larger bit-width (16-bit or 32-bit)\n• Use Custom Range instead`);
+                    return;
+                }
+
+                // Note: We don't block if min != 0, as a random sequence might just not contain 0
+                // The backend will provide appropriate warnings if there's actual bias
             }
 
             // Show loading, hide results
@@ -927,6 +1096,10 @@
                 if (range_min !== null && range_max !== null) {
                     requestBody.range_min = range_min;
                     requestBody.range_max = range_max;
+                }
+
+                if (bit_width !== null) {
+                    requestBody.bit_width = bit_width;
                 }
 
                 const response = await fetch('/api/validate', {

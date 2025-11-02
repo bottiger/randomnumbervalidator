@@ -129,6 +129,7 @@ async fn validate_handler(
         payload.use_nist,
         payload.range_min,
         payload.range_max,
+        payload.bit_width,
     );
     let processing_time_ms = start_time.elapsed().as_millis() as i32;
 
