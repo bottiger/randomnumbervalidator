@@ -72,7 +72,17 @@ locals {
 
     # Update system
     apt-get update
-    apt-get install -y build-essential curl git
+    apt-get install -y build-essential curl git postgresql postgresql-contrib
+
+    # Setup PostgreSQL
+    systemctl start postgresql
+    systemctl enable postgresql
+
+    # Create database and user
+    sudo -u postgres psql -c "CREATE DATABASE randomvalidator;" || true
+    sudo -u postgres psql -c "CREATE USER randomvalidator WITH PASSWORD 'randomvalidator';" || true
+    sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE randomvalidator TO randomvalidator;" || true
+    sudo -u postgres psql -d randomvalidator -c "GRANT ALL ON SCHEMA public TO randomvalidator;" || true
 
     # Install Rust
     if ! command -v rustc &> /dev/null; then
@@ -105,13 +115,14 @@ locals {
     cat > /etc/systemd/system/randomvalidator.service <<-SERVICE
     [Unit]
     Description=Random Number Validator
-    After=network.target
+    After=network.target postgresql.service
 
     [Service]
     Type=simple
     User=root
     WorkingDirectory=/opt/randomvalidator
     Environment="RUST_LOG=info"
+    Environment="DATABASE_URL=postgresql://randomvalidator:randomvalidator@localhost:5432/randomvalidator"
     ExecStart=/opt/randomvalidator/target/release/server
     Restart=always
     RestartSec=10
@@ -165,6 +176,7 @@ resource "google_compute_instance" "randomvalidator" {
   ]
 }
 
+# Outputs
 # Output the instance IP
 output "instance_ip" {
   value       = google_compute_address.static_ip.address

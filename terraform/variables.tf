@@ -23,4 +23,5 @@ variable "zone" {
 variable "repository_url" {
   description = "GitHub repository URL for the application"
   type        = string
+  default     = "https://github.com/bottiger/randomnumbervalidator.git"
 }

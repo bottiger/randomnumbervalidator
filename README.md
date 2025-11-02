@@ -278,52 +278,74 @@ curl -X POST http://127.0.0.1:3000/api/validate \
 
 ## Deployment
 
-This application can be deployed to Google Cloud Platform (GCP) for free using the Always Free tier.
+Deploy to Google Cloud Platform (GCP) for **$0/month** using the Always Free tier.
 
-### Quick Deploy to GCP
+### Quick Deploy (Automated)
 
-**Automated Setup:**
 ```bash
-./scripts/setup-gcp.sh
+# One command to deploy everything
+./deploy.sh
 ```
 
-**Manual Setup:**
-See [DEPLOYMENT.md](DEPLOYMENT.md) for complete instructions including:
-- GCP project setup
-- Terraform infrastructure deployment
-- GitHub Actions CI/CD configuration
-- Monitoring and maintenance
+This will:
+- ✅ Auto-detect your GCP project and repository
+- ✅ Deploy VM with PostgreSQL database locally on the instance
+- ✅ Build and start the application
+- ✅ Configure automatic database migrations
+- ✅ Show you the application URL
 
-### Free Tier Hosting
+No configuration files to edit! Just run the script.
 
-The application runs perfectly on GCP's Always Free tier:
-- **e2-micro** instance (1 vCPU, 1GB RAM)
-- **30GB** standard persistent disk
-- Available in us-west1, us-central1, or us-east1
-- **$0/month** forever ✅
+### Update Application (After Code Changes)
 
-### Deployment Methods
+```bash
+# Pull latest code and rebuild
+./update.sh
+```
 
-1. **Terraform** (Recommended): Infrastructure as code
-2. **GitHub Actions**: Automated CI/CD pipeline with domain validation
-3. **Docker**: Containerized deployment (Cloud Run compatible)
+### Destroy Deployment
 
-### Custom Domain with SSL (Optional)
+```bash
+# Remove all GCP resources
+./destroy.sh
+```
 
-Enable free SSL with Cloudflare Tunnel:
+### What Gets Deployed
 
-1. Add domain to [Cloudflare](https://cloudflare.com) (free plan works)
-2. Go to **GitHub repository → Settings → Variables and secrets → Variables**
-3. Add variable: `DOMAIN_NAME` = `your-domain.com`
-4. The deployment will automatically:
-   - ✅ Create Cloudflare Tunnel
-   - ✅ Configure DNS records
-   - ✅ Validate domain is accessible
-   - ✅ Fail deployment with clear error if domain setup fails
+- **GCP e2-micro VM** - Always Free tier eligible
+- **PostgreSQL database** - Running locally on the VM (no extra cost)
+- **Static IP** - Free while VM is running
+- **Automatic backups** - Database on persistent disk
+- **Application logging** - All queries logged to database
 
-**Note**: Deployment now validates that your domain is responding correctly. If domain validation fails, check [CLOUDFLARE-SETUP.md](CLOUDFLARE-SETUP.md) for troubleshooting.
+**Total cost: $0/month** ✅
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
+### Prerequisites
+
+1. Install [gcloud CLI](https://cloud.google.com/sdk/docs/install)
+2. Install [Terraform](https://www.terraform.io/downloads)
+3. Configure GCP project:
+   ```bash
+   gcloud auth login
+   gcloud config set project YOUR_PROJECT_ID
+   ```
+
+### Database Logging
+
+All validation requests are automatically logged to PostgreSQL:
+- Timestamp, client IP, user agent
+- Random numbers submitted (first 5KB)
+- Validation results and quality scores
+- NIST test results and p-values
+- Processing time
+
+Query the database:
+```bash
+gcloud compute ssh randomvalidator-instance --zone=us-central1-a
+sudo -u postgres psql randomvalidator
+```
+
+See [DATABASE.md](DATABASE.md) for query examples and schema details.
 
 ## Future Enhancements
 

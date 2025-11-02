@@ -11,3 +11,4 @@ This is a simple application to validate a sequence of random numbers.
 
 * Always run tests after making changes to the codebase
 * Do not ask me som many questions about running commands. Just run them unless you are going to delete a large amount of files
+* for every feature you add, add one or more tests for it

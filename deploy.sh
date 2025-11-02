@@ -1,72 +1,91 @@
 #!/bin/bash
 set -e
 
-# Deployment script for randomnumbervalidator
-# This script is designed to run on the GCP instance and handle the full deployment process
+echo "🚀 Random Number Validator - Deployment Script"
+echo "================================================"
+echo ""
 
-REPO_DIR="/opt/randomvalidator"
-LOG_FILE="/tmp/deploy-$(date +%Y%m%d-%H%M%S).log"
-
-# Function to log messages
-log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
-}
-
-log "=== Starting deployment ==="
-log "Log file: $LOG_FILE"
-
-# Create directory if it doesn't exist
-if [ ! -d "$REPO_DIR" ]; then
-    log "Setting up $REPO_DIR for first time..."
-    sudo mkdir -p "$REPO_DIR"
-    sudo chown $USER:$USER "$REPO_DIR"
+# Check if terraform is installed
+if ! command -v terraform &> /dev/null; then
+    echo "❌ Error: Terraform is not installed."
+    echo "Install it from: https://www.terraform.io/downloads"
+    exit 1
 fi
 
-# Clone or update repository
-if [ ! -d "$REPO_DIR/.git" ]; then
-    log "Cloning repository..."
-    git clone "${REPO_URL:-https://github.com/$GITHUB_REPOSITORY.git}" "$REPO_DIR"
-else
-    log "Updating repository..."
-    cd "$REPO_DIR"
-    git fetch origin
-    git reset --hard origin/main
+# Check if gcloud is installed
+if ! command -v gcloud &> /dev/null; then
+    echo "❌ Error: gcloud CLI is not installed."
+    echo "Install it from: https://cloud.google.com/sdk/docs/install"
+    exit 1
 fi
 
-cd "$REPO_DIR"
-log "Current commit: $(git rev-parse --short HEAD)"
+# Get current GCP project
+CURRENT_PROJECT=$(gcloud config get-value project 2>/dev/null || echo "")
 
-# Build NIST test suite
-log "Building NIST test suite..."
-cd "$REPO_DIR/nist/sts-2.1.2/sts-2.1.2"
-make clean 2>&1 | tee -a "$LOG_FILE"
-make 2>&1 | tee -a "$LOG_FILE"
-log "NIST test suite built successfully"
-
-# Setup Rust if needed
-cd "$REPO_DIR"
-if ! command -v cargo &> /dev/null; then
-    log "Installing Rust..."
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y 2>&1 | tee -a "$LOG_FILE"
-    source "$HOME/.cargo/env"
-else
-    log "Rust already installed"
-    source "$HOME/.cargo/env" 2>/dev/null || true
+if [ -z "$CURRENT_PROJECT" ]; then
+    echo "❌ No GCP project is configured."
+    echo "Run: gcloud config set project YOUR_PROJECT_ID"
+    exit 1
 fi
 
-# Build Rust application
-log "Building Rust application (this may take several minutes)..."
-cargo build --release --bin server 2>&1 | tee -a "$LOG_FILE"
-log "Rust application built successfully"
+echo "📋 Current GCP Configuration:"
+echo "   Project ID: $CURRENT_PROJECT"
+echo "   Account: $(gcloud config get-value account 2>/dev/null)"
+echo ""
 
-# Restart service if it exists
-if sudo systemctl status randomvalidator >/dev/null 2>&1; then
-    log "Restarting service..."
-    sudo systemctl restart randomvalidator
-    log "Service restarted successfully"
-else
-    log "Service not configured yet - binary built successfully at target/release/server"
+# Get repository URL from git remote
+REPO_URL=$(git config --get remote.origin.url 2>/dev/null || echo "")
+if [ -z "$REPO_URL" ]; then
+    REPO_URL="https://github.com/bottiger/randomnumbervalidator.git"
 fi
 
-log "=== Deployment complete ==="
-log "Full logs available at: $LOG_FILE"
+echo "📦 Repository: $REPO_URL"
+echo ""
+
+# Ask for confirmation
+read -p "Deploy to project '$CURRENT_PROJECT'? (yes/no): " CONFIRM
+if [ "$CONFIRM" != "yes" ]; then
+    echo "Deployment cancelled."
+    exit 0
+fi
+
+echo ""
+echo "🔧 Initializing Terraform..."
+cd terraform
+
+# Initialize Terraform
+terraform init
+
+echo ""
+echo "📝 Planning deployment..."
+
+# Run terraform plan
+terraform plan \
+    -var="project_id=$CURRENT_PROJECT" \
+    -var="repository_url=$REPO_URL" \
+    -out=tfplan
+
+echo ""
+echo "🚀 Applying deployment..."
+
+# Apply the plan
+terraform apply tfplan
+
+echo ""
+echo "✅ Deployment complete!"
+echo ""
+echo "📊 Outputs:"
+terraform output
+
+echo ""
+echo "🎉 Your application is being deployed!"
+echo "It may take 5-10 minutes for the initial build to complete."
+echo ""
+echo "To check deployment status:"
+echo "  gcloud compute instances get-serial-port-output randomvalidator-instance --zone=us-central1-a"
+echo ""
+echo "To SSH into the instance:"
+echo "  gcloud compute ssh randomvalidator-instance --zone=us-central1-a"
+echo ""
+echo "To view logs:"
+echo "  gcloud compute ssh randomvalidator-instance --zone=us-central1-a --command='sudo journalctl -u randomvalidator -f'"

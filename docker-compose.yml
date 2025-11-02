@@ -13,12 +13,10 @@ services:
       - RUST_LOG=info
       - HOST=0.0.0.0
       - PORT=3000
-      # Uncomment to enable database logging
-      # - DATABASE_URL=postgresql://postgres:randomvalidator@db:5432/randomvalidator
+      - DATABASE_URL=postgresql://postgres:randomvalidator@db:5432/randomvalidator
     restart: unless-stopped
-    # Uncomment to enable database dependency
-    # depends_on:
-    #   - db
+    depends_on:
+      - db
     healthcheck:
       test: ["CMD", "timeout", "2", "bash", "-c", "</dev/tcp/localhost/3000"]
       interval: 30s
@@ -29,24 +27,23 @@ services:
     # volumes:
     #   - ./data:/app/data
 
-  # PostgreSQL Database (optional - uncomment to enable database logging)
-  # db:
-  #   image: postgres:16
-  #   container_name: randomvalidator-db
-  #   environment:
-  #     - POSTGRES_PASSWORD=randomvalidator
-  #     - POSTGRES_DB=randomvalidator
-  #   ports:
-  #     - "5432:5432"
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  #   restart: unless-stopped
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "pg_isready -U postgres"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
+  # PostgreSQL Database
+  db:
+    image: postgres:16
+    container_name: randomvalidator-db
+    environment:
+      - POSTGRES_PASSWORD=randomvalidator
+      - POSTGRES_DB=randomvalidator
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-# Uncomment if using the database service
-# volumes:
-#   postgres_data:
+volumes:
+  postgres_data:
