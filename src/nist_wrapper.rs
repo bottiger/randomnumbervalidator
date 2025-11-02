@@ -7,6 +7,8 @@ use std::process::{Command, Stdio};
 #[allow(unused_imports)]
 use tracing::{debug, error, info, warn};
 
+use crate::enhanced_stats;
+
 /// Wrapper for NIST Statistical Test Suite
 pub struct NistWrapper {
     project_root: PathBuf, // Store project root to avoid path issues
@@ -223,11 +225,11 @@ impl NistWrapper {
         info!("NIST tests completed successfully, parsing results");
 
         // Parse results
-        self.parse_all_results()
+        self.parse_all_results(bits, bit_length)
     }
 
     /// Parse all NIST test results from the experiments directory
-    fn parse_all_results(&self) -> Result<String, String> {
+    fn parse_all_results(&self, bits: &[u8], bit_count: usize) -> Result<String, String> {
         let test_names = vec![
             "Frequency",
             "BlockFrequency",
@@ -269,13 +271,43 @@ impl NistWrapper {
             }
         }
 
-        // Check if any tests ran
+        // Check if any tests ran and provide tier-appropriate feedback
         if total_tests == 0 {
-            return Err(
-                "No NIST test results were generated. The input is too small for comprehensive statistical analysis. \
-                 Different NIST tests have different minimum requirements. Try providing more numbers for better test coverage."
-                    .to_string(),
-            );
+            // NIST couldn't run, so use enhanced statistical tests instead
+            info!("NIST tests could not run, using enhanced statistical analysis for small datasets");
+            let enhanced_results = enhanced_stats::run_enhanced_tests(bits);
+
+            // Add coverage tier information
+            let number_count = bit_count / 32;
+            let tier_info = if bit_count < 1000 {
+                format!(
+                    "\n══════════════════════════════════════════════════════\n\
+                     Coverage Tier: Minimal ({} numbers, {} bits)\n\
+                     For comprehensive NIST testing, provide 313+ numbers.\n\
+                     ══════════════════════════════════════════════════════\n",
+                    number_count, bit_count
+                )
+            } else if bit_count < 4000 {
+                format!(
+                    "\n══════════════════════════════════════════════════════\n\
+                     Coverage Tier: Partial ({} numbers, {} bits)\n\
+                     Add {} more numbers for Good Coverage (125+ numbers).\n\
+                     Add {} more numbers for Full NIST testing (313+ numbers).\n\
+                     ══════════════════════════════════════════════════════\n",
+                    number_count, bit_count,
+                    125 - number_count,
+                    313 - number_count
+                )
+            } else {
+                // This shouldn't happen with 4000+ bits
+                return Err(
+                    "No NIST test results were generated despite having sufficient data. \
+                     This may indicate an issue with the NIST test suite."
+                        .to_string(),
+                );
+            };
+
+            return Ok(format!("{}{}", enhanced_results, tier_info));
         }
 
         // Generate summary
@@ -340,7 +372,11 @@ impl NistWrapper {
 
     /// Parse NIST results from a specific directory (for backwards compatibility)
     pub fn parse_results(&self, _results_dir: &str) -> Result<String, String> {
-        self.parse_all_results()
+        // Use a default bit count for backwards compatibility
+        // This is a legacy method, so we assume a reasonable default
+        // For legacy calls, we don't have the bits, so pass empty slice
+        let empty_bits: Vec<u8> = Vec::new();
+        self.parse_all_results(&empty_bits, 10000)
     }
 }
 

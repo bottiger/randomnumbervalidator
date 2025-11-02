@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{debug, info, warn};
 
 pub mod nist_wrapper;
+pub mod enhanced_stats;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ValidationRequest {
