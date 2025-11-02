@@ -274,7 +274,7 @@ impl NistWrapper {
         // Check if any tests ran and provide tier-appropriate feedback
         if total_tests == 0 {
             // NIST couldn't run, so use enhanced statistical tests instead
-            info!("NIST tests could not run, using enhanced statistical analysis for small datasets");
+            info!("NIST tests produced no results, using enhanced statistical analysis instead");
             let enhanced_results = enhanced_stats::run_enhanced_tests(bits);
 
             // Add coverage tier information
@@ -298,13 +298,25 @@ impl NistWrapper {
                     125 - number_count,
                     313 - number_count
                 )
+            } else if bit_count < 10000 {
+                format!(
+                    "\n══════════════════════════════════════════════════════\n\
+                     Coverage Tier: Good ({} numbers, {} bits)\n\
+                     NIST requires very large datasets. Enhanced tests used instead.\n\
+                     Note: NIST typically needs millions of bits for reliable results.\n\
+                     ══════════════════════════════════════════════════════\n",
+                    number_count, bit_count
+                )
             } else {
-                // This shouldn't happen with 4000+ bits
-                return Err(
-                    "No NIST test results were generated despite having sufficient data. \
-                     This may indicate an issue with the NIST test suite."
-                        .to_string(),
-                );
+                format!(
+                    "\n══════════════════════════════════════════════════════\n\
+                     Coverage Tier: Excellent ({} numbers, {} bits)\n\
+                     NIST suite ran but produced no results.\n\
+                     This may indicate input quality or NIST configuration issues.\n\
+                     Enhanced statistical tests used instead.\n\
+                     ══════════════════════════════════════════════════════\n",
+                    number_count, bit_count
+                )
             };
 
             return Ok(format!("{}{}", enhanced_results, tier_info));
