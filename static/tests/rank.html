@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binary Matrix Rank Test - NIST Test Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.2em;
+            border-bottom: 3px solid #9fef00;
+            padding-bottom: 15px;
+        }
+
+        .test-category {
+            display: inline-block;
+            background: #9fef00;
+            color: #333;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #333;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.6em;
+            border-left: 4px solid #9fef00;
+            padding-left: 12px;
+        }
+
+        h3 {
+            color: #555;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        p {
+            color: #666;
+            line-height: 1.8;
+            margin-bottom: 15px;
+            font-size: 1.05em;
+        }
+
+        ul {
+            margin-left: 25px;
+            margin-bottom: 15px;
+            color: #666;
+            line-height: 1.8;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .highlight-box {
+            background: #f8ffe8;
+            border-left: 4px solid #9fef00;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .example {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 30px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .back-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(159, 239, 0, 0.4);
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #d63384;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-label {
+            color: #888;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            color: #333;
+            font-size: 1.4em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <span class="test-category">NIST SP 800-22 Statistical Test</span>
+        <h1>Binary Matrix Rank Test</h1>
+
+        <div class="highlight-box">
+            <strong>Quick Summary:</strong> The Binary Matrix Rank Test checks for linear dependence among fixed-length substrings of the original sequence. It constructs binary matrices from the bit sequence and examines whether the rank distribution matches what would be expected from truly random data.
+        </div>
+
+        <h2>What It Tests For</h2>
+        <p>This test detects linear dependencies in the bit stream by examining the algebraic properties of matrices formed from the sequence. It specifically checks for:</p>
+        <ul>
+            <li><strong>Linear dependencies:</strong> Rows or columns that can be expressed as combinations of other rows/columns</li>
+            <li><strong>Rank deficiency:</strong> Matrices with reduced rank indicate structural weaknesses</li>
+            <li><strong>Hidden correlations:</strong> Patterns that reveal relationships between different parts of the sequence</li>
+            <li><strong>Algebraic weaknesses:</strong> Properties that could be exploited in cryptographic attacks</li>
+        </ul>
+
+        <h2>How It Works</h2>
+        <h3>Step 1: Form Binary Matrices</h3>
+        <p>The bit sequence is divided into disjoint blocks, and each block is used to form a binary matrix. The standard implementation uses 32×32 matrices (requiring 1,024 bits per matrix):</p>
+        <div class="example">
+Bit sequence: 10110010 11010011 ... (1024 bits)
+
+Matrix (first 8x8 shown):
+1 0 1 1 0 0 1 0
+1 1 0 1 0 0 1 1
+0 1 1 0 1 0 0 1
+1 0 0 1 1 1 0 0
+...
+        </div>
+
+        <h3>Step 2: Calculate Matrix Rank</h3>
+        <p>The rank of a matrix is determined using Gaussian elimination over GF(2) (binary field arithmetic where 1+1=0). The rank represents the number of linearly independent rows (or columns):</p>
+        <div class="example">
+Full rank matrix (rank = 32): All rows are independent
+Rank deficient (rank < 32):   Some rows are linear combinations
+                              of others
+        </div>
+
+        <h3>Step 3: Count Rank Frequencies</h3>
+        <p>After computing ranks for all matrices, the test counts how many matrices have each possible rank:</p>
+        <ul>
+            <li><strong>FM:</strong> Number of matrices with full rank (rank = 32)</li>
+            <li><strong>FM-1:</strong> Number of matrices with rank = 31</li>
+            <li><strong>Other:</strong> Number of matrices with rank ≤ 30</li>
+        </ul>
+
+        <h3>Step 4: Chi-Square Statistical Test</h3>
+        <p>The observed frequencies are compared against the theoretical distribution using a chi-square test:</p>
+        <div class="example">
+Chi-Square = Sum((Observed - Expected)^2 / Expected)
+
+Expected probabilities for truly random 32x32 matrices:
+P(rank = 32) ≈ 0.2888
+P(rank = 31) ≈ 0.5776
+P(rank ≤ 30) ≈ 0.1336
+        </div>
+
+        <div class="info-box">
+            <strong>Understanding P-Values:</strong>
+            <ul>
+                <li><strong>p >= 0.01:</strong> PASS - Rank distribution appears random</li>
+                <li><strong>p < 0.01:</strong> FAIL - Rank distribution is statistically abnormal</li>
+            </ul>
+        </div>
+
+        <h2>Interpreting Results</h2>
+
+        <h3>Pass (p-value >= 0.01)</h3>
+        <p>The distribution of matrix ranks matches the expected pattern for random data. This indicates:</p>
+        <ul>
+            <li>No obvious linear dependencies in the bit stream</li>
+            <li>The sequence has good algebraic properties</li>
+            <li>No structural weaknesses detected at this level</li>
+        </ul>
+
+        <h3>Fail (p-value < 0.01)</h3>
+        <p>The rank distribution deviates significantly from randomness. Common causes include:</p>
+        <ul>
+            <li><strong>Too Many Full-Rank Matrices:</strong> May indicate artificial "spreading" or post-processing artifacts</li>
+            <li><strong>Too Many Low-Rank Matrices:</strong> Suggests linear feedback mechanisms or correlation in the generator</li>
+            <li><strong>LFSR-based Generators:</strong> Linear Feedback Shift Registers naturally produce rank-deficient matrices</li>
+            <li><strong>Block Cipher Weaknesses:</strong> Some cipher modes in weak states may exhibit rank problems</li>
+        </ul>
+
+        <div class="warning-box">
+            <strong>Important:</strong> This test requires at least 38 matrices (38,912 bits) for meaningful results. With fewer matrices, the statistical power is limited and results may be unreliable.
+        </div>
+
+        <h2>Common Failure Patterns</h2>
+
+        <h3>Example 1: LFSR Generator</h3>
+        <div class="example">
+Generator: 32-bit LFSR
+Result:    Nearly all matrices have rank ≤ 31
+Analysis:  Linear recurrence creates dependencies
+Verdict:   FAIL - Linear generator detected
+        </div>
+
+        <h3>Example 2: Concatenated Counter</h3>
+        <div class="example">
+Generator: Counter concatenated with itself
+Result:    Excessive matrices with rank < 32
+Analysis:  Repetition creates linear dependencies
+Verdict:   FAIL - Predictable structure
+        </div>
+
+        <h3>Example 3: Weak Block Cipher Mode</h3>
+        <div class="example">
+Generator: ECB mode with related keys
+Result:    Non-uniform rank distribution
+Analysis:  Key relationship creates patterns
+Verdict:   FAIL - Cryptographic weakness
+        </div>
+
+        <h2>Technical Details</h2>
+        <div class="stat-grid">
+            <div class="stat-card">
+                <div class="stat-label">Test Type</div>
+                <div class="stat-value">Chi-Square</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Matrix Size</div>
+                <div class="stat-value">32×32</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Min Bits</div>
+                <div class="stat-value">38,912</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Significance</div>
+                <div class="stat-value">α = 0.01</div>
+            </div>
+        </div>
+
+        <h2>When to Use This Test</h2>
+        <p>This test is particularly valuable for:</p>
+        <ul>
+            <li><strong>Cryptographic Applications:</strong> Detecting algebraic weaknesses in key streams or cipher outputs</li>
+            <li><strong>LFSR Detection:</strong> Identifying generators based on linear feedback shift registers</li>
+            <li><strong>Stream Cipher Validation:</strong> Ensuring no linear dependencies in cipher output</li>
+            <li><strong>Hardware RNG Verification:</strong> Detecting structural biases in hardware entropy sources</li>
+        </ul>
+        <p>This test is especially effective at catching <strong>linear congruential generators</strong> and other algorithms with inherent linear structure.</p>
+
+        <h2>Mathematical Background</h2>
+        <p>The test exploates the fact that for a truly random binary matrix, the probability of having full rank follows a known distribution. In GF(2), a 32×32 matrix has full rank if and only if all 32 rows are linearly independent. The probability that a random binary n×n matrix has full rank approaches 0.2888 as n increases.</p>
+
+        <h2>References</h2>
+        <ul>
+            <li>NIST Special Publication 800-22 Rev. 1a</li>
+            <li>Section 2.5: Binary Matrix Rank Test</li>
+            <li><a href="https://csrc.nist.gov/publications/detail/sp/800-22/rev-1a/final" target="_blank">Full NIST Documentation</a></li>
+        </ul>
+
+        <a href="/" class="back-link">← Back to Validator</a>
+    </div>
+</body>
+</html>

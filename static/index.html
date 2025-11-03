@@ -1360,10 +1360,43 @@
                 const statusText = test.passed ? 'PASS ✓' : 'FAIL ✗';
                 const pValueColor = test.p_value < 0.01 ? 'red' : test.p_value > 0.1 ? 'green' : 'orange';
 
+                // Create links for test description pages
+                // Handle both NIST format (e.g., "Frequency") and enhanced stats format (e.g., "Frequency Test")
+                let testFileName = test.name.toLowerCase().replace(/ test/g, '').replace(/ /g, '');
+
+                // Map test names to file names
+                const testPageMap = {
+                    'frequency': 'frequency',
+                    'blockfrequency': 'blockfrequency',
+                    'runs': 'runs',
+                    'longestrun': 'longestrun',
+                    'rank': 'rank',
+                    'fft': 'fft',
+                    'nonoverlappingtemplate': 'nonoverlappingtemplate',
+                    'overlappingtemplate': 'overlappingtemplate',
+                    'universal': 'universal',
+                    'approximateentropy': 'approximateentropy',
+                    'randomexcursions': 'randomexcursions',
+                    'randomexcursionsvariant': 'randomexcursionsvariant',
+                    'serial': 'serial',
+                    'linearcomplexity': 'linearcomplexity',
+                    'cumulativesums': 'cumulativesums',
+                    // Enhanced stats tests
+                    'poker': 'poker',
+                    'poker(patterndistribution)': 'poker',
+                    'autocorrelation': 'autocorrelation',
+                    'patterndistribution': 'patterndistribution'
+                };
+
+                const hasTestPage = testPageMap.hasOwnProperty(testFileName);
+                const testNameDisplay = hasTestPage ?
+                    `<a href="/static/tests/${testPageMap[testFileName]}.html" target="_blank" style="color: #333; text-decoration: none; border-bottom: 1px solid #9fef00;">${test.name}</a>` :
+                    test.name;
+
                 html += `
                     <div class="test-card ${statusClass}">
                         <div class="test-card-header">
-                            <h4>${test.name}</h4>
+                            <h4>${testNameDisplay}</h4>
                             <span class="test-status ${statusClass}">${statusText}</span>
                         </div>
                         <div class="test-card-body">

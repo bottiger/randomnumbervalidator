@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Approximate Entropy Test - NIST Test Suite</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); padding: 40px; }
+        h1 { color: #333; margin-bottom: 10px; font-size: 2.2em; border-bottom: 3px solid #9fef00; padding-bottom: 15px; }
+        .test-category { display: inline-block; background: #9fef00; color: #333; padding: 6px 14px; border-radius: 20px; font-size: 0.85em; font-weight: 600; margin-bottom: 20px; }
+        h2 { color: #333; margin-top: 30px; margin-bottom: 15px; font-size: 1.6em; border-left: 4px solid #9fef00; padding-left: 12px; }
+        h3 { color: #555; margin-top: 20px; margin-bottom: 10px; font-size: 1.2em; }
+        p { color: #666; line-height: 1.8; margin-bottom: 15px; font-size: 1.05em; }
+        ul { margin-left: 25px; margin-bottom: 15px; color: #666; line-height: 1.8; }
+        li { margin-bottom: 8px; }
+        .highlight-box { background: #f8ffe8; border-left: 4px solid #9fef00; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .info-box { background: #e3f2fd; border-left: 4px solid #2196F3; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .warning-box { background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .example { background: #f8f9fa; padding: 15px; border-radius: 8px; font-family: 'Courier New', monospace; margin: 15px 0; overflow-x: auto; }
+        .back-link { display: inline-block; margin-top: 30px; padding: 12px 24px; background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; transition: transform 0.2s, box-shadow 0.2s; }
+        .back-link:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(159, 239, 0, 0.4); }
+        code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace; color: #d63384; }
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0; }
+        .stat-card { background: white; border: 2px solid #e0e0e0; border-radius: 8px; padding: 15px; text-align: center; }
+        .stat-label { color: #888; font-size: 0.9em; margin-bottom: 8px; }
+        .stat-value { color: #333; font-size: 1.4em; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <span class="test-category">NIST SP 800-22 Statistical Test</span>
+        <h1>Approximate Entropy Test</h1>
+
+        <div class="highlight-box">
+            <strong>Quick Summary:</strong> The Approximate Entropy Test compares the frequency of overlapping blocks of two consecutive lengths (m and m+1) to measure the unpredictability of the sequence. High approximate entropy indicates high randomness and unpredictability.
+        </div>
+
+        <h2>What It Tests For</h2>
+        <p>This test measures the irregularity or unpredictability in the sequence by comparing pattern frequencies at different scales:</p>
+        <ul>
+            <li><strong>Predictability:</strong> Can next bits be predicted from previous patterns?</li>
+            <li><strong>Pattern correlation:</strong> Are m-bit and (m+1)-bit pattern frequencies related?</li>
+            <li><strong>Entropy deficiency:</strong> Lack of randomness that creates predictable structure</li>
+            <li><strong>Local randomness:</strong> Whether short subsequences are sufficiently random</li>
+        </ul>
+
+        <h2>How It Works</h2>
+        <h3>Step 1: Choose Block Length m</h3>
+        <p>Select m (typically 2-5), which determines the pattern length to examine:</p>
+        <div class="example">
+Typical: m = 2 or m = 3
+Minimum sequence length: ~100 bits for m=2
+        </div>
+
+        <h3>Step 2: Count Overlapping Patterns</h3>
+        <p>Count frequencies of all overlapping m-bit and (m+1)-bit patterns:</p>
+        <div class="example">
+For m=2, count: 00, 01, 10, 11
+For m+1=3, count: 000, 001, 010, 011, 100, 101, 110, 111
+        </div>
+
+        <h3>Step 3: Calculate Approximate Entropy</h3>
+        <p>Compute entropy-like measure for both block sizes:</p>
+        <div class="example">
+φ(m) = Sum(Ci × log(Ci)) for all patterns
+
+Where Ci = frequency of pattern i / total patterns
+
+ApEn(m) = φ(m) - φ(m+1)
+        </div>
+
+        <h3>Step 4: Normalize and Get P-Value</h3>
+        <p>The test statistic is converted to a p-value using chi-square distribution.</p>
+
+        <div class="info-box">
+            <strong>Understanding P-Values:</strong>
+            <ul>
+                <li><strong>p >= 0.01:</strong> PASS - Entropy is appropriately high (unpredictable)</li>
+                <li><strong>p < 0.01:</strong> FAIL - Too predictable or too irregular</li>
+            </ul>
+        </div>
+
+        <h2>Interpreting Results</h2>
+
+        <h3>Pass (p-value >= 0.01)</h3>
+        <p>The sequence has appropriate approximate entropy, indicating sufficient unpredictability and randomness.</p>
+
+        <h3>Fail (p-value < 0.01)</h3>
+        <p>Approximate entropy deviates from expected. Common causes:</p>
+        <ul>
+            <li><strong>Too low entropy:</strong> Sequence is predictable from past patterns</li>
+            <li><strong>Pattern repetition:</strong> Same patterns occur too frequently</li>
+            <li><strong>Correlation:</strong> Future bits depend on previous bits</li>
+            <li><strong>Insufficient mixing:</strong> Generator doesn't adequately randomize output</li>
+        </ul>
+
+        <div class="warning-box">
+            <strong>Note:</strong> This test is similar to the Serial Test but focuses on entropy measurement rather than uniformity. Both tests provide complementary information about pattern distribution.
+        </div>
+
+        <h2>Common Failure Patterns</h2>
+
+        <h3>Example 1: Predictable Patterns</h3>
+        <div class="example">
+Sequence: 01010101...
+Result: Very low ApEn - next bit always predictable
+Test: FAIL - No entropy/randomness
+        </div>
+
+        <h3>Example 2: Block Repetition</h3>
+        <div class="example">
+Repeating blocks reduce entropy
+ApEn too low for truly random sequence
+Test: FAIL - Insufficient unpredictability
+        </div>
+
+        <h2>Technical Details</h2>
+        <div class="stat-grid">
+            <div class="stat-card">
+                <div class="stat-label">Test Type</div>
+                <div class="stat-value">Entropy</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Block Length m</div>
+                <div class="stat-value">2-5 bits</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Min Bits</div>
+                <div class="stat-value">~100</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Significance</div>
+                <div class="stat-value">α = 0.01</div>
+            </div>
+        </div>
+
+        <h2>When to Use This Test</h2>
+        <p>This test is valuable for:</p>
+        <ul>
+            <li><strong>Entropy Assessment:</strong> Measuring information content</li>
+            <li><strong>Predictability Testing:</strong> Determining if patterns reveal future bits</li>
+            <li><strong>Cryptographic Validation:</strong> Ensuring high unpredictability</li>
+            <li><strong>Compression Resistance:</strong> Verifying incompressibility</li>
+        </ul>
+
+        <h2>References</h2>
+        <ul>
+            <li>NIST Special Publication 800-22 Rev. 1a</li>
+            <li>Section 2.12: Approximate Entropy Test</li>
+            <li><a href="https://csrc.nist.gov/publications/detail/sp/800-22/rev-1a/final" target="_blank">Full NIST Documentation</a></li>
+        </ul>
+
+        <a href="/" class="back-link">← Back to Validator</a>
+    </div>
+</body>
+</html>

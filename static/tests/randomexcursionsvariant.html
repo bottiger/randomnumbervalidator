@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Excursion Variant Test - NIST Test Suite</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); padding: 40px; }
+        h1 { color: #333; margin-bottom: 10px; font-size: 2.2em; border-bottom: 3px solid #9fef00; padding-bottom: 15px; }
+        .test-category { display: inline-block; background: #9fef00; color: #333; padding: 6px 14px; border-radius: 20px; font-size: 0.85em; font-weight: 600; margin-bottom: 20px; }
+        h2 { color: #333; margin-top: 30px; margin-bottom: 15px; font-size: 1.6em; border-left: 4px solid #9fef00; padding-left: 12px; }
+        h3 { color: #555; margin-top: 20px; margin-bottom: 10px; font-size: 1.2em; }
+        p { color: #666; line-height: 1.8; margin-bottom: 15px; font-size: 1.05em; }
+        ul { margin-left: 25px; margin-bottom: 15px; color: #666; line-height: 1.8; }
+        li { margin-bottom: 8px; }
+        .highlight-box { background: #f8ffe8; border-left: 4px solid #9fef00; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .info-box { background: #e3f2fd; border-left: 4px solid #2196F3; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .warning-box { background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .example { background: #f8f9fa; padding: 15px; border-radius: 8px; font-family: 'Courier New', monospace; margin: 15px 0; overflow-x: auto; }
+        .back-link { display: inline-block; margin-top: 30px; padding: 12px 24px; background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; transition: transform 0.2s, box-shadow 0.2s; }
+        .back-link:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(159, 239, 0, 0.4); }
+        code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace; color: #d63384; }
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0; }
+        .stat-card { background: white; border: 2px solid #e0e0e0; border-radius: 8px; padding: 15px; text-align: center; }
+        .stat-label { color: #888; font-size: 0.9em; margin-bottom: 8px; }
+        .stat-value { color: #333; font-size: 1.4em; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <span class="test-category">NIST SP 800-22 Statistical Test</span>
+        <h1>Random Excursion Variant Test</h1>
+
+        <div class="highlight-box">
+            <strong>Quick Summary:</strong> The Random Excursion Variant Test is similar to the Random Excursions Test but uses a simpler counting method. It tracks the total number of times the random walk visits each state across the entire sequence, without requiring complete cycles.
+        </div>
+
+        <h2>What It Tests For</h2>
+        <p>This variant test detects deviations in how often the cumulative sum random walk visits different states:</p>
+        <ul>
+            <li><strong>State visit frequency:</strong> Whether certain states are visited too often or rarely</li>
+            <li><strong>Random walk balance:</strong> Symmetry in positive vs negative state visits</li>
+            <li><strong>Cumulative sum behavior:</strong> Overall properties of the random walk</li>
+            <li><strong>Simpler cycle analysis:</strong> Less stringent than full Random Excursions Test</li>
+        </ul>
+
+        <h2>How It Works</h2>
+        <h3>Step 1: Create Random Walk</h3>
+        <p>Convert bits to +1/-1 and compute cumulative sum:</p>
+        <div class="example">
+Binary:  1   0   1   1   0   0   1   0
+Mapped:  +1  -1  +1  +1  -1  -1  +1  -1
+Cusum:   +1   0  +1  +2  +1   0  +1   0
+        </div>
+
+        <h3>Step 2: Count Total State Visits</h3>
+        <p>For 18 states (x = -9 to +9, excluding 0), count total visits across entire sequence:</p>
+        <div class="example">
+State +1: Count how many times cusum equals +1
+State +2: Count how many times cusum equals +2
+State -1: Count how many times cusum equals -1
+... etc for all 18 states
+        </div>
+
+        <h3>Step 3: Calculate Test Statistic</h3>
+        <p>For each state x, compare observed visits to expected:</p>
+        <div class="example">
+J = number of times random walk returns to 0
+ξ(x) = total visits to state x
+
+Test statistic = (ξ(x) - J) / sqrt(2J × (4|x| - 2))
+        </div>
+
+        <h3>Step 4: Compute P-Values</h3>
+        <p>Convert test statistic to p-value for each of the 18 states.</p>
+
+        <div class="info-box">
+            <strong>Understanding P-Values:</strong>
+            <ul>
+                <li><strong>p >= 0.01:</strong> PASS - State visits appear random</li>
+                <li><strong>p < 0.01:</strong> FAIL - Abnormal visit frequency</li>
+            </ul>
+            <p>The test produces 18 p-values (one per state), ideally most should pass.</p>
+        </div>
+
+        <h2>Interpreting Results</h2>
+
+        <h3>Pass (p-values >= 0.01)</h3>
+        <p>State visit frequencies match random expectations, indicating proper random walk distribution.</p>
+
+        <h3>Fail (p-values < 0.01)</h3>
+        <p>Abnormal state visitation pattern. Common causes:</p>
+        <ul>
+            <li><strong>State bias:</strong> Random walk favors or avoids certain states</li>
+            <li><strong>Asymmetric walk:</strong> Positive and negative states have different visit frequencies</li>
+            <li><strong>Insufficient returns to zero:</strong> Walk doesn't return to 0 often enough</li>
+            <li><strong>Correlation effects:</strong> Bit dependencies create biased random walk</li>
+        </ul>
+
+        <div class="warning-box">
+            <strong>Note:</strong> This variant is less stringent than the Random Excursions Test and doesn't require complete cycles. It's useful when sequences have few complete excursions but still provides valuable random walk analysis.
+        </div>
+
+        <h2>Common Failure Patterns</h2>
+
+        <h3>Example 1: Positive State Bias</h3>
+        <div class="example">
+Positive states (+1, +2, +3) visited too frequently
+Negative states (-1, -2, -3) visited too rarely
+Result: Fails for multiple states
+Cause: Bias toward 1s in the sequence
+        </div>
+
+        <h3>Example 2: Near-Zero Clustering</h3>
+        <div class="example">
+States +1 and -1 visited excessively
+Distant states rarely visited
+Result: Fails for states near zero
+Cause: Cumulative sum oscillates around zero too much
+        </div>
+
+        <h3>Example 3: State Avoidance</h3>
+        <div class="example">
+Certain states (e.g., +5, -5) almost never visited
+Result: Fails for those specific states
+Cause: Generator has structure preventing certain cumulative sums
+        </div>
+
+        <h2>Technical Details</h2>
+        <div class="stat-grid">
+            <div class="stat-card">
+                <div class="stat-label">Test Type</div>
+                <div class="stat-value">Count-based</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">States Tested</div>
+                <div class="stat-value">18 states</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Min Bits</div>
+                <div class="stat-value">~1,000,000</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Significance</div>
+                <div class="stat-value">α = 0.01</div>
+            </div>
+        </div>
+
+        <h2>Variant vs Standard Random Excursions</h2>
+        <p>Key differences from the standard Random Excursions Test:</p>
+        <div class="example">
+Standard Random Excursions:
+  - Analyzes complete cycles (0 → states → 0)
+  - Requires sufficient complete cycles (~500+)
+  - Tests 8 states
+  - More stringent
+
+Random Excursion Variant:
+  - Counts total visits to states (no cycle requirement)
+  - Works with fewer cycles
+  - Tests 18 states (-9 to +9)
+  - More lenient, complementary information
+        </div>
+
+        <h2>When to Use This Test</h2>
+        <p>This test is valuable for:</p>
+        <ul>
+            <li><strong>Complementing Standard Test:</strong> Use with Random Excursions Test</li>
+            <li><strong>Fewer Complete Cycles:</strong> When standard test can't run</li>
+            <li><strong>Broader State Coverage:</strong> Tests more states than standard version</li>
+            <li><strong>Random Walk Validation:</strong> Verifying overall walk properties</li>
+        </ul>
+
+        <h2>References</h2>
+        <ul>
+            <li>NIST Special Publication 800-22 Rev. 1a</li>
+            <li>Section 2.15: Random Excursion Variant Test</li>
+            <li><a href="https://csrc.nist.gov/publications/detail/sp/800-22/rev-1a/final" target="_blank">Full NIST Documentation</a></li>
+        </ul>
+
+        <a href="/" class="back-link">← Back to Validator</a>
+    </div>
+</body>
+</html>

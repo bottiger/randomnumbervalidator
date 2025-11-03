@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Non-overlapping Template Matching Test - NIST Test Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.2em;
+            border-bottom: 3px solid #9fef00;
+            padding-bottom: 15px;
+        }
+
+        .test-category {
+            display: inline-block;
+            background: #9fef00;
+            color: #333;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #333;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.6em;
+            border-left: 4px solid #9fef00;
+            padding-left: 12px;
+        }
+
+        h3 {
+            color: #555;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        p {
+            color: #666;
+            line-height: 1.8;
+            margin-bottom: 15px;
+            font-size: 1.05em;
+        }
+
+        ul {
+            margin-left: 25px;
+            margin-bottom: 15px;
+            color: #666;
+            line-height: 1.8;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .highlight-box {
+            background: #f8ffe8;
+            border-left: 4px solid #9fef00;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .example {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 30px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .back-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(159, 239, 0, 0.4);
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #d63384;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-label {
+            color: #888;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            color: #333;
+            font-size: 1.4em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <span class="test-category">NIST SP 800-22 Statistical Test</span>
+        <h1>Non-overlapping Template Matching Test</h1>
+
+        <div class="highlight-box">
+            <strong>Quick Summary:</strong> The Non-overlapping Template Matching Test searches for specific m-bit patterns (templates) within the bit sequence. It counts how often these patterns appear in non-overlapping windows and checks whether the frequency matches what would be expected from truly random data.
+        </div>
+
+        <h2>What It Tests For</h2>
+        <p>This test detects whether specific bit patterns occur too frequently or too rarely in the sequence. It checks for:</p>
+        <ul>
+            <li><strong>Pattern bias:</strong> Generator tendency to produce (or avoid) certain bit combinations</li>
+            <li><strong>Template imbalance:</strong> Uneven distribution of specific m-bit patterns</li>
+            <li><strong>Generator artifacts:</strong> Patterns that appear due to algorithm structure</li>
+            <li><strong>Non-periodic repetitions:</strong> Patterns that repeat but not at fixed intervals</li>
+        </ul>
+
+        <h2>How It Works</h2>
+        <h3>Step 1: Select Templates</h3>
+        <p>The test uses predefined m-bit templates (typically m=9 or m=10). Common templates include:</p>
+        <div class="example">
+For m=9:
+  Template: 000000001 (8 zeros followed by 1)
+  Template: 011111111 (0 followed by 8 ones)
+  ... (148 different 9-bit non-periodic templates)
+        </div>
+
+        <h3>Step 2: Divide Sequence Into Blocks</h3>
+        <p>The sequence is divided into N non-overlapping blocks of length M bits each:</p>
+        <div class="example">
+Sequence: [Block 1: M bits][Block 2: M bits]...[Block N: M bits]
+
+Typical block size M = 968 bits for m=9 templates
+Number of blocks N = 8 (minimum)
+        </div>
+
+        <h3>Step 3: Count Template Matches (Non-overlapping)</h3>
+        <p>Within each block, count how many times the template appears, using non-overlapping matching:</p>
+        <div class="example">
+Block: 10100110111011101...
+Template: 111 (looking for "111")
+
+Search process:
+10[1]00110[111]011101...
+    ^       ^ match found, skip ahead
+
+Skip overlapping positions after each match
+        </div>
+
+        <h3>Step 4: Calculate Chi-Square Statistic</h3>
+        <p>For each template, compute a chi-square statistic comparing observed vs expected matches:</p>
+        <div class="example">
+μ = (M - m + 1) / 2^m  (expected matches per block)
+σ² = M * ((1/2^m) - (2m-1)/2^(2m))  (variance)
+
+Chi-Square = Sum((Wi - μ)² / σ²) for all N blocks
+
+Where Wi = number of template matches in block i
+        </div>
+
+        <h3>Step 5: Compute P-Value</h3>
+        <p>The chi-square statistic is converted to a p-value using the incomplete gamma function.</p>
+
+        <div class="info-box">
+            <strong>Understanding P-Values:</strong>
+            <ul>
+                <li><strong>p >= 0.01:</strong> PASS - Template frequency appears random</li>
+                <li><strong>p < 0.01:</strong> FAIL - Template distribution is abnormal</li>
+            </ul>
+            <p>The test produces multiple p-values (one per template tested).</p>
+        </div>
+
+        <h2>Interpreting Results</h2>
+
+        <h3>Pass (p-value >= 0.01)</h3>
+        <p>The template appears with expected frequency across all blocks. This indicates:</p>
+        <ul>
+            <li>No bias toward or against this specific pattern</li>
+            <li>Pattern distribution is consistent with randomness</li>
+            <li>Generator doesn't have structural weaknesses related to this template</li>
+        </ul>
+
+        <h3>Fail (p-value < 0.01)</h3>
+        <p>The template frequency deviates significantly from random expectations. Common causes include:</p>
+        <ul>
+            <li><strong>Too Many Matches:</strong> Generator favors producing this pattern</li>
+            <li><strong>Too Few Matches:</strong> Generator systematically avoids this pattern</li>
+            <li><strong>Uneven Distribution:</strong> Pattern clusters in some blocks but not others</li>
+            <li><strong>Algorithm Artifacts:</strong> Generator structure creates/prevents certain bit combinations</li>
+        </ul>
+
+        <div class="warning-box">
+            <strong>Important:</strong> This test requires sufficient sequence length. For m=9 templates with N=8 blocks and M=968 bits per block, you need at least 7,744 bits. Shorter sequences will not be tested reliably.
+        </div>
+
+        <h2>Common Failure Patterns</h2>
+
+        <h3>Example 1: Excessive Pattern Matches</h3>
+        <div class="example">
+Template: 11111111 (8 ones)
+Expected: ~3.8 matches per block
+Observed: 15-20 matches per block
+Result:   FAIL - Too many matches
+Cause:    Generator produces long runs of 1s
+        </div>
+
+        <h3>Example 2: Pattern Avoidance</h3>
+        <div class="example">
+Template: 10101010 (alternating)
+Expected: ~3.8 matches per block
+Observed: 0-1 matches per block
+Result:   FAIL - Pattern avoided
+Cause:    Generator doesn't produce alternating patterns
+        </div>
+
+        <h3>Example 3: Clustered Distribution</h3>
+        <div class="example">
+Template: 00001111
+Expected: Uniform distribution across blocks
+Observed: Many matches in blocks 1-3, none in blocks 4-8
+Result:   FAIL - Non-uniform distribution
+Cause:    Generator behavior changes over time
+        </div>
+
+        <h2>Technical Details</h2>
+        <div class="stat-grid">
+            <div class="stat-card">
+                <div class="stat-label">Test Type</div>
+                <div class="stat-value">Chi-Square</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Template Size</div>
+                <div class="stat-value">9-10 bits</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Min Bits</div>
+                <div class="stat-value">~7,700</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Significance</div>
+                <div class="stat-value">α = 0.01</div>
+            </div>
+        </div>
+
+        <h2>Non-overlapping vs Overlapping</h2>
+        <p>This test uses <strong>non-overlapping</strong> matching, meaning after finding a match, the search continues after the matched pattern:</p>
+        <div class="example">
+Sequence: 111111111
+Template: 111
+
+Non-overlapping: Finds 3 matches (positions 0, 3, 6)
+  [111][111][111]
+
+Overlapping would find 7 matches (positions 0-6)
+  [111]11111
+   1[111]1111
+    11[111]111
+    ... etc
+        </div>
+        <p>The non-overlapping approach better reflects independent occurrences of patterns.</p>
+
+        <h2>When to Use This Test</h2>
+        <p>This test is valuable for:</p>
+        <ul>
+            <li><strong>Cryptographic RNGs:</strong> Ensuring no exploitable pattern biases</li>
+            <li><strong>Hardware RNGs:</strong> Detecting biases in physical entropy sources</li>
+            <li><strong>Algorithm Validation:</strong> Finding structural weaknesses in PRNG algorithms</li>
+            <li><strong>Post-Processing Verification:</strong> Ensuring whitening didn't introduce new biases</li>
+        </ul>
+        <p>Because the test examines 148 different templates, it provides broad coverage of potential pattern biases.</p>
+
+        <h2>References</h2>
+        <ul>
+            <li>NIST Special Publication 800-22 Rev. 1a</li>
+            <li>Section 2.7: Non-overlapping Template Matching Test</li>
+            <li><a href="https://csrc.nist.gov/publications/detail/sp/800-22/rev-1a/final" target="_blank">Full NIST Documentation</a></li>
+        </ul>
+
+        <a href="/" class="back-link">← Back to Validator</a>
+    </div>
+</body>
+</html>

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Runs Test - NIST Test Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.2em;
+            border-bottom: 3px solid #9fef00;
+            padding-bottom: 15px;
+        }
+
+        .test-category {
+            display: inline-block;
+            background: #9fef00;
+            color: #333;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #333;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.6em;
+            border-left: 4px solid #9fef00;
+            padding-left: 12px;
+        }
+
+        h3 {
+            color: #555;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        p {
+            color: #666;
+            line-height: 1.8;
+            margin-bottom: 15px;
+            font-size: 1.05em;
+        }
+
+        ul {
+            margin-left: 25px;
+            margin-bottom: 15px;
+            color: #666;
+            line-height: 1.8;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .highlight-box {
+            background: #f8ffe8;
+            border-left: 4px solid #9fef00;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .example {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 30px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .back-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(159, 239, 0, 0.4);
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-label {
+            color: #888;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            color: #333;
+            font-size: 1.4em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <span class="test-category">NIST SP 800-22 Statistical Test</span>
+        <h1>Runs Test</h1>
+
+        <div class="highlight-box">
+            <strong>Quick Summary:</strong> The Runs Test examines whether oscillations between zeros and ones occur at an appropriate rate. It checks if the sequence alternates between 0s and 1s too quickly, too slowly, or just right for randomness.
+        </div>
+
+        <h2>What It Tests For</h2>
+        <p>This test evaluates <strong>transitions</strong> in the bit sequence. A <strong>run</strong> is an uninterrupted sequence of identical bits. For example:</p>
+        <div class="example">
+Sequence: 1 1 1 0 0 1 0 1 1 1 1
+Runs:     [111] [00] [1] [0] [1111]
+Total:    5 runs
+        </div>
+        <p>In a random sequence, we expect a certain number of runs based on the total number of bits and the overall proportion of 1s. This test detects:</p>
+        <ul>
+            <li>Too few runs (bits clumping together excessively)</li>
+            <li>Too many runs (bits alternating too frequently)</li>
+            <li>Non-random patterns or periodicities</li>
+            <li>Autocorrelation issues in the bit stream</li>
+        </ul>
+
+        <h2>How It Works</h2>
+        <h3>Step 1: Check Prerequisites</h3>
+        <p>The test first checks if the sequence passes the Frequency Test prerequisite - the proportion of 1s must be reasonably close to 0.5. If this fails, the Runs Test is not performed.</p>
+
+        <h3>Step 2: Count Runs</h3>
+        <p>Count the total number of runs in the sequence. A new run starts whenever a bit differs from the previous bit:</p>
+        <div class="example">
+Bits:     1 1 0 1 0 0 0 1 1
+Runs:     1 . 2 3 4 . . 5 .
+Total:    5 runs
+        </div>
+
+        <h3>Step 3: Compute Expected Runs</h3>
+        <p>For a random sequence of length n with proportion π of 1s, the expected number of runs is:</p>
+        <div class="example">
+Expected = 2 × n × π × (1 - π) + 1
+
+Where:
+- n is the sequence length
+- π is the proportion of 1s
+        </div>
+
+        <h3>Step 4: Calculate Test Statistic</h3>
+        <p>Compare observed runs to expected runs and compute a standardized test statistic that follows a normal distribution.</p>
+
+        <div class="info-box">
+            <strong>Understanding P-Values:</strong>
+            <ul>
+                <li><strong>p ≥ 0.01:</strong> PASS - Number of runs is appropriate for randomness</li>
+                <li><strong>p < 0.01:</strong> FAIL - Too many or too few runs</li>
+            </ul>
+        </div>
+
+        <h2>Interpreting Results</h2>
+
+        <h3>Pass (p-value ≥ 0.01)</h3>
+        <p>The oscillation rate between 0s and 1s is consistent with a random sequence. The generator doesn't exhibit obvious autocorrelation or clustering.</p>
+
+        <h3>Fail - Too Few Runs (p-value < 0.01, observed < expected)</h3>
+        <p>The bits tend to clump together excessively. Causes include:</p>
+        <ul>
+            <li><strong>Positive Autocorrelation:</strong> Each bit is more likely to match the previous bit</li>
+            <li><strong>Long Patterns:</strong> The generator produces extended sequences of similar values</li>
+            <li><strong>Block-Based Generation:</strong> Numbers generated in similar blocks</li>
+        </ul>
+        <div class="example">
+Bad example (too few runs):
+111111111000000000111111111000000000
+Runs: [111111111] [000000000] [111111111] [000000000]
+Only 4 runs in 36 bits (too few!)
+        </div>
+
+        <h3>Fail - Too Many Runs (p-value < 0.01, observed > expected)</h3>
+        <p>The bits alternate too frequently. Causes include:</p>
+        <ul>
+            <li><strong>Negative Autocorrelation:</strong> Each bit tends to differ from the previous bit</li>
+            <li><strong>Alternating Pattern:</strong> Generator systematically alternates outputs</li>
+            <li><strong>Post-Processing Errors:</strong> Flawed bit extraction creating artificial alternation</li>
+        </ul>
+        <div class="example">
+Bad example (too many runs):
+101010101010101010101010101010101010
+Runs: [1][0][1][0][1][0][1][0][1][0][1][0]...
+36 runs in 36 bits (too many!)
+        </div>
+
+        <h2>Common Failure Patterns</h2>
+
+        <h3>Example 1: Clumping Numbers</h3>
+        <div class="example">
+Numbers: 0,1,2,3,252,253,254,255 (8-bit)
+Binary:  00000000 00000001 00000010 00000011
+         11111100 11111101 11111110 11111111
+Runs:    Many long runs of 0s, then long runs of 1s
+Result:  FAIL - too few runs overall
+        </div>
+
+        <h3>Example 2: Forced Alternation</h3>
+        <div class="example">
+Numbers: 170,85,170,85,170,85 (8-bit)
+         10101010,01010101,10101010,01010101...
+Binary:  101010100101010110101010...
+Runs:    Excessive number of single-bit runs
+Result:  FAIL - too many runs
+        </div>
+
+        <h2>Technical Details</h2>
+        <div class="stat-grid">
+            <div class="stat-card">
+                <div class="stat-label">Test Type</div>
+                <div class="stat-value">Proportion</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Min Bits</div>
+                <div class="stat-value">100</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Prerequisite</div>
+                <div class="stat-value">Frequency</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Significance</div>
+                <div class="stat-value">α = 0.01</div>
+            </div>
+        </div>
+
+        <h2>Relationship to Other Tests</h2>
+        <p>The Runs Test complements the Frequency Test:</p>
+        <ul>
+            <li><strong>Frequency Test:</strong> Checks if we have the right mix of 0s and 1s</li>
+            <li><strong>Runs Test:</strong> Checks if they're mixed appropriately (not too clumped or alternating)</li>
+        </ul>
+        <p>A sequence can pass the Frequency Test but fail the Runs Test if the bits are poorly mixed.</p>
+
+        <h2>When to Use This Test</h2>
+        <p>This test should always be included as a core randomness test. It's particularly effective at catching:</p>
+        <ul>
+            <li>Simple alternating patterns</li>
+            <li>Autocorrelation in the bit stream</li>
+            <li>Improper bit shuffling or extraction</li>
+            <li>Block-based generation artifacts</li>
+        </ul>
+
+        <h2>References</h2>
+        <ul>
+            <li>NIST Special Publication 800-22 Rev. 1a</li>
+            <li>Section 2.3: Runs Test</li>
+            <li><a href="https://csrc.nist.gov/publications/detail/sp/800-22/rev-1a/final" target="_blank">Full NIST Documentation</a></li>
+        </ul>
+
+        <a href="/" class="back-link">← Back to Validator</a>
+    </div>
+</body>
+</html>

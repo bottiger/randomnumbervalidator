@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pattern Distribution Test - Statistical Test Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.2em;
+            border-bottom: 3px solid #9fef00;
+            padding-bottom: 15px;
+        }
+
+        .test-category {
+            display: inline-block;
+            background: #9fef00;
+            color: #333;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #333;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.6em;
+            border-left: 4px solid #9fef00;
+            padding-left: 12px;
+        }
+
+        h3 {
+            color: #555;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        p {
+            color: #666;
+            line-height: 1.8;
+            margin-bottom: 15px;
+            font-size: 1.05em;
+        }
+
+        ul {
+            margin-left: 25px;
+            margin-bottom: 15px;
+            color: #666;
+            line-height: 1.8;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .highlight-box {
+            background: #f8ffe8;
+            border-left: 4px solid #9fef00;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .example {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 30px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .back-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(159, 239, 0, 0.4);
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-label {
+            color: #888;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            color: #333;
+            font-size: 1.4em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <span class="test-category">Enhanced Statistical Test</span>
+        <h1>Pattern Distribution Test</h1>
+
+        <div class="highlight-box">
+            <strong>Quick Summary:</strong> The Pattern Distribution Test analyzes the distribution and occurrence of various bit patterns and sequences throughout the data. It checks whether patterns of different types (runs, transitions, specific sequences) occur with expected frequencies, and whether patterns are evenly distributed rather than clustered together.
+        </div>
+
+        <h2>What It Tests For</h2>
+        <p>This test examines <strong>comprehensive pattern uniformity</strong> across multiple dimensions. Unlike simpler tests that look at one aspect, this test analyzes multiple pattern characteristics simultaneously. The test detects:</p>
+        <ul>
+            <li>Pattern uniformity across the sequence</li>
+            <li>Distribution of specific bit sequences</li>
+            <li>Clustering or uneven spacing of patterns</li>
+            <li>Transition pattern anomalies (0→1 vs 1→0 frequencies)</li>
+            <li>Run length distributions for both 0s and 1s</li>
+            <li>Overlapping pattern occurrences</li>
+        </ul>
+
+        <h2>How It Works</h2>
+        <h3>Step 1: Define Pattern Classes</h3>
+        <p>The test analyzes multiple types of patterns simultaneously:</p>
+        <div class="example">
+Pattern Types:
+  1. Fixed-length sequences (2-bit, 3-bit, 4-bit, etc.)
+  2. Transition patterns (01, 10, 001, 110, etc.)
+  3. Run patterns (00, 000, 111, 1111, etc.)
+  4. Specific templates (e.g., alternating, repeating)
+        </div>
+
+        <h3>Step 2: Count Pattern Occurrences</h3>
+        <p>For each pattern type, count occurrences using a sliding window:</p>
+        <div class="example">
+Sequence: 1101001110010111...
+
+2-bit patterns (overlapping):
+  11: positions 0, 7, 8, 13...
+  10: positions 1, 9...
+  01: positions 2, 5, 11...
+  00: positions 3, 4, 10...
+
+Count each pattern type
+        </div>
+
+        <h3>Step 3: Analyze Spatial Distribution</h3>
+        <p>Divide the sequence into segments and check if patterns are evenly distributed:</p>
+        <div class="example">
+Divide sequence into k equal segments
+Count pattern occurrences in each segment
+
+Example with 4 segments:
+Segment 1: Pattern "101" occurs 12 times
+Segment 2: Pattern "101" occurs 11 times
+Segment 3: Pattern "101" occurs 3 times  ← suspicious
+Segment 4: Pattern "101" occurs 13 times
+
+Chi-square test for spatial uniformity
+        </div>
+
+        <h3>Step 4: Measure Pattern Spacing</h3>
+        <p>Analyze the distances between consecutive occurrences of each pattern:</p>
+        <div class="example">
+Pattern "110" appears at positions: 5, 23, 47, 51, 98...
+Gaps between occurrences: 18, 24, 4, 47...
+
+Check if gaps follow exponential distribution
+(random placement → exponential gaps)
+
+Short gaps suggest clustering
+Uniform gaps suggest periodic structure
+        </div>
+
+        <h3>Step 5: Compute Multiple Statistics</h3>
+        <p>Combine several statistical measures:</p>
+        <div class="example">
+1. Chi-square for pattern frequencies
+2. Chi-square for spatial distribution
+3. Kolmogorov-Smirnov test for gap distribution
+4. Entropy measure for pattern diversity
+5. Overlap analysis for pattern independence
+        </div>
+
+        <div class="info-box">
+            <strong>Understanding Results:</strong>
+            <ul>
+                <li><strong>All tests pass:</strong> Patterns are uniformly and randomly distributed</li>
+                <li><strong>Frequency test fails:</strong> Some patterns over/under-represented</li>
+                <li><strong>Spatial test fails:</strong> Patterns clustered in certain regions</li>
+                <li><strong>Gap test fails:</strong> Patterns appear too regularly or irregularly</li>
+            </ul>
+        </div>
+
+        <h2>Interpreting Results</h2>
+
+        <h3>Pass (uniform distribution)</h3>
+        <p>All pattern types occur with expected frequencies, are evenly distributed throughout the sequence, and have appropriate spacing. The generator produces patterns that appear random in multiple dimensions simultaneously.</p>
+
+        <h3>Fail (frequency anomalies)</h3>
+        <p>Some patterns occur too frequently or rarely. Common causes include:</p>
+        <ul>
+            <li><strong>Generator Bias:</strong> Systematic preference for certain bit combinations</li>
+            <li><strong>State Space Coverage:</strong> Generator doesn't explore all possible internal states</li>
+            <li><strong>Bit Generation Skew:</strong> Underlying bit generation process is biased</li>
+            <li><strong>Correlation Effects:</strong> Dependencies between consecutive bits affect patterns</li>
+        </ul>
+
+        <h3>Fail (spatial clustering)</h3>
+        <p>Patterns are unevenly distributed across the sequence. Common causes include:</p>
+        <ul>
+            <li><strong>Initialization Issues:</strong> Generator behavior changes after warm-up</li>
+            <li><strong>State Depletion:</strong> Generator's randomness quality degrades over time</li>
+            <li><strong>Period Effects:</strong> Generator cycles through states with varying characteristics</li>
+            <li><strong>Entropy Pool Exhaustion:</strong> True RNG runs low on entropy in certain regions</li>
+        </ul>
+
+        <h3>Fail (spacing anomalies)</h3>
+        <p>Patterns appear too regularly or in clusters. Common causes include:</p>
+        <ul>
+            <li><strong>Periodic Structure:</strong> Generator has hidden cycles</li>
+            <li><strong>Avalanche Failure:</strong> Small state changes don't propagate properly</li>
+            <li><strong>Reseeding Artifacts:</strong> Pattern visible when generator reseeds</li>
+        </ul>
+
+        <h2>Common Failure Patterns</h2>
+
+        <h3>Example 1: Clustered Patterns</h3>
+        <div class="example">
+Sequence has regions with heavy "111" pattern:
+Positions 100-200:  "111" occurs 25 times
+Positions 200-300:  "111" occurs 3 times
+Positions 300-400:  "111" occurs 26 times
+
+Result: FAIL - spatial distribution non-uniform
+Likely cause: Generator state transitions create regions
+        </div>
+
+        <h3>Example 2: Missing Rare Patterns</h3>
+        <div class="example">
+Testing 4-bit patterns in 10,000 bits:
+Most patterns: 150-170 occurrences each
+Pattern "0000": 5 occurrences (expected ~156)
+Pattern "1111": 8 occurrences (expected ~156)
+
+Result: FAIL - extreme patterns under-represented
+Likely cause: Generator avoids long runs
+        </div>
+
+        <h3>Example 3: Periodic Pattern Appearance</h3>
+        <div class="example">
+Pattern "1010" appears at positions:
+64, 128, 192, 256, 320, 384, 448...
+
+Gaps: 64, 64, 64, 64, 64, 64...
+
+Result: FAIL - perfectly regular spacing
+Likely cause: Generator has period of 64 bits
+        </div>
+
+        <h3>Example 4: Transition Imbalance</h3>
+        <div class="example">
+Counting 2-bit transition patterns:
+  00: 2,450 occurrences (expected ~2,500)
+  01: 1,850 occurrences (expected ~2,500) ← low
+  10: 3,150 occurrences (expected ~2,500) ← high
+  11: 2,550 occurrences (expected ~2,500)
+
+Result: FAIL - asymmetric transition probabilities
+Likely cause: 0→1 and 1→0 transitions not equally likely
+        </div>
+
+        <h2>Advanced Pattern Analysis</h2>
+
+        <h3>Overlapping vs Non-overlapping</h3>
+        <p>The test examines patterns in both modes:</p>
+        <div class="example">
+Sequence: 11101110111...
+
+Non-overlapping "111":
+  Positions: 0, 3, 6, ... (can't overlap)
+
+Overlapping "111":
+  Positions: 0, 1, 3, 4, 6, 7, ... (can overlap)
+
+Both should match theoretical distributions
+        </div>
+
+        <h3>Pattern Entropy Analysis</h3>
+        <p>Measure the information content and diversity of observed patterns:</p>
+        <div class="example">
+Shannon Entropy = -Σ [p(i) × log₂(p(i))]
+
+For n-bit patterns with uniform distribution:
+Maximum entropy = n bits
+
+Lower entropy → less random, more structure
+        </div>
+
+        <h2>Technical Details</h2>
+        <div class="stat-grid">
+            <div class="stat-card">
+                <div class="stat-label">Test Type</div>
+                <div class="stat-value">Multi-Chi²</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Pattern Sizes</div>
+                <div class="stat-value">2-8 bits</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Min Sequence</div>
+                <div class="stat-value">5000+ bits</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Metrics</div>
+                <div class="stat-value">5+</div>
+            </div>
+        </div>
+
+        <h2>Why Multiple Dimensions Matter</h2>
+        <p>A flawed generator might pass simple tests but fail pattern distribution:</p>
+        <div class="example">
+Generator A: Passes frequency test (50% zeros, 50% ones)
+             But fails pattern test (alternates too regularly)
+             Sequence: 0101010101010101...
+
+Generator B: Passes frequency and runs tests
+             But fails spatial distribution
+             Sequence: [1000 random bits][1000 biased bits][repeat]
+
+Pattern Distribution Test catches both issues!
+        </div>
+
+        <h2>Relationship to Other Tests</h2>
+        <p>The Pattern Distribution Test integrates concepts from multiple simpler tests:</p>
+        <ul>
+            <li><strong>Frequency Test:</strong> Checks 1-bit patterns (00 vs 11)</li>
+            <li><strong>Serial Test:</strong> Checks 2-bit pattern frequencies</li>
+            <li><strong>Runs Test:</strong> Checks run length distributions</li>
+            <li><strong>Poker Test:</strong> Checks fixed-size pattern uniformity</li>
+            <li><strong>Pattern Distribution:</strong> Combines all above PLUS spatial and spacing analysis</li>
+        </ul>
+
+        <h2>When to Use This Test</h2>
+        <p>This comprehensive test is particularly valuable for:</p>
+        <ul>
+            <li>Final validation of critical random number generators</li>
+            <li>Detecting subtle structural problems missed by simpler tests</li>
+            <li>Cryptographic applications requiring high-quality randomness</li>
+            <li>Identifying initialization or state-transition problems</li>
+            <li>Validating that generator quality is consistent throughout output</li>
+        </ul>
+
+        <h2>Real-World Applications</h2>
+        <p>This test has revealed flaws in several widely-used PRNGs:</p>
+        <ul>
+            <li>Early versions of rand() that showed pattern clustering</li>
+            <li>Hardware RNGs with entropy pool management issues</li>
+            <li>Stream ciphers with weak state initialization</li>
+            <li>Mersenne Twister implementations with poor seeding</li>
+        </ul>
+
+        <div class="warning-box">
+            <strong>Important:</strong> This test is computationally intensive and requires significant data (5000+ bits minimum, 100,000+ bits recommended). It should be used as a comprehensive validation tool after passing simpler, faster tests.
+        </div>
+
+        <a href="/" class="back-link">← Back to Validator</a>
+    </div>
+</body>
+</html>

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autocorrelation Test - Statistical Test Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.2em;
+            border-bottom: 3px solid #9fef00;
+            padding-bottom: 15px;
+        }
+
+        .test-category {
+            display: inline-block;
+            background: #9fef00;
+            color: #333;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #333;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.6em;
+            border-left: 4px solid #9fef00;
+            padding-left: 12px;
+        }
+
+        h3 {
+            color: #555;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        p {
+            color: #666;
+            line-height: 1.8;
+            margin-bottom: 15px;
+            font-size: 1.05em;
+        }
+
+        ul {
+            margin-left: 25px;
+            margin-bottom: 15px;
+            color: #666;
+            line-height: 1.8;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .highlight-box {
+            background: #f8ffe8;
+            border-left: 4px solid #9fef00;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .example {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 30px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .back-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(159, 239, 0, 0.4);
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-label {
+            color: #888;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            color: #333;
+            font-size: 1.4em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <span class="test-category">Enhanced Statistical Test</span>
+        <h1>Autocorrelation Test</h1>
+
+        <div class="highlight-box">
+            <strong>Quick Summary:</strong> The Autocorrelation Test checks for correlations between bits at different positions (lag) in the sequence. It detects whether knowing past bits helps predict future bits, which would indicate the sequence is not truly random. Think of it as checking if the sequence has "memory" of its previous values.
+        </div>
+
+        <h2>What It Tests For</h2>
+        <p>This test examines <strong>independence between bit positions</strong> separated by a fixed distance (lag). A truly random sequence should have no correlation between bits, regardless of how far apart they are. The test detects:</p>
+        <ul>
+            <li>Self-similarity in the bit sequence</li>
+            <li>Periodic patterns that repeat at regular intervals</li>
+            <li>Dependencies between bit positions</li>
+            <li>Hidden cyclic behavior in the generator</li>
+            <li>Linear feedback structures or predictable recurrence</li>
+        </ul>
+
+        <h2>How It Works</h2>
+        <h3>Step 1: Choose a Lag (d)</h3>
+        <p>The lag determines how far apart to compare bits. Common lags tested are d = 1, 2, 4, 8, 16, etc:</p>
+        <div class="example">
+Lag d = 1: Compare each bit with the next bit
+Lag d = 2: Compare each bit with the bit 2 positions ahead
+Lag d = 8: Compare each bit with the bit 8 positions ahead
+        </div>
+
+        <h3>Step 2: Compute the Autocorrelation Function</h3>
+        <p>For a bit sequence of length n, compare each bit with the bit d positions ahead:</p>
+        <div class="example">
+Original sequence:  1 0 1 1 0 0 1 1 0 1 ...
+Shifted by d=2:     _ _ 1 0 1 1 0 0 1 1 ...
+
+For each position i, compare bit[i] with bit[i+d]
+Count matches and mismatches
+        </div>
+
+        <h3>Step 3: Calculate Correlation Coefficient</h3>
+        <p>The autocorrelation coefficient measures the similarity between the original and shifted sequences:</p>
+        <div class="example">
+C(d) = (1/n) × Σ [(2×b[i] - 1) × (2×b[i+d] - 1)]
+
+Where:
+  - b[i] is the bit at position i (0 or 1)
+  - Sum runs from i=0 to n-d
+  - Result ranges from -1 (perfect anti-correlation) to +1 (perfect correlation)
+        </div>
+
+        <h3>Step 4: Normalize and Compute Statistic</h3>
+        <p>Convert the correlation to a standardized test statistic:</p>
+        <div class="example">
+Z = C(d) × √(n-d)
+
+For random data:
+  - Z should be close to 0
+  - Z follows approximately normal distribution N(0,1)
+        </div>
+
+        <div class="info-box">
+            <strong>Understanding Results:</strong>
+            <ul>
+                <li><strong>Z ≈ 0:</strong> PASS - No correlation detected, bits are independent</li>
+                <li><strong>Z >> 0:</strong> FAIL - Positive correlation, bits tend to repeat</li>
+                <li><strong>Z << 0:</strong> FAIL - Negative correlation, bits tend to alternate</li>
+            </ul>
+        </div>
+
+        <h2>Interpreting Results</h2>
+
+        <h3>Pass (no correlation)</h3>
+        <p>Bits at different positions are statistically independent. Knowing the value of bit[i] provides no information about bit[i+d]. The generator produces uncorrelated output with no detectable memory or cyclic patterns.</p>
+
+        <h3>Fail (positive correlation)</h3>
+        <p>Bits tend to match their predecessors at the given lag. Common causes include:</p>
+        <ul>
+            <li><strong>Periodic Patterns:</strong> Sequence repeats with period related to the lag</li>
+            <li><strong>Long Runs:</strong> Generator produces extended sequences of identical bits</li>
+            <li><strong>Insufficient Mixing:</strong> State transitions don't adequately randomize output</li>
+            <li><strong>Linear Recurrence:</strong> Generator uses linear feedback that creates correlations</li>
+        </ul>
+
+        <h3>Fail (negative correlation)</h3>
+        <p>Bits tend to be opposite to their predecessors at the given lag. Common causes include:</p>
+        <ul>
+            <li><strong>Alternating Patterns:</strong> Excessive bit flipping at regular intervals</li>
+            <li><strong>Overcorrection:</strong> Generator tries too hard to balance 0s and 1s</li>
+            <li><strong>Phase Relationships:</strong> Internal state oscillates predictably</li>
+        </ul>
+
+        <h2>Common Failure Patterns</h2>
+
+        <h3>Example 1: Perfect Period</h3>
+        <div class="example">
+Sequence: 10110101101011011010110101101...
+Pattern: "1011" repeats with period 4
+
+At lag d=4: Perfect correlation (C=1.0)
+Result: FAIL - sequence has period 4
+        </div>
+
+        <h3>Example 2: Alternating Bits</h3>
+        <div class="example">
+Sequence: 10101010101010101010101010...
+
+At lag d=1: Perfect anti-correlation (C=-1.0)
+At lag d=2: Perfect correlation (C=1.0)
+Result: FAIL - strictly alternating sequence
+        </div>
+
+        <h3>Example 3: Long Runs</h3>
+        <div class="example">
+Sequence: 11111111110000000000111111111...
+
+At lag d=1,2,3: High positive correlation
+Result: FAIL - excessive runs of identical bits
+        </div>
+
+        <h3>Example 4: Weak PRNG</h3>
+        <div class="example">
+Linear Congruential Generator with short period:
+Sequence shows correlation at multiple lags
+
+At lag d=16: C(16) = 0.45
+At lag d=32: C(32) = 0.38
+Result: FAIL - generator has linear structure
+        </div>
+
+        <h2>Multiple Lag Testing</h2>
+        <p>The test is typically run at multiple lags to detect different types of patterns:</p>
+        <div class="example">
+Short lags (d=1,2,4):   Detect local patterns
+Medium lags (d=8,16):   Detect periodic behavior
+Long lags (d=64,128):   Detect generator period issues
+        </div>
+
+        <div class="warning-box">
+            <strong>Important:</strong> A good random sequence should pass the test at ALL tested lags. Failure at any lag indicates a structural problem with the generator.
+        </div>
+
+        <h2>Technical Details</h2>
+        <div class="stat-grid">
+            <div class="stat-card">
+                <div class="stat-label">Test Type</div>
+                <div class="stat-value">Correlation</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Lags Tested</div>
+                <div class="stat-value">Multiple</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Min Sequence</div>
+                <div class="stat-value">1000+ bits</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Distribution</div>
+                <div class="stat-value">Normal</div>
+            </div>
+        </div>
+
+        <h2>Mathematical Foundation</h2>
+        <p>The autocorrelation function is a fundamental tool in signal processing and time series analysis. For a random bit sequence, the theoretical autocorrelation is:</p>
+        <div class="example">
+E[C(d)] = 0 for all d > 0
+Var[C(d)] ≈ 1/(n-d)
+
+Where E[] is expected value and Var[] is variance
+        </div>
+
+        <h2>Relationship to Other Tests</h2>
+        <p>The Autocorrelation Test complements other randomness tests:</p>
+        <ul>
+            <li><strong>Runs Test:</strong> Detects local run patterns (similar to lag d=1)</li>
+            <li><strong>Spectral Test:</strong> Detects periodicities using Fourier analysis</li>
+            <li><strong>Serial Test:</strong> Checks 2-bit pattern distributions</li>
+            <li><strong>Autocorrelation Test:</strong> Directly measures bit-to-bit dependencies at various lags</li>
+        </ul>
+
+        <h2>When to Use This Test</h2>
+        <p>This test is particularly valuable for:</p>
+        <ul>
+            <li>Detecting periodic behavior in the generator</li>
+            <li>Identifying linear feedback structures</li>
+            <li>Validating cryptographic generators (critical for stream ciphers)</li>
+            <li>Checking for short periods in PRNGs</li>
+            <li>Complementing frequency and distribution tests</li>
+        </ul>
+
+        <h2>Real-World Example</h2>
+        <p>A flawed LFSR (Linear Feedback Shift Register) generator might produce output where every 32nd bit is correlated due to its internal structure. The autocorrelation test at lag d=32 would detect this, even though the sequence might pass simpler frequency tests.</p>
+
+        <a href="/" class="back-link">← Back to Validator</a>
+    </div>
+</body>
+</html>

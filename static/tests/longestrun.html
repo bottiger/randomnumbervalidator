@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Longest Run of Ones Test - NIST Test Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.2em;
+            border-bottom: 3px solid #9fef00;
+            padding-bottom: 15px;
+        }
+
+        .test-category {
+            display: inline-block;
+            background: #9fef00;
+            color: #333;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #333;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.6em;
+            border-left: 4px solid #9fef00;
+            padding-left: 12px;
+        }
+
+        h3 {
+            color: #555;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        p {
+            color: #666;
+            line-height: 1.8;
+            margin-bottom: 15px;
+            font-size: 1.05em;
+        }
+
+        ul {
+            margin-left: 25px;
+            margin-bottom: 15px;
+            color: #666;
+            line-height: 1.8;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .highlight-box {
+            background: #f8ffe8;
+            border-left: 4px solid #9fef00;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .example {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 30px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .back-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(159, 239, 0, 0.4);
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #d63384;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-label {
+            color: #888;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            color: #333;
+            font-size: 1.4em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <span class="test-category">NIST SP 800-22 Statistical Test</span>
+        <h1>Longest Run of Ones Test</h1>
+
+        <div class="highlight-box">
+            <strong>Quick Summary:</strong> The Longest Run of Ones Test examines the length of the longest consecutive sequence of 1s within designated blocks of the bit stream. In a truly random sequence, the length of the longest run should follow a predictable distribution.
+        </div>
+
+        <h2>What It Tests For</h2>
+        <p>This test detects whether the random number generator produces sequences with abnormally long or short runs of 1s. It specifically checks:</p>
+        <ul>
+            <li>Whether consecutive strings of 1s are unusually long (indicating clumping or bias)</li>
+            <li>Whether consecutive strings of 1s are unusually short (indicating over-dispersal)</li>
+            <li>The consistency of run lengths across different blocks of the sequence</li>
+            <li>Hidden periodicities that cause repetitive patterns of runs</li>
+        </ul>
+
+        <h2>How It Works</h2>
+        <h3>Step 1: Divide Into Blocks</h3>
+        <p>The bit sequence is divided into blocks of a specified length M, which depends on the total sequence length:</p>
+        <div class="example">
+Sequence length >= 128:    Block size M = 8
+Sequence length >= 6,272:  Block size M = 128
+Sequence length >= 750,000: Block size M = 10,000
+        </div>
+
+        <h3>Step 2: Find Longest Run in Each Block</h3>
+        <p>For each block, the test identifies the longest consecutive sequence of 1s:</p>
+        <div class="example">
+Block 1: 11001101 11111111 00101010 11110010
+         Longest run of 1s: 8 consecutive ones
+
+Block 2: 10101010 11100111 00011111 10001000
+         Longest run of 1s: 5 consecutive ones
+        </div>
+
+        <h3>Step 3: Categorize Run Lengths</h3>
+        <p>The longest runs are categorized into intervals. For M=8 blocks, the categories are:</p>
+        <ul>
+            <li>v0: runs of length 1 or less</li>
+            <li>v1: runs of length 2</li>
+            <li>v2: runs of length 3</li>
+            <li>v3: runs of length 4 or more</li>
+        </ul>
+
+        <h3>Step 4: Compare Against Expected Distribution</h3>
+        <p>The test uses a chi-square statistic to compare the observed distribution of run lengths against the theoretical distribution expected for truly random data:</p>
+        <div class="example">
+Chi-Square = Sum((Observed - Expected)^2 / Expected)
+        </div>
+        <p>The chi-square value is then converted to a p-value to determine if the deviation is statistically significant.</p>
+
+        <div class="info-box">
+            <strong>Understanding P-Values:</strong>
+            <ul>
+                <li><strong>p >= 0.01:</strong> PASS - Run lengths appear random</li>
+                <li><strong>p < 0.01:</strong> FAIL - Run lengths deviate from randomness</li>
+            </ul>
+        </div>
+
+        <h2>Interpreting Results</h2>
+
+        <h3>Pass (p-value >= 0.01)</h3>
+        <p>The longest runs of 1s follow the expected distribution for random data. This indicates that your generator doesn't create unusual clustering or gaps in consecutive bits.</p>
+
+        <h3>Fail (p-value < 0.01)</h3>
+        <p>The distribution of longest runs is statistically abnormal. Common causes include:</p>
+        <ul>
+            <li><strong>Clumping Bias:</strong> The generator produces too many long runs, creating clusters of similar bits</li>
+            <li><strong>Dispersal Bias:</strong> The generator produces too many short runs, avoiding consecutive similar bits</li>
+            <li><strong>Block-based Generation:</strong> If the RNG generates output in fixed-size blocks, boundaries may be visible</li>
+            <li><strong>Periodic Patterns:</strong> Hidden periodicities can create consistent run length patterns</li>
+        </ul>
+
+        <div class="warning-box">
+            <strong>Note:</strong> This test specifically examines runs of 1s, not 0s. However, in a balanced random sequence, the distribution of runs should be similar for both values. If this test passes but the Frequency Test fails, investigate bit balance issues.
+        </div>
+
+        <h2>Common Failure Patterns</h2>
+
+        <h3>Example 1: Excessive Long Runs</h3>
+        <div class="example">
+Sequence: 11111111 11110000 11111111 11100000
+Analysis: Too many blocks with runs of 7-8 ones
+Result:   FAIL - Clumping detected
+Cause:    Generator may be "sticky" or use modulo operations
+        </div>
+
+        <h3>Example 2: All Short Runs</h3>
+        <div class="example">
+Sequence: 10101010 10101010 10101010 10101010
+Analysis: No runs longer than 1 bit
+Result:   FAIL - Over-dispersed
+Cause:    Alternating pattern or XOR-based generation flaw
+        </div>
+
+        <h3>Example 3: Periodic Pattern</h3>
+        <div class="example">
+Sequence: 11101110 11101110 11101110 11101110
+Analysis: Every block has exactly 3-bit runs
+Result:   FAIL - Non-random periodicity
+Cause:    Repeating pattern in generation algorithm
+        </div>
+
+        <h2>Technical Details</h2>
+        <div class="stat-grid">
+            <div class="stat-card">
+                <div class="stat-label">Test Type</div>
+                <div class="stat-value">Chi-Square</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Min Bits</div>
+                <div class="stat-value">128</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Block Sizes</div>
+                <div class="stat-value">8/128/10K</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Significance</div>
+                <div class="stat-value">α = 0.01</div>
+            </div>
+        </div>
+
+        <h2>When to Use This Test</h2>
+        <p>Use this test when:</p>
+        <ul>
+            <li>Validating generators used for cryptographic purposes where bit patterns must be unpredictable</li>
+            <li>Checking for clumping issues that could reveal generator state</li>
+            <li>Testing hardware RNGs that might have correlation issues between consecutive outputs</li>
+            <li>Verifying that post-processing (like whitening) hasn't introduced artifacts</li>
+        </ul>
+        <p>This test is particularly effective at detecting <strong>linear congruential generators (LCGs)</strong> and other generators with correlation between consecutive outputs.</p>
+
+        <h2>References</h2>
+        <ul>
+            <li>NIST Special Publication 800-22 Rev. 1a</li>
+            <li>Section 2.4: Test for the Longest Run of Ones in a Block</li>
+            <li><a href="https://csrc.nist.gov/publications/detail/sp/800-22/rev-1a/final" target="_blank">Full NIST Documentation</a></li>
+        </ul>
+
+        <a href="/" class="back-link">← Back to Validator</a>
+    </div>
+</body>
+</html>

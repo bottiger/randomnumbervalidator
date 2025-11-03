@@ -11,7 +11,7 @@ use randomnumbervalidator::{
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::net::SocketAddr;
 use std::time::Instant;
-use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tower_http::{cors::CorsLayer, services::ServeDir, trace::TraceLayer};
 use tracing::{error, info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -71,6 +71,7 @@ async fn main() {
     let app = Router::new()
         .route("/", get(serve_index))
         .route("/api/validate", post(validate_handler))
+        .nest_service("/static", ServeDir::new("static"))
         .layer(TraceLayer::new_for_http())
         .layer(CorsLayer::permissive())
         .with_state(pool);

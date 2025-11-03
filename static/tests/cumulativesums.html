@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cumulative Sums (Cusums) Test - NIST Test Suite</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); padding: 40px; }
+        h1 { color: #333; margin-bottom: 10px; font-size: 2.2em; border-bottom: 3px solid #9fef00; padding-bottom: 15px; }
+        .test-category { display: inline-block; background: #9fef00; color: #333; padding: 6px 14px; border-radius: 20px; font-size: 0.85em; font-weight: 600; margin-bottom: 20px; }
+        h2 { color: #333; margin-top: 30px; margin-bottom: 15px; font-size: 1.6em; border-left: 4px solid #9fef00; padding-left: 12px; }
+        h3 { color: #555; margin-top: 20px; margin-bottom: 10px; font-size: 1.2em; }
+        p { color: #666; line-height: 1.8; margin-bottom: 15px; font-size: 1.05em; }
+        ul { margin-left: 25px; margin-bottom: 15px; color: #666; line-height: 1.8; }
+        li { margin-bottom: 8px; }
+        .highlight-box { background: #f8ffe8; border-left: 4px solid #9fef00; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .info-box { background: #e3f2fd; border-left: 4px solid #2196F3; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .warning-box { background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .example { background: #f8f9fa; padding: 15px; border-radius: 8px; font-family: 'Courier New', monospace; margin: 15px 0; overflow-x: auto; }
+        .back-link { display: inline-block; margin-top: 30px; padding: 12px 24px; background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; transition: transform 0.2s, box-shadow 0.2s; }
+        .back-link:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(159, 239, 0, 0.4); }
+        code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace; color: #d63384; }
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0; }
+        .stat-card { background: white; border: 2px solid #e0e0e0; border-radius: 8px; padding: 15px; text-align: center; }
+        .stat-label { color: #888; font-size: 0.9em; margin-bottom: 8px; }
+        .stat-value { color: #333; font-size: 1.4em; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <span class="test-category">NIST SP 800-22 Statistical Test</span>
+        <h1>Cumulative Sums (Cusums) Test</h1>
+
+        <div class="highlight-box">
+            <strong>Quick Summary:</strong> The Cumulative Sums Test computes the running cumulative sum of the sequence (treating 0 as -1 and 1 as +1) and checks whether this random walk deviates too far from zero. Large deviations indicate bias toward zeros or ones.
+        </div>
+
+        <h2>What It Tests For</h2>
+        <p>This test detects bias in the sequence by tracking cumulative deviations. It's particularly sensitive to:</p>
+        <ul>
+            <li><strong>Early/late bias:</strong> More 0s or 1s at beginning or end of sequence</li>
+            <li><strong>Drift:</strong> Gradual shift in bit balance over time</li>
+            <li><strong>Position-dependent bias:</strong> Bias that varies by location in sequence</li>
+            <li><strong>Local imbalance:</strong> Regions with too many 0s or 1s</li>
+        </ul>
+
+        <h2>How It Works</h2>
+        <h3>Step 1: Convert to +1/-1</h3>
+        <p>Transform the bit sequence so 0 becomes -1 and 1 stays +1:</p>
+        <div class="example">
+Binary: 1 0 1 1 0 0 1 0
+Mapped: +1 -1 +1 +1 -1 -1 +1 -1
+        </div>
+
+        <h3>Step 2: Compute Cumulative Sums</h3>
+        <p>Calculate running sum in both forward and reverse directions:</p>
+        <div class="example">
+Forward cusum:  S[k] = Sum of bits 1 to k
+Reverse cusum:  S'[k] = Sum of bits k to n
+
+Example (forward):
+Position: 1   2   3   4   5   6   7   8
+Value:    +1  -1  +1  +1  -1  -1  +1  -1
+Cusum:    +1   0  +1  +2  +1   0  +1   0
+        </div>
+
+        <h3>Step 3: Find Maximum Deviation</h3>
+        <p>Find the largest absolute cumulative sum value:</p>
+        <div class="example">
+z_forward = max(|S[k]|) for all k
+z_reverse = max(|S'[k]|) for all k
+        </div>
+
+        <h3>Step 4: Calculate P-Values</h3>
+        <p>Convert both forward and reverse statistics to p-values. Large deviations produce small p-values.</p>
+
+        <div class="info-box">
+            <strong>Understanding P-Values:</strong>
+            <ul>
+                <li><strong>p >= 0.01:</strong> PASS - Cumulative sums within expected range</li>
+                <li><strong>p < 0.01:</strong> FAIL - Excessive deviation detected</li>
+            </ul>
+            <p>The test produces two p-values (forward and reverse), both should pass.</p>
+        </div>
+
+        <h2>Interpreting Results</h2>
+
+        <h3>Pass (p-values >= 0.01)</h3>
+        <p>Cumulative sums stay within expected bounds, indicating good bit balance throughout the sequence.</p>
+
+        <h3>Fail (p-values < 0.01)</h3>
+        <p>Excessive cumulative deviation detected. Common causes:</p>
+        <ul>
+            <li><strong>Early bias:</strong> Sequence starts with too many 0s or 1s</li>
+            <li><strong>Late bias:</strong> Sequence ends with imbalanced bits</li>
+            <li><strong>Generator drift:</strong> Bias increases over generator runtime</li>
+            <li><strong>Segmented generation:</strong> Different segments have different biases</li>
+        </ul>
+
+        <div class="warning-box">
+            <strong>Note:</strong> This test is similar to the Frequency Test but more sensitive to position-dependent bias. A sequence could pass the Frequency Test (overall balanced) but fail Cusums (localized imbalance).
+        </div>
+
+        <h2>Common Failure Patterns</h2>
+
+        <h3>Example 1: Front-Loaded Ones</h3>
+        <div class="example">
+Sequence: 11111111000000...
+Forward cusum reaches +8 then drops
+Test: FAIL (forward) - Early bias toward 1s
+        </div>
+
+        <h3>Example 2: Gradual Drift</h3>
+        <div class="example">
+Generator slowly shifts from producing 45% ones to 55% ones
+Cumulative sum drifts positive
+Test: FAIL - Drift detected
+        </div>
+
+        <h3>Example 3: Back-Loaded Zeros</h3>
+        <div class="example">
+Sequence: ...00000000
+Reverse cusum shows large negative value
+Test: FAIL (reverse) - Late bias toward 0s
+        </div>
+
+        <h2>Technical Details</h2>
+        <div class="stat-grid">
+            <div class="stat-card">
+                <div class="stat-label">Test Type</div>
+                <div class="stat-value">Random Walk</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Directions</div>
+                <div class="stat-value">Forward & Reverse</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Min Bits</div>
+                <div class="stat-value">100</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Significance</div>
+                <div class="stat-value">α = 0.01</div>
+            </div>
+        </div>
+
+        <h2>When to Use This Test</h2>
+        <p>This test is valuable for:</p>
+        <ul>
+            <li><strong>Position-Dependent Bias:</strong> Finding imbalance that varies by location</li>
+            <li><strong>Generator Warm-up Issues:</strong> Detecting initialization bias</li>
+            <li><strong>Generator Degradation:</strong> Finding drift over time</li>
+            <li><strong>Complementing Frequency Test:</strong> More sensitive to local imbalance</li>
+        </ul>
+
+        <h2>References</h2>
+        <ul>
+            <li>NIST Special Publication 800-22 Rev. 1a</li>
+            <li>Section 2.13: Cumulative Sums (Cusums) Test</li>
+            <li><a href="https://csrc.nist.gov/publications/detail/sp/800-22/rev-1a/final" target="_blank">Full NIST Documentation</a></li>
+        </ul>
+
+        <a href="/" class="back-link">← Back to Validator</a>
+    </div>
+</body>
+</html>

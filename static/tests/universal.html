@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maurer's Universal Statistical Test - NIST Test Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.2em;
+            border-bottom: 3px solid #9fef00;
+            padding-bottom: 15px;
+        }
+
+        .test-category {
+            display: inline-block;
+            background: #9fef00;
+            color: #333;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #333;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.6em;
+            border-left: 4px solid #9fef00;
+            padding-left: 12px;
+        }
+
+        h3 {
+            color: #555;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        p {
+            color: #666;
+            line-height: 1.8;
+            margin-bottom: 15px;
+            font-size: 1.05em;
+        }
+
+        ul {
+            margin-left: 25px;
+            margin-bottom: 15px;
+            color: #666;
+            line-height: 1.8;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .highlight-box {
+            background: #f8ffe8;
+            border-left: 4px solid #9fef00;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .example {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 30px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .back-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(159, 239, 0, 0.4);
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #d63384;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-label {
+            color: #888;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            color: #333;
+            font-size: 1.4em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <span class="test-category">NIST SP 800-22 Statistical Test</span>
+        <h1>Maurer's Universal Statistical Test</h1>
+
+        <div class="highlight-box">
+            <strong>Quick Summary:</strong> Maurer's Universal Statistical Test measures the compressibility of the sequence by tracking the distance between repeating L-bit patterns. Truly random sequences are incompressible and should show predictable spacing between pattern repetitions.
+        </div>
+
+        <h2>What It Tests For</h2>
+        <p>This test detects whether the sequence can be significantly compressed, which would indicate non-randomness. It specifically checks for:</p>
+        <ul>
+            <li><strong>Compressibility:</strong> Whether the data contains patterns that allow compression</li>
+            <li><strong>Pattern repetition:</strong> How quickly patterns repeat in the sequence</li>
+            <li><strong>Entropy deficiency:</strong> Insufficient randomness that creates predictable structure</li>
+            <li><strong>Generator state space:</strong> Whether the RNG has adequate state diversity</li>
+        </ul>
+
+        <h2>How It Works</h2>
+        <h3>Step 1: Choose Block Size L</h3>
+        <p>The sequence is divided into L-bit blocks. The block size depends on the sequence length:</p>
+        <div class="example">
+Sequence length >= 387,840 bits: L = 6
+Sequence length >= 904,960 bits: L = 7
+Sequence length >= 2,068,480 bits: L = 8
+...up to L = 16 for very long sequences
+        </div>
+
+        <h3>Step 2: Initialize Dictionary (Learning Phase)</h3>
+        <p>The first Q = 10×2^L blocks form an initialization segment where we build a "dictionary" tracking the last occurrence of each possible L-bit pattern:</p>
+        <div class="example">
+For L=6 (64 possible patterns):
+  Q = 10 × 64 = 640 blocks used for initialization
+
+Pattern 000000 last seen at position: 234
+Pattern 000001 last seen at position: 567
+...
+Pattern 111111 last seen at position: 602
+        </div>
+
+        <h3>Step 3: Test Phase - Measure Distances</h3>
+        <p>For the remaining K blocks, measure the distance from each block to the last occurrence of that same pattern:</p>
+        <div class="example">
+Position 650: Block = 010101
+Last occurrence of 010101 was at position 590
+Distance = 650 - 590 = 60 blocks
+Log2(distance) = log2(60) ≈ 5.9
+        </div>
+
+        <h3>Step 4: Calculate Test Statistic</h3>
+        <p>Compute the average log-distance across all K test blocks:</p>
+        <div class="example">
+f = (1/K) × Sum(log2(distance[i])) for i=1 to K
+
+Where distance[i] = blocks since last occurrence of pattern i
+        </div>
+
+        <h3>Step 5: Compare to Expected Value</h3>
+        <p>For truly random data, the expected value and variance are known theoretically. The test statistic is:</p>
+        <div class="example">
+P-value based on:
+  Observed: f
+  Expected: expectedValue(L)
+  Variance: expectedVariance(L, K)
+        </div>
+
+        <div class="info-box">
+            <strong>Understanding P-Values:</strong>
+            <ul>
+                <li><strong>p >= 0.01:</strong> PASS - Sequence appears incompressible (random)</li>
+                <li><strong>p < 0.01:</strong> FAIL - Sequence is too compressible (non-random)</li>
+            </ul>
+        </div>
+
+        <h2>Interpreting Results</h2>
+
+        <h3>Pass (p-value >= 0.01)</h3>
+        <p>The sequence shows expected pattern repetition distances, indicating:</p>
+        <ul>
+            <li>Sequence is effectively incompressible</li>
+            <li>Patterns repeat at random-like intervals</li>
+            <li>Generator has sufficient entropy</li>
+            <li>No obvious structural patterns</li>
+        </ul>
+
+        <h3>Fail (p-value < 0.01)</h3>
+        <p>The sequence is more compressible than random data should be. Common causes include:</p>
+        <ul>
+            <li><strong>Too Compressible (f too low):</strong> Patterns repeat too frequently</li>
+            <li><strong>Too Incompressible (f too high):</strong> Patterns never or rarely repeat</li>
+            <li><strong>Short Generator Period:</strong> Limited state space causes early pattern repetition</li>
+            <li><strong>Bias in Patterns:</strong> Some patterns occur much more frequently than others</li>
+            <li><strong>Correlation:</strong> Recent outputs influence future outputs predictably</li>
+        </ul>
+
+        <div class="warning-box">
+            <strong>Important:</strong> This test requires substantial data - at minimum 387,840 bits (~48KB) for L=6. Longer sequences allow testing with larger L values, which can detect more subtle non-randomness.
+        </div>
+
+        <h2>Common Failure Patterns</h2>
+
+        <h3>Example 1: Frequent Pattern Repetition</h3>
+        <div class="example">
+Observation: f = 3.2 (expected ~5.2 for L=6)
+Analysis:    Patterns repeat much more frequently than expected
+Result:      FAIL - Too compressible
+Cause:       Generator has limited state or strong correlations
+        </div>
+
+        <h3>Example 2: No Pattern Repetition</h3>
+        <div class="example">
+Observation: f = 8.5 (expected ~5.2 for L=6)
+Analysis:    Patterns almost never repeat
+Result:      FAIL - Artificially diverse
+Cause:       Generator avoids repetitions (counter-based)
+        </div>
+
+        <h3>Example 3: Short PRNG Cycle</h3>
+        <div class="example">
+Generator:   LCG with period 2^16
+Observation: Patterns start repeating at exactly 2^16 intervals
+Result:      FAIL - Periodic structure detected
+Cause:       Generator period is too short
+        </div>
+
+        <h2>Technical Details</h2>
+        <div class="stat-grid">
+            <div class="stat-card">
+                <div class="stat-label">Test Type</div>
+                <div class="stat-value">Entropy</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Block Size L</div>
+                <div class="stat-value">6-16 bits</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Min Bits</div>
+                <div class="stat-value">387,840</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Significance</div>
+                <div class="stat-value">α = 0.01</div>
+            </div>
+        </div>
+
+        <h2>Connection to Compression</h2>
+        <p>This test is fundamentally based on data compression theory:</p>
+        <div class="example">
+Compressible data = Non-random data
+Incompressible data = Random data
+
+The test simulates dictionary-based compression by:
+1. Building a table of pattern positions
+2. Measuring how far you must "look back" to find repeats
+3. Averaging these distances
+
+Short average distances → Data compresses well → FAIL
+Expected distances → Data incompressible → PASS
+        </div>
+
+        <h2>When to Use This Test</h2>
+        <p>This test is particularly valuable for:</p>
+        <ul>
+            <li><strong>Large Datasets:</strong> Requires substantial data but provides powerful assessment</li>
+            <li><strong>Entropy Validation:</strong> Directly measures information-theoretic randomness</li>
+            <li><strong>Cryptographic RNGs:</strong> Ensures output can't be compressed/predicted</li>
+            <li><strong>Generator Period Testing:</strong> Detects insufficient state space</li>
+            <li><strong>Hardware RNG Validation:</strong> Identifies entropy source deficiencies</li>
+        </ul>
+
+        <h2>Mathematical Background</h2>
+        <p>Maurer's test is based on information theory and the relationship between randomness and Kolmogorov complexity. A truly random sequence is incompressible - you cannot represent it more compactly without loss. The test measures compressibility indirectly by examining pattern repetition intervals, which relate to the entropy of the source.</p>
+
+        <h2>References</h2>
+        <ul>
+            <li>NIST Special Publication 800-22 Rev. 1a</li>
+            <li>Section 2.9: Maurer's "Universal Statistical" Test</li>
+            <li>Maurer, U. (1992). "A Universal Statistical Test for Random Bit Generators"</li>
+            <li><a href="https://csrc.nist.gov/publications/detail/sp/800-22/rev-1a/final" target="_blank">Full NIST Documentation</a></li>
+        </ul>
+
+        <a href="/" class="back-link">← Back to Validator</a>
+    </div>
+</body>
+</html>

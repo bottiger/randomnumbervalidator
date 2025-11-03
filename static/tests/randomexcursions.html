@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Excursions Test - NIST Test Suite</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); padding: 40px; }
+        h1 { color: #333; margin-bottom: 10px; font-size: 2.2em; border-bottom: 3px solid #9fef00; padding-bottom: 15px; }
+        .test-category { display: inline-block; background: #9fef00; color: #333; padding: 6px 14px; border-radius: 20px; font-size: 0.85em; font-weight: 600; margin-bottom: 20px; }
+        h2 { color: #333; margin-top: 30px; margin-bottom: 15px; font-size: 1.6em; border-left: 4px solid #9fef00; padding-left: 12px; }
+        h3 { color: #555; margin-top: 20px; margin-bottom: 10px; font-size: 1.2em; }
+        p { color: #666; line-height: 1.8; margin-bottom: 15px; font-size: 1.05em; }
+        ul { margin-left: 25px; margin-bottom: 15px; color: #666; line-height: 1.8; }
+        li { margin-bottom: 8px; }
+        .highlight-box { background: #f8ffe8; border-left: 4px solid #9fef00; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .info-box { background: #e3f2fd; border-left: 4px solid #2196F3; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .warning-box { background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .example { background: #f8f9fa; padding: 15px; border-radius: 8px; font-family: 'Courier New', monospace; margin: 15px 0; overflow-x: auto; }
+        .back-link { display: inline-block; margin-top: 30px; padding: 12px 24px; background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; transition: transform 0.2s, box-shadow 0.2s; }
+        .back-link:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(159, 239, 0, 0.4); }
+        code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace; color: #d63384; }
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0; }
+        .stat-card { background: white; border: 2px solid #e0e0e0; border-radius: 8px; padding: 15px; text-align: center; }
+        .stat-label { color: #888; font-size: 0.9em; margin-bottom: 8px; }
+        .stat-value { color: #333; font-size: 1.4em; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <span class="test-category">NIST SP 800-22 Statistical Test</span>
+        <h1>Random Excursions Test</h1>
+
+        <div class="highlight-box">
+            <strong>Quick Summary:</strong> The Random Excursions Test analyzes the cumulative sum random walk by examining complete cycles (excursions) that start and end at zero. It checks whether the walk visits certain states with expected frequencies during these cycles.
+        </div>
+
+        <h2>What It Tests For</h2>
+        <p>This test performs a random walk analysis on cycles that return to zero, checking for:</p>
+        <ul>
+            <li><strong>State visitation anomalies:</strong> Non-uniform visits to different random walk states</li>
+            <li><strong>Cycle structure:</strong> Irregular patterns in complete excursions</li>
+            <li><strong>Deep state behavior:</strong> Abnormal frequency of extreme positive/negative cumulative sums</li>
+            <li><strong>Random walk properties:</strong> Deviations from expected Brownian motion behavior</li>
+        </ul>
+
+        <h2>How It Works</h2>
+        <h3>Step 1: Create Random Walk</h3>
+        <p>Convert bits to +1/-1 and compute cumulative sum (as in Cusums test):</p>
+        <div class="example">
+Binary:  1   0   1   1   0   0   1   0
+Mapped:  +1  -1  +1  +1  -1  -1  +1  -1
+Cusum:   +1   0  +1  +2  +1   0  +1   0
+        </div>
+
+        <h3>Step 2: Identify Cycles</h3>
+        <p>A cycle is a segment that starts at 0, visits other states, and returns to 0:</p>
+        <div class="example">
+States: 0 → +1 → 0 → +1 → +2 → +1 → 0 → +1 → 0
+        |_cycle 1_|   |____cycle 2____|  |cycle 3|
+
+Each cycle records which states were visited
+        </div>
+
+        <h3>Step 3: Count State Visits</h3>
+        <p>For 8 specific states (x = -4, -3, -2, -1, +1, +2, +3, +4), count visits across all cycles:</p>
+        <div class="example">
+State x = +2: Count how many cycles visited state +2,
+              and how many times per cycle
+        </div>
+
+        <h3>Step 4: Chi-Square Test Per State</h3>
+        <p>For each state x, perform a chi-square test comparing observed vs expected visit frequencies:</p>
+        <div class="example">
+Chi-Square(x) = Sum((observed - expected)² / expected)
+                for different visit counts
+
+Convert to p-value for each of 8 states
+        </div>
+
+        <div class="info-box">
+            <strong>Understanding P-Values:</strong>
+            <ul>
+                <li><strong>p >= 0.01:</strong> PASS - State visitation appears random</li>
+                <li><strong>p < 0.01:</strong> FAIL - Abnormal state visitation pattern</li>
+            </ul>
+            <p>The test produces 8 p-values (one per state), ideally all should pass.</p>
+        </div>
+
+        <h2>Interpreting Results</h2>
+
+        <h3>Pass (p-values >= 0.01)</h3>
+        <p>State visitation frequencies match random walk expectations, indicating proper random walk behavior.</p>
+
+        <h3>Fail (p-values < 0.01)</h3>
+        <p>Abnormal state visitation detected. Common causes:</p>
+        <ul>
+            <li><strong>Biased walk:</strong> Random walk favors certain states</li>
+            <li><strong>Correlation artifacts:</strong> Bit dependencies create non-random walk patterns</li>
+            <li><strong>Insufficient cycles:</strong> Not enough complete cycles for reliable statistics (needs ~500 cycles minimum)</li>
+            <li><strong>Generator memory:</strong> Past outputs influence future in detectable ways</li>
+        </ul>
+
+        <div class="warning-box">
+            <strong>Important:</strong> This test requires substantial data and sufficient cycles. Minimum ~1 million bits recommended. Sequences with fewer than 500 complete cycles may not produce reliable results.
+        </div>
+
+        <h2>Common Failure Patterns</h2>
+
+        <h3>Example 1: Avoidance of Extreme States</h3>
+        <div class="example">
+States +4 and -4 are visited too rarely
+Result: Fails for extreme states
+Cause: Generator biased toward balanced output
+        </div>
+
+        <h3>Example 2: State Clustering</h3>
+        <div class="example">
+State +2 visited excessively often
+Result: Fails for state +2
+Cause: Bit correlation creates biased random walk
+        </div>
+
+        <h3>Example 3: Insufficient Cycles</h3>
+        <div class="example">
+Only 100 complete cycles in sequence
+Result: Unreliable test (needs ~500+)
+Cause: Sequence too short or rarely returns to zero
+        </div>
+
+        <h2>Technical Details</h2>
+        <div class="stat-grid">
+            <div class="stat-card">
+                <div class="stat-label">Test Type</div>
+                <div class="stat-value">Chi-Square</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">States Tested</div>
+                <div class="stat-value">8 states</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Min Cycles</div>
+                <div class="stat-value">~500</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Significance</div>
+                <div class="stat-value">α = 0.01</div>
+            </div>
+        </div>
+
+        <h2>When to Use This Test</h2>
+        <p>This test is valuable for:</p>
+        <ul>
+            <li><strong>Deep Random Walk Analysis:</strong> Understanding random walk structure</li>
+            <li><strong>Long Sequences:</strong> Works best with substantial data</li>
+            <li><strong>Detecting Subtle Correlation:</strong> Finding hidden dependencies</li>
+            <li><strong>Cryptographic RNGs:</strong> Ensuring no exploitable walk patterns</li>
+        </ul>
+
+        <h2>References</h2>
+        <ul>
+            <li>NIST Special Publication 800-22 Rev. 1a</li>
+            <li>Section 2.14: Random Excursions Test</li>
+            <li><a href="https://csrc.nist.gov/publications/detail/sp/800-22/rev-1a/final" target="_blank">Full NIST Documentation</a></li>
+        </ul>
+
+        <a href="/" class="back-link">← Back to Validator</a>
+    </div>
+</body>
+</html>

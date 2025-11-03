@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poker Test - Statistical Test Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.2em;
+            border-bottom: 3px solid #9fef00;
+            padding-bottom: 15px;
+        }
+
+        .test-category {
+            display: inline-block;
+            background: #9fef00;
+            color: #333;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #333;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.6em;
+            border-left: 4px solid #9fef00;
+            padding-left: 12px;
+        }
+
+        h3 {
+            color: #555;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        p {
+            color: #666;
+            line-height: 1.8;
+            margin-bottom: 15px;
+            font-size: 1.05em;
+        }
+
+        ul {
+            margin-left: 25px;
+            margin-bottom: 15px;
+            color: #666;
+            line-height: 1.8;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .highlight-box {
+            background: #f8ffe8;
+            border-left: 4px solid #9fef00;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .example {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 30px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .back-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(159, 239, 0, 0.4);
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-label {
+            color: #888;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            color: #333;
+            font-size: 1.4em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <span class="test-category">Enhanced Statistical Test</span>
+        <h1>Poker Test (Pattern Distribution)</h1>
+
+        <div class="highlight-box">
+            <strong>Quick Summary:</strong> The Poker Test analyzes the distribution of fixed-size bit patterns (like poker hands) to check if all possible patterns occur with equal frequency. It's similar to checking if you'd get a fair distribution of poker hands from a deck.
+        </div>
+
+        <h2>What It Tests For</h2>
+        <p>This test examines <strong>pattern distribution uniformity</strong> in fixed-size blocks. Just as a fair deck of cards should produce all poker hands with expected frequencies, a random bit sequence should produce all possible bit patterns equally often. The test detects:</p>
+        <ul>
+            <li>Bias toward certain bit patterns over others</li>
+            <li>Missing or under-represented patterns</li>
+            <li>Non-uniform distribution of pattern types</li>
+            <li>Structural dependencies in the bit stream</li>
+        </ul>
+
+        <h2>How It Works</h2>
+        <h3>Step 1: Choose Pattern Size</h3>
+        <p>The test typically uses 4-bit blocks (like a nibble). With 4 bits, there are 2⁴ = 16 possible patterns:</p>
+        <div class="example">
+0000, 0001, 0010, 0011, 0100, 0101, 0110, 0111,
+1000, 1001, 1010, 1011, 1100, 1101, 1110, 1111
+        </div>
+
+        <h3>Step 2: Count Pattern Occurrences</h3>
+        <p>Divide the bit sequence into non-overlapping 4-bit blocks and count how many times each pattern appears:</p>
+        <div class="example">
+Bit sequence: 10110011101001011110...
+Blocks:       1011 0011 1010 0101 1110...
+Counts:
+  0000: 12 times
+  0001: 15 times
+  0010: 14 times
+  ...
+  1111: 13 times
+        </div>
+
+        <h3>Step 3: Calculate Expected Frequency</h3>
+        <p>For a random sequence, each of the 16 patterns should occur approximately the same number of times:</p>
+        <div class="example">
+Expected frequency = (Total blocks) / 16
+
+Example: 1000 blocks ÷ 16 patterns = 62.5 per pattern
+        </div>
+
+        <h3>Step 4: Compute Chi-Square Statistic</h3>
+        <p>Measure how much the observed frequencies deviate from expected:</p>
+        <div class="example">
+χ² = Σ [(Observed - Expected)² / Expected]
+
+For each of the 16 patterns
+        </div>
+
+        <div class="info-box">
+            <strong>Understanding Results:</strong>
+            <ul>
+                <li><strong>Low χ²:</strong> PASS - Patterns are uniformly distributed</li>
+                <li><strong>High χ²:</strong> FAIL - Some patterns occur too often or too rarely</li>
+            </ul>
+        </div>
+
+        <h2>Interpreting Results</h2>
+
+        <h3>Pass (uniform distribution)</h3>
+        <p>All bit patterns occur with roughly equal frequency, indicating no structural bias in the generator. The randomness is evenly distributed across all possible patterns.</p>
+
+        <h3>Fail (biased distribution)</h3>
+        <p>Some patterns are over-represented or under-represented. Common causes include:</p>
+        <ul>
+            <li><strong>Generator Bias:</strong> The RNG systematically produces certain bit combinations more than others</li>
+            <li><strong>Structural Patterns:</strong> Hidden patterns or correlations in the output</li>
+            <li><strong>Insufficient Mixing:</strong> Poor randomization leaving patterns in the output</li>
+            <li><strong>State Space Issues:</strong> Generator's internal state doesn't cover all patterns equally</li>
+        </ul>
+
+        <h2>Common Failure Patterns</h2>
+
+        <h3>Example 1: Missing High Patterns</h3>
+        <div class="example">
+Patterns 0000-0111: Normal frequencies (60-65 each)
+Patterns 1000-1111: Low frequencies (10-15 each)
+Result: FAIL - bias toward low bit values
+        </div>
+
+        <h3>Example 2: Alternating Pattern Bias</h3>
+        <div class="example">
+Pattern 0101: 120 occurrences (expected 62)
+Pattern 1010: 115 occurrences (expected 62)
+Other patterns: 40-50 each
+Result: FAIL - excessive alternating patterns
+        </div>
+
+        <h3>Example 3: Repetitive Pattern</h3>
+        <div class="example">
+Pattern 1111: 150 occurrences (expected 62)
+Pattern 0000: 145 occurrences (expected 62)
+Mixed patterns: 30-40 each
+Result: FAIL - generator produces runs of identical bits
+        </div>
+
+        <h2>Technical Details</h2>
+        <div class="stat-grid">
+            <div class="stat-card">
+                <div class="stat-label">Test Type</div>
+                <div class="stat-value">Chi-Square</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Pattern Size</div>
+                <div class="stat-value">4 bits</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Min Blocks</div>
+                <div class="stat-value">100+</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Patterns Tested</div>
+                <div class="stat-value">16</div>
+            </div>
+        </div>
+
+        <h2>Why It's Called "Poker Test"</h2>
+        <p>The name comes from the analogy to poker hands. Just as dealing cards should produce all possible poker hands with expected frequencies (flush, straight, etc.), a random bit generator should produce all bit patterns with equal probability. If you dealt cards and never got any flushes, you'd suspect the deck is biased - same principle applies here.</p>
+
+        <h2>Relationship to Other Tests</h2>
+        <p>The Poker Test is related to but distinct from:</p>
+        <ul>
+            <li><strong>Frequency Test:</strong> Checks overall 0/1 balance (1-bit patterns)</li>
+            <li><strong>Block Frequency Test:</strong> Checks 0/1 balance within blocks</li>
+            <li><strong>Poker Test:</strong> Checks distribution of all multi-bit patterns</li>
+        </ul>
+
+        <h2>When to Use This Test</h2>
+        <p>This test is particularly valuable for:</p>
+        <ul>
+            <li>Detecting subtle biases that simpler tests might miss</li>
+            <li>Validating cryptographic random number generators</li>
+            <li>Checking for structural patterns in the output</li>
+            <li>Complementing other statistical tests</li>
+        </ul>
+
+        <a href="/" class="back-link">← Back to Validator</a>
+    </div>
+</body>
+</html>

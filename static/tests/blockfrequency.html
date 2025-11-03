@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Block Frequency Test - NIST Test Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.2em;
+            border-bottom: 3px solid #9fef00;
+            padding-bottom: 15px;
+        }
+
+        .test-category {
+            display: inline-block;
+            background: #9fef00;
+            color: #333;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #333;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.6em;
+            border-left: 4px solid #9fef00;
+            padding-left: 12px;
+        }
+
+        h3 {
+            color: #555;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        p {
+            color: #666;
+            line-height: 1.8;
+            margin-bottom: 15px;
+            font-size: 1.05em;
+        }
+
+        ul {
+            margin-left: 25px;
+            margin-bottom: 15px;
+            color: #666;
+            line-height: 1.8;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .highlight-box {
+            background: #f8ffe8;
+            border-left: 4px solid #9fef00;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .example {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 30px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .back-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(159, 239, 0, 0.4);
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-label {
+            color: #888;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            color: #333;
+            font-size: 1.4em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <span class="test-category">NIST SP 800-22 Statistical Test</span>
+        <h1>Block Frequency Test</h1>
+
+        <div class="highlight-box">
+            <strong>Quick Summary:</strong> The Block Frequency Test checks whether the frequency of 1s is approximately 50% within smaller blocks of the sequence, rather than just across the entire sequence. This detects localized biases that the basic Frequency Test might miss.
+        </div>
+
+        <h2>What It Tests For</h2>
+        <p>This test looks for <strong>local imbalances</strong> in the bit sequence. A random sequence should have approximately 50% ones throughout, not just overall. This test divides the bit sequence into blocks and checks each block independently. It can detect:</p>
+        <ul>
+            <li>Periodic biases that cancel out globally but exist locally</li>
+            <li>Gradual drift in the generator's output over time</li>
+            <li>Block-based patterns in the random number generation</li>
+            <li>Non-stationary behavior in the random source</li>
+        </ul>
+
+        <h2>How It Works</h2>
+        <h3>Step 1: Divide into Blocks</h3>
+        <p>The bit sequence is divided into non-overlapping blocks of a fixed size (typically M = 128 bits or larger):</p>
+        <div class="example">
+Bit sequence: 101011...01001  (total n bits)
+Divide into:  [Block 1: 128 bits] [Block 2: 128 bits] ... [Block k]
+        </div>
+
+        <h3>Step 2: Calculate Proportions</h3>
+        <p>For each block, compute the proportion of 1s:</p>
+        <div class="example">
+Block 1: 01101010... → π₁ = (number of 1s) / M
+Block 2: 10110001... → π₂ = (number of 1s) / M
+...
+Block k: 11010011... → πₖ = (number of 1s) / M
+        </div>
+
+        <h3>Step 3: Chi-Square Statistic</h3>
+        <p>The test computes a chi-square statistic that measures how much each block's proportion deviates from the expected 0.5:</p>
+        <div class="example">
+χ² = 4M × Σ(πᵢ - 0.5)²
+
+Where:
+- M is the block size
+- πᵢ is the proportion of 1s in block i
+- Sum is over all k blocks
+        </div>
+
+        <h3>Step 4: Compute P-Value</h3>
+        <p>The chi-square statistic is compared to the theoretical chi-square distribution to produce a p-value.</p>
+
+        <div class="info-box">
+            <strong>Understanding P-Values:</strong>
+            <ul>
+                <li><strong>p ≥ 0.01:</strong> PASS - Block frequencies are consistent with randomness</li>
+                <li><strong>p < 0.01:</strong> FAIL - Too much variation in block frequencies</li>
+            </ul>
+        </div>
+
+        <h2>Interpreting Results</h2>
+
+        <h3>Pass (p-value ≥ 0.01)</h3>
+        <p>The proportion of 1s is consistent across all blocks, suggesting no localized biases. The generator maintains consistent behavior throughout the sequence.</p>
+
+        <h3>Fail (p-value < 0.01)</h3>
+        <p>Significant variation exists between blocks. Common causes include:</p>
+        <ul>
+            <li><strong>Periodic Patterns:</strong> The generator cycles through different bias levels</li>
+            <li><strong>Seeding Issues:</strong> The generator's initial state differs significantly from its steady state</li>
+            <li><strong>Internal State Exhaustion:</strong> The generator's internal state space is too small</li>
+            <li><strong>Time-Based Drift:</strong> The random source gradually changes over time</li>
+        </ul>
+
+        <div class="warning-box">
+            <strong>⚠️ Key Difference from Frequency Test:</strong> A sequence could pass the overall Frequency Test but fail this test if it has biases that shift between blocks (e.g., first half mostly 0s, second half mostly 1s). Both tests complement each other.
+        </div>
+
+        <h2>Common Failure Patterns</h2>
+
+        <h3>Example 1: Gradual Drift</h3>
+        <div class="example">
+Block 1: 30% ones  (π₁ = 0.30)
+Block 2: 40% ones  (π₂ = 0.40)
+Block 3: 50% ones  (π₃ = 0.50)
+Block 4: 60% ones  (π₄ = 0.60)
+Block 5: 70% ones  (π₅ = 0.70)
+Overall: 50% ones (would pass basic Frequency Test)
+Result:  FAIL - too much block-to-block variation
+        </div>
+
+        <h3>Example 2: Periodic Bias</h3>
+        <div class="example">
+Block 1: 30% ones
+Block 2: 70% ones
+Block 3: 30% ones
+Block 4: 70% ones
+Overall: 50% ones
+Result:  FAIL - periodic imbalance pattern
+        </div>
+
+        <h2>Technical Details</h2>
+        <div class="stat-grid">
+            <div class="stat-card">
+                <div class="stat-label">Test Type</div>
+                <div class="stat-value">Chi-Square</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Min Bits</div>
+                <div class="stat-value">100</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Block Size</div>
+                <div class="stat-value">M ≥ 20</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Significance</div>
+                <div class="stat-value">α = 0.01</div>
+            </div>
+        </div>
+
+        <h2>Relationship to Other Tests</h2>
+        <p>The Block Frequency Test is a localized version of the Frequency (Monobit) Test:</p>
+        <ul>
+            <li><strong>Frequency Test:</strong> Checks global balance across entire sequence</li>
+            <li><strong>Block Frequency Test:</strong> Checks local balance within each block</li>
+        </ul>
+        <p>Both tests should be used together to ensure both global and local randomness properties.</p>
+
+        <h2>When to Use This Test</h2>
+        <p>This test is particularly important for:</p>
+        <ul>
+            <li>Generators that use large internal states that change gradually</li>
+            <li>Hardware random number generators that may drift over time</li>
+            <li>Detecting initialization or warm-up issues in PRNGs</li>
+            <li>Validating that the generator remains consistent throughout long sequences</li>
+        </ul>
+
+        <h2>References</h2>
+        <ul>
+            <li>NIST Special Publication 800-22 Rev. 1a</li>
+            <li>Section 2.2: Frequency Test within a Block</li>
+            <li><a href="https://csrc.nist.gov/publications/detail/sp/800-22/rev-1a/final" target="_blank">Full NIST Documentation</a></li>
+        </ul>
+
+        <a href="/" class="back-link">← Back to Validator</a>
+    </div>
+</body>
+</html>

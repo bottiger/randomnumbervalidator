@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frequency (Monobit) Test - NIST Test Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.2em;
+            border-bottom: 3px solid #9fef00;
+            padding-bottom: 15px;
+        }
+
+        .test-category {
+            display: inline-block;
+            background: #9fef00;
+            color: #333;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #333;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.6em;
+            border-left: 4px solid #9fef00;
+            padding-left: 12px;
+        }
+
+        h3 {
+            color: #555;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        p {
+            color: #666;
+            line-height: 1.8;
+            margin-bottom: 15px;
+            font-size: 1.05em;
+        }
+
+        ul {
+            margin-left: 25px;
+            margin-bottom: 15px;
+            color: #666;
+            line-height: 1.8;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .highlight-box {
+            background: #f8ffe8;
+            border-left: 4px solid #9fef00;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .example {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 30px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .back-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(159, 239, 0, 0.4);
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #d63384;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-label {
+            color: #888;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            color: #333;
+            font-size: 1.4em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <span class="test-category">NIST SP 800-22 Statistical Test</span>
+        <h1>Frequency (Monobit) Test</h1>
+
+        <div class="highlight-box">
+            <strong>Quick Summary:</strong> The Frequency (Monobit) Test is the most fundamental randomness test. It checks whether the proportion of 0s and 1s in the entire bit sequence is approximately equal, as would be expected in a truly random sequence.
+        </div>
+
+        <h2>What It Tests For</h2>
+        <p>This test evaluates the most basic property of randomness: <strong>balance</strong>. In a truly random binary sequence, we expect approximately half the bits to be 0 and half to be 1. A significant imbalance suggests:</p>
+        <ul>
+            <li>The random number generator has a bias toward producing certain values</li>
+            <li>The bit extraction or conversion method is flawed</li>
+            <li>The sequence is not sufficiently random for cryptographic use</li>
+        </ul>
+
+        <h2>How It Works</h2>
+        <h3>Step 1: Convert to Binary</h3>
+        <p>Your input numbers are converted to a binary bit string. For example, with 8-bit numbers:</p>
+        <div class="example">
+Numbers: 42, 128, 255
+Binary:  00101010 10000000 11111111
+Total:   24 bits (10 ones, 14 zeros)
+        </div>
+
+        <h3>Step 2: Calculate the Test Statistic</h3>
+        <p>The test computes a statistic based on the difference between the number of ones and zeros:</p>
+        <div class="example">
+S = Sum of all bits (treating 0 as -1, 1 as +1)
+Sobs = |S| / sqrt(n)
+
+Where n is the total number of bits
+        </div>
+        <p>For a perfectly balanced sequence, S would be 0. The test statistic measures how far we deviate from this ideal.</p>
+
+        <h3>Step 3: Compute P-Value</h3>
+        <p>The test statistic is compared against a theoretical distribution to produce a <strong>p-value</strong>. The p-value represents the probability that a truly random sequence would produce a result at least as extreme as what was observed.</p>
+
+        <div class="info-box">
+            <strong>Understanding P-Values:</strong>
+            <ul>
+                <li><strong>p ≥ 0.01:</strong> PASS - The sequence appears random</li>
+                <li><strong>p < 0.01:</strong> FAIL - The imbalance is too extreme for randomness</li>
+            </ul>
+            <p>A p-value of 0.01 (1%) is the standard significance level used by NIST.</p>
+        </div>
+
+        <h2>Interpreting Results</h2>
+
+        <h3>Pass (p-value ≥ 0.01)</h3>
+        <p>The sequence has an acceptable balance of 0s and 1s. This is a necessary (but not sufficient) condition for randomness. Passing this test means your generator doesn't have an obvious bias, but further tests are needed.</p>
+
+        <h3>Fail (p-value < 0.01)</h3>
+        <p>The sequence is significantly imbalanced. Common causes include:</p>
+        <ul>
+            <li><strong>Generator Bias:</strong> The RNG systematically favors certain output ranges</li>
+            <li><strong>Bit-Width Mismatch:</strong> Using 32-bit conversion for 8-bit numbers wastes bits</li>
+            <li><strong>Range Issues:</strong> Numbers clustered in specific ranges (e.g., all < 128 for 8-bit)</li>
+            <li><strong>Insufficient Data:</strong> Very short sequences may fail due to natural variance</li>
+        </ul>
+
+        <div class="warning-box">
+            <strong>⚠️ Important Note:</strong> Passing the Frequency Test is just the first step. A sequence could pass this test but still fail other tests that check for patterns, correlations, or other non-random properties.
+        </div>
+
+        <h2>Common Failure Patterns</h2>
+
+        <h3>Example 1: All Low Numbers</h3>
+        <div class="example">
+Numbers: 0, 1, 2, 3, 4, 5, 6, 7 (8-bit)
+Binary:  00000000 00000001 00000010 ... 00000111
+Result:  Too many zeros - FAIL
+        </div>
+
+        <h3>Example 2: Alternating Pattern</h3>
+        <div class="example">
+Numbers: 0, 255, 0, 255, 0, 255 (8-bit)
+Binary:  00000000 11111111 00000000 11111111 ...
+Result:  Perfectly balanced - PASS (for this test)
+Note:    Would likely fail Runs Test due to pattern
+        </div>
+
+        <h2>Technical Details</h2>
+        <div class="stat-grid">
+            <div class="stat-card">
+                <div class="stat-label">Test Type</div>
+                <div class="stat-value">Proportion</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Min Bits</div>
+                <div class="stat-value">100</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Distribution</div>
+                <div class="stat-value">Normal</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Significance</div>
+                <div class="stat-value">α = 0.01</div>
+            </div>
+        </div>
+
+        <h2>When to Use This Test</h2>
+        <p>This test should <strong>always</strong> be included as the first check when validating a random number generator. It's fast, simple, and catches the most obvious flaws. However, it should never be used alone - passing this test only means your generator doesn't have a gross bias in bit distribution.</p>
+
+        <h2>References</h2>
+        <ul>
+            <li>NIST Special Publication 800-22 Rev. 1a</li>
+            <li>Section 2.1: Frequency (Monobit) Test</li>
+            <li><a href="https://csrc.nist.gov/publications/detail/sp/800-22/rev-1a/final" target="_blank">Full NIST Documentation</a></li>
+        </ul>
+
+        <a href="/" class="back-link">← Back to Validator</a>
+    </div>
+</body>
+</html>
