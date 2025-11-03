@@ -44,6 +44,8 @@ pub struct NistResults {
     pub success_rate: f64,
     pub individual_tests: Vec<NistTestResult>,
     pub fallback_message: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub raw_output: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -352,7 +354,9 @@ pub fn validate_random_numbers_with_nist_and_range(
         match wrapper.run_tests(&bits) {
             Ok(results) => {
                 info!("NIST tests completed successfully");
-                (None, Some(results))
+                // Extract raw output from results if available
+                let raw_output = results.raw_output.clone();
+                (raw_output, Some(results))
             }
             Err(e) => {
                 warn!("NIST tests failed: {}", e);

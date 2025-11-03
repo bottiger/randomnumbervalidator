@@ -296,6 +296,18 @@ impl NistWrapper {
                 });
             }
 
+            // Read raw NIST output even in fallback case (it may have partial results)
+            let raw_output = {
+                let report_path = self.experiments_dir.join("finalAnalysisReport.txt");
+                if report_path.exists() {
+                    fs::read_to_string(&report_path)
+                        .map_err(|e| format!("Failed to read finalAnalysisReport.txt: {}", e))
+                        .ok()
+                } else {
+                    None
+                }
+            };
+
             return Ok(NistResults {
                 bit_count,
                 tests_passed: enhanced_results.tests_passed,
@@ -303,6 +315,7 @@ impl NistWrapper {
                 success_rate: enhanced_results.pass_rate,
                 individual_tests: nist_tests,
                 fallback_message: None,
+                raw_output,
             });
         }
 
@@ -335,6 +348,18 @@ impl NistWrapper {
         // Sort tests by name for consistent display
         individual_tests.sort_by(|a, b| a.name.cmp(&b.name));
 
+        // Read raw NIST output from finalAnalysisReport.txt
+        let raw_output = {
+            let report_path = self.experiments_dir.join("finalAnalysisReport.txt");
+            if report_path.exists() {
+                fs::read_to_string(&report_path)
+                    .map_err(|e| format!("Failed to read finalAnalysisReport.txt: {}", e))
+                    .ok()
+            } else {
+                None
+            }
+        };
+
         Ok(NistResults {
             bit_count,
             tests_passed: success_count,
@@ -342,6 +367,7 @@ impl NistWrapper {
             success_rate,
             individual_tests,
             fallback_message: None,
+            raw_output,
         })
     }
 

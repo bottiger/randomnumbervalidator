@@ -1426,6 +1426,35 @@
             return html;
         }
 
+        // Helper functions for raw output
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function toggleRawOutput() {
+            const container = document.getElementById('rawOutputContainer');
+            const button = event.target;
+            if (container.style.display === 'none') {
+                container.style.display = 'block';
+                button.textContent = '📄 Hide Raw NIST Output';
+            } else {
+                container.style.display = 'none';
+                button.textContent = '📄 View Raw NIST Output';
+            }
+        }
+
+        function copyRawOutput() {
+            const rawText = document.getElementById('rawOutput').textContent;
+            navigator.clipboard.writeText(rawText).then(() => {
+                event.target.textContent = '✓ Copied!';
+                setTimeout(() => {
+                    event.target.textContent = '📋 Copy';
+                }, 2000);
+            });
+        }
+
         document.getElementById('validationForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -1541,7 +1570,30 @@
                 // Render NIST data if available
                 if (data.nist_data) {
                     document.getElementById('nistResultsContainer').style.display = 'block';
-                    document.getElementById('nistResults').innerHTML = renderNistData(data.nist_data);
+                    let nistHtml = renderNistData(data.nist_data);
+
+                    // Add raw output button if available
+                    if (data.nist_results) {
+                        nistHtml += `
+                            <div style="margin-top: 20px; text-align: center;">
+                                <button onclick="toggleRawOutput()" style="background: #6c757d; padding: 10px 20px;">
+                                    📄 View Raw NIST Output
+                                </button>
+                                <div id="rawOutputContainer" style="display: none; margin-top: 15px; text-align: left;">
+                                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 2px solid #ddd;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                            <h4 style="margin: 0;">Raw NIST Test Output</h4>
+                                            <button onclick="copyRawOutput()" style="padding: 5px 15px; font-size: 0.9em;">
+                                                📋 Copy
+                                            </button>
+                                        </div>
+                                        <pre id="rawOutput" style="white-space: pre-wrap; background: white; padding: 15px; border-radius: 4px; max-height: 500px; overflow-y: auto; font-size: 0.85em;">${escapeHtml(data.nist_results)}</pre>
+                                    </div>
+                                </div>
+                            </div>`;
+                    }
+
+                    document.getElementById('nistResults').innerHTML = nistHtml;
                 } else if (data.nist_results) {
                     // Fallback to old text format
                     document.getElementById('nistResultsContainer').style.display = 'block';
