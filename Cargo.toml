@@ -20,6 +20,7 @@ sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "migra
 uuid = { version = "1.10", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 num-bigint = "0.4"
+nistrs = "0.1.2"
 
 [dev-dependencies]
 reqwest = { version = "0.11", features = ["json"] }
