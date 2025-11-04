@@ -162,19 +162,18 @@ jobs:
             --zone=${{ secrets.GCP_ZONE }} \
             --format='get(networkInterfaces[0].accessConfigs[0].natIP)')
           echo "✅ Application deployed!"
-          echo "📍 Direct IP access: http://$INSTANCE_IP:3000"
+          echo "📍 Instance IP: $INSTANCE_IP (HTTP ports not publicly exposed)"
+          echo "🔒 All traffic must go through Cloudflare Tunnel with TLS"
 
           # Wait for application to start
           echo "Waiting for application to start..."
           sleep 10
 
-          # Verify application is running on direct IP
-          if curl -f -s "http://$INSTANCE_IP:3000" > /dev/null; then
-            echo "✓ Application is responding on direct IP"
-          else
-            echo "❌ Error: Application is not responding on http://$INSTANCE_IP:3000"
-            exit 1
-          fi
+          # Verify application is running via SSH health check
+          echo "Verifying application is running on the instance..."
+          gcloud compute ssh randomvalidator-instance \
+            --zone=${{ secrets.GCP_ZONE }} \
+            --command="curl -f -s http://localhost:3000 > /dev/null && echo '✓ Application is responding on localhost:3000' || (echo '❌ Application is not responding' && exit 1)"
 
           if [ -n "${{ vars.DOMAIN_NAME }}" ]; then
             DOMAIN="${{ vars.DOMAIN_NAME }}"
