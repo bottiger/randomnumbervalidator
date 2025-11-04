@@ -23,15 +23,15 @@ pub struct EnhancedTestResults {
 
 /// Run comprehensive statistical analysis and return structured data
 pub fn run_enhanced_tests_structured(bits: &[u8]) -> EnhancedTestResults {
-    let mut results = Vec::new();
-
     // Run all tests
-    results.push(frequency_test(bits));
-    results.push(runs_test(bits));
-    results.push(longest_run_test(bits));
-    results.push(poker_test(bits));
-    results.push(autocorrelation_test(bits));
-    results.push(pattern_distribution_test(bits));
+    let results = vec![
+        frequency_test(bits),
+        runs_test(bits),
+        longest_run_test(bits),
+        poker_test(bits),
+        autocorrelation_test(bits),
+        pattern_distribution_test(bits),
+    ];
 
     // Calculate overall statistics
     let total_tests = results.len();
@@ -195,13 +195,13 @@ fn longest_run_test(bits: &[u8]) -> StatisticalTestResult {
     let mut current_run = 1;
     let mut current_bit = bits[0];
 
-    for i in 1..bits.len() {
-        if bits[i] == current_bit {
+    for &bit in bits.iter().skip(1) {
+        if bit == current_bit {
             current_run += 1;
             longest_run = longest_run.max(current_run);
         } else {
             current_run = 1;
-            current_bit = bits[i];
+            current_bit = bit;
         }
     }
 

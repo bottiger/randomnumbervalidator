@@ -366,10 +366,13 @@ impl NistWrapper {
             };
             output.push_str(&format!(
                 "Current: Tier {} ({}) - {} tests run\n\
+                 Recommended: {} bits (~{} numbers) for optimal reliability\n\
                  Next Tier: Level {} ({}) requires {} bits (~{} numbers)\n",
                 tier.level,
                 tier.description,
                 total_tests,
+                tier.recommended_bits,
+                tier.recommended_bits / 32,
                 next_tier.level,
                 next_tier.name,
                 next_tier.min_bits,

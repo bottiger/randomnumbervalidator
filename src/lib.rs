@@ -10,17 +10,12 @@ use tracing::{debug, info, warn};
 pub mod nist_wrapper;
 pub mod enhanced_stats;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum InputFormat {
+    #[default]
     Numbers,
     Base64,
-}
-
-impl Default for InputFormat {
-    fn default() -> Self {
-        InputFormat::Numbers
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -299,7 +294,7 @@ fn convert_to_bits_base_conversion(numbers: &[u32], range_min: u32, range_max: u
     let mut bits = Vec::new();
     for byte in bytes {
         for i in (0..8).rev() {
-            bits.push(((byte >> i) & 1) as u8);
+            bits.push((byte >> i) & 1);
         }
     }
 
@@ -345,7 +340,7 @@ pub fn parse_base64_to_bits(input: &str) -> Result<Vec<u8>, String> {
     let mut bits = Vec::new();
     for &byte in &bytes {
         for i in (0..8).rev() {
-            bits.push(((byte >> i) & 1) as u8);
+            bits.push((byte >> i) & 1);
         }
     }
 
@@ -362,9 +357,11 @@ pub fn write_bits_to_debug_file(bits: &[u8]) -> Result<String, String> {
     std::fs::create_dir_all(debug_dir)
         .map_err(|e| format!("Failed to create debug directory: {}", e))?;
 
-    // Generate timestamped filename
-    let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-    let filename = format!("bits_{}.txt", timestamp);
+    // Generate unique timestamped filename (with microseconds to avoid race conditions in tests)
+    let now = chrono::Utc::now();
+    let timestamp = now.format("%Y%m%d_%H%M%S");
+    let micros = now.timestamp_subsec_micros();
+    let filename = format!("bits_{}_{:06}.txt", timestamp, micros);
     let filepath = debug_dir.join(&filename);
 
     // Write bits to file
