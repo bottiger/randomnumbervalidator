@@ -70,6 +70,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(serve_index))
+        .route("/game", get(serve_game))
         .route("/api/validate", post(validate_handler))
         .nest_service("/static", ServeDir::new("static"))
         .layer(TraceLayer::new_for_http())
@@ -90,6 +91,21 @@ async fn serve_index() -> impl IntoResponse {
 
     // Inject git revision info into HTML
     let html = include_str!("../../static/index.html");
+    let git_hash = env!("GIT_HASH");
+    let git_date = env!("GIT_DATE");
+
+    let html_with_version = html
+        .replace("{{GIT_HASH}}", git_hash)
+        .replace("{{GIT_DATE}}", git_date);
+
+    Html(html_with_version)
+}
+
+async fn serve_game() -> impl IntoResponse {
+    info!("Serving game page");
+
+    // Inject git revision info into HTML
+    let html = include_str!("../../static/game.html");
     let git_hash = env!("GIT_HASH");
     let git_date = env!("GIT_DATE");
 
