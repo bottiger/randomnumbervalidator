@@ -126,9 +126,11 @@ fn test_integration_validation_request_structure() {
     let request = ValidationRequest {
         numbers: "0,1,2,3".to_string(),
         use_nist: true,
+        input_format: Default::default(),
         range_min: None,
         range_max: None,
         bit_width: None,
+        debug_log: false,
     };
 
     assert_eq!(request.numbers, "0,1,2,3");

@@ -437,6 +437,131 @@
             margin-top: 25px;
         }
 
+        /* Compact table view */
+        .test-table-compact {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+
+        .test-table-compact thead {
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .test-table-compact th {
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            font-size: 0.85em;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            transition: background-color 0.2s;
+        }
+
+        .test-table-compact th:hover {
+            background-color: #e9ecef;
+        }
+
+        .test-table-compact th.sortable::after {
+            content: ' ⇅';
+            opacity: 0.3;
+            font-size: 0.9em;
+        }
+
+        .test-table-compact th.sort-asc::after {
+            content: ' ↑';
+            opacity: 1;
+            color: #9fef00;
+        }
+
+        .test-table-compact th.sort-desc::after {
+            content: ' ↓';
+            opacity: 1;
+            color: #9fef00;
+        }
+
+        .test-table-compact th:last-child {
+            text-align: center;
+        }
+
+        .test-table-compact tbody tr {
+            border-bottom: 1px solid #e9ecef;
+            transition: background-color 0.2s;
+        }
+
+        .test-table-compact tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .test-table-compact tbody tr.fail {
+            background-color: #fff5f5;
+        }
+
+        .test-table-compact td {
+            padding: 8px 12px;
+        }
+
+        .test-table-compact .test-name {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .test-table-compact .p-value {
+            font-family: monospace;
+            font-weight: bold;
+        }
+
+        .test-table-compact .p-value.good {
+            color: #28a745;
+        }
+
+        .test-table-compact .p-value.warning {
+            color: #ffc107;
+        }
+
+        .test-table-compact .p-value.bad {
+            color: #dc3545;
+        }
+
+        .test-table-compact .status-icon {
+            text-align: center;
+            font-size: 1.2em;
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            justify-content: center;
+        }
+
+        .view-toggle button {
+            padding: 8px 16px;
+            font-size: 0.85em;
+            background: #f8f9fa;
+            color: #333;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .view-toggle button.active {
+            background: #9fef00;
+            border-color: #9fef00;
+            color: white;
+            font-weight: 600;
+        }
+
+        .view-toggle button:hover {
+            border-color: #9fef00;
+        }
+
         .test-card {
             background: white;
             border-radius: 8px;
@@ -1441,7 +1566,78 @@
                     <div class="assessment-bar">
                         <div class="assessment-fill" style="width: ${passRate}%"></div>
                     </div>
-                </div>
+                </div>`;
+
+            // View toggle buttons
+            html += `
+                <div class="view-toggle">
+                    <button id="viewCompact" class="active" onclick="switchView('compact')">📊 Compact View</button>
+                    <button id="viewDetailed" onclick="switchView('detailed')">📋 Detailed View</button>
+                </div>`;
+
+            // Compact table view
+            html += `<div id="compactView" style="display: block;">
+                <table class="test-table-compact" id="testTable">
+                    <thead>
+                        <tr>
+                            <th class="sortable" onclick="sortTable(0)" data-sort="none">Test Name</th>
+                            <th class="sortable" onclick="sortTable(1)" data-sort="none" style="text-align: center;">P-Value</th>
+                            <th class="sortable" onclick="sortTable(2)" data-sort="none" style="text-align: center;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="testTableBody">`;
+
+            // Map test names to file names
+            const testPageMap = {
+                'frequency': 'frequency',
+                'blockfrequency': 'blockfrequency',
+                'runs': 'runs',
+                'longestrun': 'longestrun',
+                'rank': 'rank',
+                'fft': 'fft',
+                'nonoverlappingtemplate': 'nonoverlappingtemplate',
+                'overlappingtemplate': 'overlappingtemplate',
+                'universal': 'universal',
+                'approximateentropy': 'approximateentropy',
+                'randomexcursions': 'randomexcursions',
+                'randomexcursionsvariant': 'randomexcursionsvariant',
+                'serial': 'serial',
+                'linearcomplexity': 'linearcomplexity',
+                'cumulativesums': 'cumulativesums',
+                // Enhanced stats tests
+                'poker': 'poker',
+                'poker(patterndistribution)': 'poker',
+                'autocorrelation': 'autocorrelation',
+                'patterndistribution': 'patterndistribution'
+            };
+
+            // Compact table rows
+            for (const test of nistData.individual_tests) {
+                const rowClass = test.passed ? '' : 'fail';
+                const statusIcon = test.passed ? '✓' : '✗';
+                const pValueClass = test.p_value < 0.01 ? 'bad' : test.p_value > 0.1 ? 'good' : 'warning';
+
+                let testFileName = test.name.toLowerCase().replace(/ test/g, '').replace(/ /g, '');
+                const hasTestPage = testPageMap.hasOwnProperty(testFileName);
+                const testNameDisplay = hasTestPage ?
+                    `<a href="/static/tests/${testPageMap[testFileName]}.html" target="_blank" style="color: #333; text-decoration: none; border-bottom: 1px dashed #9fef00;">${test.name}</a>` :
+                    test.name;
+
+                html += `
+                    <tr class="${rowClass}">
+                        <td class="test-name" data-sort-value="${test.name.toLowerCase()}">${testNameDisplay}</td>
+                        <td style="text-align: center;" data-sort-value="${test.p_value}"><span class="p-value ${pValueClass}">${test.p_value.toFixed(4)}</span></td>
+                        <td class="status-icon" data-sort-value="${test.passed ? 1 : 0}">${statusIcon}</td>
+                    </tr>`;
+            }
+
+            html += `
+                    </tbody>
+                </table>
+            </div>`;
+
+            // Detailed cards view (hidden by default)
+            html += `<div id="detailedView" style="display: none;">
                 <div class="test-cards-grid">`;
 
             // Individual test cards
@@ -1450,34 +1646,7 @@
                 const statusText = test.passed ? 'PASS ✓' : 'FAIL ✗';
                 const pValueColor = test.p_value < 0.01 ? 'red' : test.p_value > 0.1 ? 'green' : 'orange';
 
-                // Create links for test description pages
-                // Handle both NIST format (e.g., "Frequency") and enhanced stats format (e.g., "Frequency Test")
                 let testFileName = test.name.toLowerCase().replace(/ test/g, '').replace(/ /g, '');
-
-                // Map test names to file names
-                const testPageMap = {
-                    'frequency': 'frequency',
-                    'blockfrequency': 'blockfrequency',
-                    'runs': 'runs',
-                    'longestrun': 'longestrun',
-                    'rank': 'rank',
-                    'fft': 'fft',
-                    'nonoverlappingtemplate': 'nonoverlappingtemplate',
-                    'overlappingtemplate': 'overlappingtemplate',
-                    'universal': 'universal',
-                    'approximateentropy': 'approximateentropy',
-                    'randomexcursions': 'randomexcursions',
-                    'randomexcursionsvariant': 'randomexcursionsvariant',
-                    'serial': 'serial',
-                    'linearcomplexity': 'linearcomplexity',
-                    'cumulativesums': 'cumulativesums',
-                    // Enhanced stats tests
-                    'poker': 'poker',
-                    'poker(patterndistribution)': 'poker',
-                    'autocorrelation': 'autocorrelation',
-                    'patterndistribution': 'patterndistribution'
-                };
-
                 const hasTestPage = testPageMap.hasOwnProperty(testFileName);
                 const testNameDisplay = hasTestPage ?
                     `<a href="/static/tests/${testPageMap[testFileName]}.html" target="_blank" style="color: #333; text-decoration: none; border-bottom: 1px solid #9fef00;">${test.name}</a>` :
@@ -1512,8 +1681,86 @@
                     </div>`;
             }
 
-            html += `</div>`;
+            html += `</div></div>`;
             return html;
+        }
+
+        // Function to switch between compact and detailed view
+        function switchView(view) {
+            const compactView = document.getElementById('compactView');
+            const detailedView = document.getElementById('detailedView');
+            const compactBtn = document.getElementById('viewCompact');
+            const detailedBtn = document.getElementById('viewDetailed');
+
+            if (view === 'compact') {
+                compactView.style.display = 'block';
+                detailedView.style.display = 'none';
+                compactBtn.classList.add('active');
+                detailedBtn.classList.remove('active');
+            } else {
+                compactView.style.display = 'none';
+                detailedView.style.display = 'block';
+                compactBtn.classList.remove('active');
+                detailedBtn.classList.add('active');
+            }
+        }
+
+        // Function to sort table by column
+        function sortTable(columnIndex) {
+            const table = document.getElementById('testTable');
+            const tbody = document.getElementById('testTableBody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            const headers = table.querySelectorAll('th');
+            const currentHeader = headers[columnIndex];
+
+            // Get current sort direction
+            const currentSort = currentHeader.getAttribute('data-sort') || 'none';
+            let newSort = 'asc';
+
+            // Toggle sort direction
+            if (currentSort === 'none') {
+                newSort = 'asc';
+            } else if (currentSort === 'asc') {
+                newSort = 'desc';
+            } else {
+                newSort = 'asc';
+            }
+
+            // Remove sort classes from all headers
+            headers.forEach(h => {
+                h.classList.remove('sort-asc', 'sort-desc');
+                h.setAttribute('data-sort', 'none');
+            });
+
+            // Add sort class to current header
+            currentHeader.classList.add(newSort === 'asc' ? 'sort-asc' : 'sort-desc');
+            currentHeader.setAttribute('data-sort', newSort);
+
+            // Sort rows
+            rows.sort((a, b) => {
+                const aCell = a.querySelectorAll('td')[columnIndex];
+                const bCell = b.querySelectorAll('td')[columnIndex];
+
+                const aValue = aCell.getAttribute('data-sort-value');
+                const bValue = bCell.getAttribute('data-sort-value');
+
+                let comparison = 0;
+
+                // For numeric columns (p-value and status)
+                if (columnIndex === 1 || columnIndex === 2) {
+                    const aNum = parseFloat(aValue);
+                    const bNum = parseFloat(bValue);
+                    comparison = aNum - bNum;
+                } else {
+                    // For text column (test name)
+                    comparison = aValue.localeCompare(bValue);
+                }
+
+                return newSort === 'asc' ? comparison : -comparison;
+            });
+
+            // Reattach sorted rows
+            rows.forEach(row => tbody.appendChild(row));
         }
 
         // Helper functions for raw output
