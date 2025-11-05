@@ -686,7 +686,7 @@
                     placeholder="Example: 42, 17, 89, 3, 56, 91, 23, 67"
                     required
                 ></textarea>
-                <div class="help-text">Enter positive integers (use any delimiter: commas, spaces, newlines, etc.)</div>
+                <div class="help-text">Enter positive integers (any delimiter auto-detected: commas, spaces, newlines, etc.) or base64-encoded data</div>
 
                                 <div class="input-stats">
 
@@ -706,7 +706,25 @@
 
                             </div>
 
-                
+                            <!-- Input Format Selector -->
+                            <div style="margin-bottom: 20px; padding: 15px; border: 2px solid #e0e0e0; border-radius: 8px; background: #f8f9fa;">
+                                <div style="font-weight: 600; margin-bottom: 10px; color: #333;">
+                                    📝 Input Format:
+                                </div>
+                                <div style="display: flex; gap: 20px;">
+                                    <label style="display: flex; align-items: center; cursor: pointer;">
+                                        <input type="radio" name="inputFormat" value="numbers" checked style="margin-right: 8px;">
+                                        Numbers (e.g., 3,156,202,3,65,4)
+                                    </label>
+                                    <label style="display: flex; align-items: center; cursor: pointer;">
+                                        <input type="radio" name="inputFormat" value="base64" style="margin-right: 8px;">
+                                        Base64 (e.g., SGVsbG8gV29ybGQ=)
+                                    </label>
+                                </div>
+                                <div class="help-text" style="margin-top: 8px;">
+                                    Base64 format extracts bits directly from decoded bytes
+                                </div>
+                            </div>
 
                             <button type="submit">Validate Numbers</button>
 
@@ -982,6 +1000,32 @@
         // Update input statistics and auto-detect strategy
         function updateInputStats() {
             const input = document.getElementById('numbers').value;
+            const inputFormat = document.querySelector('input[name="inputFormat"]:checked').value;
+
+            if (inputFormat === 'base64') {
+                // Handle base64 input
+                const cleanInput = input.replace(/\s/g, ''); // Remove whitespace
+
+                if (cleanInput.length === 0) {
+                    document.getElementById('numberCount').textContent = '0';
+                    document.getElementById('bitCount').textContent = '0';
+                    document.getElementById('detectedInfo').style.display = 'none';
+                    return;
+                }
+
+                // Estimate bytes from base64 (3 bytes per 4 base64 chars)
+                const estimatedBytes = Math.floor(cleanInput.length * 3 / 4);
+                const estimatedBits = estimatedBytes * 8;
+
+                document.getElementById('numberCount').textContent = `${estimatedBytes} bytes`;
+                document.getElementById('bitCount').textContent = estimatedBits;
+                document.getElementById('detectedInfo').style.display = 'none';
+
+                updateBitCount(); // Update tier indicators
+                return;
+            }
+
+            // Handle numbers input
             const numbers = input.split(/[^0-9]+/).filter(s => s.length > 0).map(n => parseInt(n));
             const numberCount = numbers.length;
 
@@ -1069,37 +1113,52 @@
         // Update bit count based on selected strategy
         function updateBitCount() {
             const input = document.getElementById('numbers').value;
-            const numbers = input.split(/[^0-9]+/).filter(s => s.length > 0);
-            const numberCount = numbers.length;
+            const inputFormat = document.querySelector('input[name="inputFormat"]:checked').value;
 
-            if (numberCount === 0) return;
-
-            const strategy = document.querySelector('input[name="strategy"]:checked').value;
             let bitCount = 0;
+            let numberCount = 0;
 
-            if (strategy === 'bitwidth') {
-                const bitWidth = parseInt(document.querySelector('input[name="bitwidth"]:checked').value);
-                bitCount = numberCount * bitWidth;
-                document.getElementById('bitCount').textContent = bitCount;
+            if (inputFormat === 'base64') {
+                // For base64, bit count is already calculated
+                const cleanInput = input.replace(/\s/g, '');
+                if (cleanInput.length === 0) return;
+
+                const estimatedBytes = Math.floor(cleanInput.length * 3 / 4);
+                bitCount = estimatedBytes * 8;
+                numberCount = estimatedBytes; // Use bytes as "count" for tier calculations
             } else {
-                // Custom range with base conversion
-                const rangeMin = parseInt(document.getElementById('rangeMin').value) || 0;
-                const rangeMax = parseInt(document.getElementById('rangeMax').value) || 0;
+                // Handle numbers input
+                const numbers = input.split(/[^0-9]+/).filter(s => s.length > 0);
+                numberCount = numbers.length;
 
-                if (rangeMax > rangeMin) {
-                    const rangeSize = rangeMax - rangeMin + 1;
-                    const bitsPerNumber = Math.log2(rangeSize);
-                    const estimatedBits = Math.ceil(numberCount * bitsPerNumber);
+                if (numberCount === 0) return;
 
-                    bitCount = estimatedBits;
-                    document.getElementById('bitCount').textContent = `~${estimatedBits}`;
+                const strategy = document.querySelector('input[name="strategy"]:checked').value;
 
-                    // Show entropy info
-                    document.getElementById('rangeInfo').style.display = 'block';
-                    document.getElementById('rangeEntropy').textContent =
-                        `${bitsPerNumber.toFixed(2)} bits/number, ~${estimatedBits} bits total`;
+                if (strategy === 'bitwidth') {
+                    const bitWidth = parseInt(document.querySelector('input[name="bitwidth"]:checked').value);
+                    bitCount = numberCount * bitWidth;
+                    document.getElementById('bitCount').textContent = bitCount;
                 } else {
-                    document.getElementById('rangeInfo').style.display = 'none';
+                    // Custom range with base conversion
+                    const rangeMin = parseInt(document.getElementById('rangeMin').value) || 0;
+                    const rangeMax = parseInt(document.getElementById('rangeMax').value) || 0;
+
+                    if (rangeMax > rangeMin) {
+                        const rangeSize = rangeMax - rangeMin + 1;
+                        const bitsPerNumber = Math.log2(rangeSize);
+                        const estimatedBits = Math.ceil(numberCount * bitsPerNumber);
+
+                        bitCount = estimatedBits;
+                        document.getElementById('bitCount').textContent = `~${estimatedBits}`;
+
+                        // Show entropy info
+                        document.getElementById('rangeInfo').style.display = 'block';
+                        document.getElementById('rangeEntropy').textContent =
+                            `${bitsPerNumber.toFixed(2)} bits/number, ~${estimatedBits} bits total`;
+                    } else {
+                        document.getElementById('rangeInfo').style.display = 'none';
+                    }
                 }
             }
 
@@ -1330,6 +1389,14 @@
             });
         });
 
+        // Input format radio button listeners
+        document.querySelectorAll('input[name="inputFormat"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                updateInputStats();
+                validateInputRealtime();
+            });
+        });
+
         // Initialize on page load
         updateInputStats();
         validateInputRealtime();
@@ -1484,26 +1551,35 @@
             const numbers = document.getElementById('numbers').value;
             const resultsDiv = document.getElementById('results');
             const loadingDiv = document.getElementById('loading');
+            const inputFormat = document.querySelector('input[name="inputFormat"]:checked').value;
 
-            // Parse numbers for validation
-            const numberArray = numbers.split(/[^0-9]+/).filter(s => s.length > 0).map(n => parseInt(n));
-
-            if (numberArray.length === 0) {
-                alert('Please enter some numbers');
+            // Validate input based on format
+            if (!numbers.trim()) {
+                alert('Please enter some data');
                 return;
             }
-
-            const actualMin = Math.min(...numberArray);
-            const actualMax = Math.max(...numberArray);
-
-            // Determine which strategy is selected
-            const strategy = document.querySelector('input[name="strategy"]:checked').value;
 
             let range_min = null;
             let range_max = null;
             let bit_width = null;
 
-            if (strategy === 'range') {
+            // Only validate numbers format, base64 has no range/bitwidth
+            if (inputFormat === 'numbers') {
+                // Parse numbers for validation
+                const numberArray = numbers.split(/[^0-9]+/).filter(s => s.length > 0).map(n => parseInt(n));
+
+                if (numberArray.length === 0) {
+                    alert('Please enter some numbers');
+                    return;
+                }
+
+                const actualMin = Math.min(...numberArray);
+                const actualMax = Math.max(...numberArray);
+
+                // Determine which strategy is selected
+                const strategy = document.querySelector('input[name="strategy"]:checked').value;
+
+                if (strategy === 'range') {
                 // Custom range is selected
                 const rangeMinInput = document.getElementById('rangeMin');
                 const rangeMaxInput = document.getElementById('rangeMax');
@@ -1541,8 +1617,9 @@
                     return;
                 }
 
-                // Note: We don't block if min != 0, as a random sequence might just not contain 0
-                // The backend will provide appropriate warnings if there's actual bias
+                    // Note: We don't block if min != 0, as a random sequence might just not contain 0
+                    // The backend will provide appropriate warnings if there's actual bias
+                }
             }
 
             // Show loading, hide results
@@ -1550,9 +1627,11 @@
             resultsDiv.style.display = 'none';
 
             try {
+
                 const requestBody = {
                     numbers,
-                    use_nist: true
+                    use_nist: true,
+                    input_format: inputFormat
                 };
 
                 if (range_min !== null && range_max !== null) {

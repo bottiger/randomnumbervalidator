@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
 use num_bigint::BigUint;
+use std::fs::File;
+use std::io::Write;
+use std::path::Path;
 
 #[allow(unused_imports)]
 use tracing::{debug, info, warn};
@@ -7,11 +10,27 @@ use tracing::{debug, info, warn};
 pub mod nist_wrapper;
 pub mod enhanced_stats;
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum InputFormat {
+    Numbers,
+    Base64,
+}
+
+impl Default for InputFormat {
+    fn default() -> Self {
+        InputFormat::Numbers
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ValidationRequest {
     pub numbers: String,
     #[serde(default = "default_use_nist")]
     pub use_nist: bool,
+    /// Optional: specify the input format (numbers or base64)
+    #[serde(default)]
+    pub input_format: InputFormat,
     /// Optional: specify the minimum value of your RNG range (e.g., 1 for range 1-100)
     pub range_min: Option<u32>,
     /// Optional: specify the maximum value of your RNG range (e.g., 100 for range 1-100)
@@ -19,6 +38,9 @@ pub struct ValidationRequest {
     /// Optional: enforce a specific bit-width (8, 16, or 32) for fixed-width encoding
     /// If specified, all numbers must fit within this bit-width
     pub bit_width: Option<u8>,
+    /// Optional: enable debug logging of bit stream to file
+    #[serde(default)]
+    pub debug_log: bool,
 }
 
 fn default_use_nist() -> bool {
@@ -57,6 +79,8 @@ pub struct ValidationResponse {
     pub nist_results: Option<String>, // Legacy field for backwards compatibility
     #[serde(skip_serializing_if = "Option::is_none")]
     pub nist_data: Option<NistResults>, // New structured data
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub debug_file: Option<String>, // Path to debug bit stream file
 }
 
 /// Parse the input string and convert to binary format for NIST tests
@@ -294,6 +318,105 @@ fn convert_to_bits_base_conversion(numbers: &[u32], range_min: u32, range_max: u
     Ok(bits)
 }
 
+/// Parse base64 input and convert to bits
+/// Base64 decoding produces bytes, which we convert to individual bits
+pub fn parse_base64_to_bits(input: &str) -> Result<Vec<u8>, String> {
+    use base64::prelude::*;
+
+    // Remove whitespace from base64 input
+    let mut clean_input = input.chars().filter(|c| !c.is_whitespace()).collect::<String>();
+
+    // Add padding if missing (base64 length must be multiple of 4)
+    let padding_needed = (4 - (clean_input.len() % 4)) % 4;
+    if padding_needed > 0 {
+        clean_input.push_str(&"=".repeat(padding_needed));
+        info!("Added {} padding character(s) to base64 input", padding_needed);
+    }
+
+    // Decode base64
+    let bytes = BASE64_STANDARD.decode(clean_input.as_bytes())
+        .map_err(|e| format!("Invalid base64 input: {}", e))?;
+
+    if bytes.is_empty() {
+        return Err("Base64 decoded to empty data".to_string());
+    }
+
+    // Convert bytes to individual bits
+    let mut bits = Vec::new();
+    for &byte in &bytes {
+        for i in (0..8).rev() {
+            bits.push(((byte >> i) & 1) as u8);
+        }
+    }
+
+    info!("Decoded {} bytes from base64 → {} bits", bytes.len(), bits.len());
+
+    Ok(bits)
+}
+
+/// Write bits to a debug file for inspection
+/// Returns the path to the written file
+pub fn write_bits_to_debug_file(bits: &[u8]) -> Result<String, String> {
+    // Create debug directory if it doesn't exist
+    let debug_dir = Path::new("debug");
+    std::fs::create_dir_all(debug_dir)
+        .map_err(|e| format!("Failed to create debug directory: {}", e))?;
+
+    // Generate timestamped filename
+    let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+    let filename = format!("bits_{}.txt", timestamp);
+    let filepath = debug_dir.join(&filename);
+
+    // Write bits to file
+    let mut file = File::create(&filepath)
+        .map_err(|e| format!("Failed to create debug file: {}", e))?;
+
+    // Write header
+    writeln!(file, "# Bit Stream Debug Output")
+        .map_err(|e| format!("Failed to write to debug file: {}", e))?;
+    writeln!(file, "# Total bits: {}", bits.len())
+        .map_err(|e| format!("Failed to write to debug file: {}", e))?;
+    writeln!(file, "# Timestamp: {}", chrono::Utc::now())
+        .map_err(|e| format!("Failed to write to debug file: {}", e))?;
+    writeln!(file, "#")
+        .map_err(|e| format!("Failed to write to debug file: {}", e))?;
+
+    // Write bits in groups of 64 for readability
+    for (i, chunk) in bits.chunks(64).enumerate() {
+        let bit_string: String = chunk.iter().map(|&b| if b == 1 { '1' } else { '0' }).collect();
+        writeln!(file, "{:08}: {}", i * 64, bit_string)
+            .map_err(|e| format!("Failed to write to debug file: {}", e))?;
+    }
+
+    let path_str = filepath.to_string_lossy().to_string();
+    info!("Wrote {} bits to debug file: {}", bits.len(), path_str);
+
+    Ok(path_str)
+}
+
+/// Prepare input based on format (numbers or base64) and optional parameters
+pub fn prepare_input_with_format(
+    input: &str,
+    format: &InputFormat,
+    range_min: Option<u32>,
+    range_max: Option<u32>,
+    bit_width: Option<u8>,
+) -> Result<Vec<u8>, String> {
+    match format {
+        InputFormat::Numbers => {
+            // Use existing number parsing logic
+            prepare_input_for_nist_with_range_and_bitwidth(input, range_min, range_max, bit_width)
+        }
+        InputFormat::Base64 => {
+            // Base64 parsing doesn't use range or bit_width parameters
+            if range_min.is_some() || range_max.is_some() || bit_width.is_some() {
+                warn!("range_min, range_max, and bit_width are ignored for base64 input");
+            }
+            parse_base64_to_bits(input)
+        }
+    }
+}
+
 /// Validate random numbers and return quality assessment (defaults to using NIST)
 pub fn validate_random_numbers(input: &str) -> ValidationResponse {
     validate_random_numbers_with_nist(input, true)
@@ -312,21 +435,43 @@ pub fn validate_random_numbers_with_nist_and_range(
     range_max: Option<u32>,
     bit_width: Option<u8>,
 ) -> ValidationResponse {
-    debug!(
-        "Starting validation: input_length={}, use_nist={}, range={:?}-{:?}, bit_width={:?}",
-        input.len(),
+    validate_random_numbers_full(
+        input,
         use_nist,
+        &InputFormat::Numbers,
         range_min,
         range_max,
-        bit_width
+        bit_width,
+        false,
+    )
+}
+
+/// Validate random numbers with full control over all parameters
+pub fn validate_random_numbers_full(
+    input: &str,
+    use_nist: bool,
+    input_format: &InputFormat,
+    range_min: Option<u32>,
+    range_max: Option<u32>,
+    bit_width: Option<u8>,
+    debug_log: bool,
+) -> ValidationResponse {
+    debug!(
+        "Starting validation: input_length={}, use_nist={}, format={:?}, range={:?}-{:?}, bit_width={:?}, debug_log={}",
+        input.len(),
+        use_nist,
+        input_format,
+        range_min,
+        range_max,
+        bit_width,
+        debug_log
     );
 
-    // Prepare input for NIST
-    let bits = match prepare_input_for_nist_with_range_and_bitwidth(input, range_min, range_max, bit_width) {
+    // Prepare input based on format
+    let bits = match prepare_input_with_format(input, input_format, range_min, range_max, bit_width) {
         Ok(b) => {
             debug!(
-                "Successfully parsed {} numbers into {} bits",
-                input.split(',').count(),
+                "Successfully parsed input into {} bits",
                 b.len()
             );
             b
@@ -339,8 +484,22 @@ pub fn validate_random_numbers_with_nist_and_range(
                 message: e,
                 nist_results: None,
                 nist_data: None,
+                debug_file: None,
             };
         }
+    };
+
+    // Write debug log if requested
+    let debug_file = if debug_log {
+        match write_bits_to_debug_file(&bits) {
+            Ok(path) => Some(path),
+            Err(e) => {
+                warn!("Failed to write debug file: {}", e);
+                None
+            }
+        }
+    } else {
+        None
     };
 
     // Basic validation: calculate simple randomness metrics
@@ -385,6 +544,7 @@ pub fn validate_random_numbers_with_nist_and_range(
         message: format!("Analyzed {} bits", bits.len()),
         nist_results,
         nist_data,
+        debug_file,
     }
 }
 
@@ -842,5 +1002,181 @@ mod tests {
         assert!(result.is_ok());
         let bits = result.unwrap();
         assert_eq!(bits.len(), 24); // 3 numbers * 8 bits (auto-detected)
+    }
+
+    // ========== Tests for base64 input format ==========
+
+    #[test]
+    fn test_base64_basic() {
+        // "Hello" in base64 is "SGVsbG8="
+        let result = parse_base64_to_bits("SGVsbG8=");
+        assert!(result.is_ok());
+        let bits = result.unwrap();
+        // "Hello" = 5 bytes = 40 bits
+        assert_eq!(bits.len(), 40);
+    }
+
+    #[test]
+    fn test_base64_with_whitespace() {
+        // Base64 with whitespace should be handled
+        let result = parse_base64_to_bits("SGVs bG8=");
+        assert!(result.is_ok());
+        let bits = result.unwrap();
+        assert_eq!(bits.len(), 40);
+    }
+
+    #[test]
+    fn test_base64_invalid() {
+        // Invalid base64 should fail
+        let result = parse_base64_to_bits("!!!invalid!!!");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid base64"));
+    }
+
+    #[test]
+    fn test_base64_empty() {
+        // Empty base64 should fail
+        let result = parse_base64_to_bits("");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_base64_missing_padding() {
+        // Base64 without padding should work (auto-padded)
+        // "Hello" in base64 is "SGVsbG8=" but we test without the padding
+        let result = parse_base64_to_bits("SGVsbG8");
+        assert!(result.is_ok());
+        let bits = result.unwrap();
+        assert_eq!(bits.len(), 40); // 5 bytes = 40 bits
+    }
+
+    #[test]
+    fn test_base64_auto_padding() {
+        // Test different padding scenarios
+        let test_cases = vec![
+            ("SGVsbG8", 40),        // "Hello" - needs 1 padding
+            ("Zm9v", 24),            // "foo" - needs 0 padding (already multiple of 4)
+            ("SGVsbG8=", 40),        // "Hello" - already has padding
+        ];
+
+        for (input, expected_bits) in test_cases {
+            let result = parse_base64_to_bits(input);
+            assert!(result.is_ok(), "Failed to parse: {}", input);
+            assert_eq!(result.unwrap().len(), expected_bits, "Wrong bit count for: {}", input);
+        }
+    }
+
+    #[test]
+    fn test_base64_binary_data() {
+        // Test with actual random bytes encoded as base64
+        // 16 bytes = 128 bits
+        let result = parse_base64_to_bits("AAAAAAAAAAAAAAAAAAAAAA==");
+        assert!(result.is_ok());
+        let bits = result.unwrap();
+        assert_eq!(bits.len(), 128);
+        // All zeros
+        assert!(bits.iter().all(|&b| b == 0));
+    }
+
+    #[test]
+    fn test_prepare_input_with_format_numbers() {
+        let result = prepare_input_with_format("0,128,255", &InputFormat::Numbers, None, None, None);
+        assert!(result.is_ok());
+        let bits = result.unwrap();
+        assert_eq!(bits.len(), 24); // 3 numbers * 8 bits
+    }
+
+    #[test]
+    fn test_prepare_input_with_format_base64() {
+        let result = prepare_input_with_format("SGVsbG8=", &InputFormat::Base64, None, None, None);
+        assert!(result.is_ok());
+        let bits = result.unwrap();
+        assert_eq!(bits.len(), 40); // "Hello" = 40 bits
+    }
+
+    #[test]
+    fn test_validate_with_base64_format() {
+        // Test validation with base64 input (needs enough data for NIST)
+        // Generate a large base64 string (at least 12500 bytes = 100,000 bits)
+        let bytes = vec![0xAA; 12500]; // Alternating bits pattern
+        use base64::prelude::*;
+        let base64_input = BASE64_STANDARD.encode(&bytes);
+
+        let response = validate_random_numbers_full(
+            &base64_input,
+            false, // Don't use NIST for speed
+            &InputFormat::Base64,
+            None,
+            None,
+            None,
+            false,
+        );
+
+        assert!(response.quality_score >= 0.0 && response.quality_score <= 1.0);
+    }
+
+    #[test]
+    fn test_input_format_default() {
+        let format = InputFormat::default();
+        assert_eq!(format, InputFormat::Numbers);
+    }
+
+    // ========== Tests for debug logging ==========
+
+    #[test]
+    fn test_write_bits_to_debug_file() {
+        let bits = vec![1, 0, 1, 0, 1, 1, 0, 0];
+        let result = write_bits_to_debug_file(&bits);
+        assert!(result.is_ok());
+        let filepath = result.unwrap();
+        assert!(filepath.contains("debug/bits_"));
+
+        // Verify file exists and can be read
+        let content = std::fs::read_to_string(&filepath);
+        assert!(content.is_ok());
+        let file_content = content.unwrap();
+        assert!(file_content.contains("# Bit Stream Debug Output"));
+        assert!(file_content.contains("# Total bits: 8"));
+
+        // Clean up
+        let _ = std::fs::remove_file(&filepath);
+    }
+
+    #[test]
+    fn test_validate_with_debug_log() {
+        let response = validate_random_numbers_full(
+            "0,128,255",
+            false,
+            &InputFormat::Numbers,
+            None,
+            None,
+            None,
+            true, // Enable debug logging
+        );
+
+        assert!(response.debug_file.is_some());
+        let debug_file = response.debug_file.unwrap();
+        assert!(debug_file.contains("debug/bits_"));
+
+        // Verify file exists
+        assert!(std::path::Path::new(&debug_file).exists());
+
+        // Clean up
+        let _ = std::fs::remove_file(&debug_file);
+    }
+
+    #[test]
+    fn test_validate_without_debug_log() {
+        let response = validate_random_numbers_full(
+            "0,128,255",
+            false,
+            &InputFormat::Numbers,
+            None,
+            None,
+            None,
+            false, // Disable debug logging
+        );
+
+        assert!(response.debug_file.is_none());
     }
 }
