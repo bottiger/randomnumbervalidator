@@ -50,7 +50,7 @@ pub fn run_enhanced_tests_structured(bits: &[u8]) -> EnhancedTestResults {
 /// Run comprehensive statistical analysis on bit sequence (legacy string output)
 pub fn run_enhanced_tests(bits: &[u8]) -> String {
     let structured = run_enhanced_tests_structured(bits);
-    let mut results = &structured.individual_tests;
+    let results = &structured.individual_tests;
     let total_tests = structured.tests_run;
     let passed_tests = structured.tests_passed;
     let pass_rate = structured.pass_rate;

@@ -158,6 +158,13 @@
             font-weight: bold;
         }
 
+        .tier-comprehensive {
+            background: #d4f1d4;
+            color: #1b5e20;
+            font-weight: bold;
+            border: 2px solid #4caf50;
+        }
+
         .guidance-box {
             margin-top: 15px;
             padding: 12px;
@@ -893,39 +900,47 @@
                 <div id="tier0" class="tier-row">
                     <div class="tier-badge badge-insufficient">Too Small</div>
                     <div class="tier-description">
-                        <span class="tier-requirement">0-3 numbers</span> · No NIST tests
+                        <span class="tier-requirement">0-2 numbers</span> · No NIST tests
                     </div>
                     <div class="tier-status" style="display: none;">← YOU ARE HERE</div>
                 </div>
 
                 <div id="tier1" class="tier-row">
-                    <div class="tier-badge badge-minimal">Minimal</div>
+                    <div class="tier-badge badge-minimal">Tier 1: Minimal</div>
                     <div class="tier-description">
-                        <span class="tier-requirement">4-31 numbers</span> · Limited NIST
+                        <span class="tier-requirement">3-30 numbers</span> · Basic tests (5 tests)
                     </div>
                     <div class="tier-status" style="display: none;">← YOU ARE HERE</div>
                 </div>
 
                 <div id="tier2" class="tier-row">
-                    <div class="tier-badge badge-limited">Partial</div>
+                    <div class="tier-badge badge-limited">Tier 2: Light</div>
                     <div class="tier-description">
-                        <span class="tier-requirement">32-124 numbers</span> · Some tests
+                        <span class="tier-requirement">31-312 numbers</span> · Block + Template tests (~10 tests)
                     </div>
                     <div class="tier-status" style="display: none;">← YOU ARE HERE</div>
                 </div>
 
                 <div id="tier3" class="tier-row">
-                    <div class="tier-badge badge-good">Good</div>
+                    <div class="tier-badge badge-good">Tier 3: Standard</div>
                     <div class="tier-description">
-                        <span class="tier-requirement">125-312 numbers</span> · Most tests
+                        <span class="tier-requirement">313-3,124 numbers</span> · Most NIST tests (~15 tests)
                     </div>
                     <div class="tier-status" style="display: none;">← YOU ARE HERE</div>
                 </div>
 
                 <div id="tier4" class="tier-row">
-                    <div class="tier-badge badge-excellent">Excellent</div>
+                    <div class="tier-badge badge-excellent">Tier 4: Full</div>
                     <div class="tier-description">
-                        <span class="tier-requirement">313+ numbers</span> · Full coverage
+                        <span class="tier-requirement">3,125-31,249 numbers</span> · Complete suite (40+ tests)
+                    </div>
+                    <div class="tier-status" style="display: none;">← YOU ARE HERE</div>
+                </div>
+
+                <div id="tier5" class="tier-row">
+                    <div class="tier-badge badge-excellent">Tier 5: Comprehensive</div>
+                    <div class="tier-description">
+                        <span class="tier-requirement">31,250+ numbers</span> · Optimal reliability
                     </div>
                     <div class="tier-status" style="display: none;">← YOU ARE HERE</div>
                 </div>
@@ -1095,14 +1110,15 @@
 
             // Update tier chart highlighting
             let currentTier = 0;
-            if (bitCount >= 10000) currentTier = 4;
-            else if (bitCount >= 4000) currentTier = 3;
+            if (bitCount >= 1000000) currentTier = 5;
+            else if (bitCount >= 100000) currentTier = 4;
+            else if (bitCount >= 10000) currentTier = 3;
             else if (bitCount >= 1000) currentTier = 2;
             else if (bitCount >= 100) currentTier = 1;
             else currentTier = 0;
 
             // Reset all tiers
-            for (let i = 0; i <= 4; i++) {
+            for (let i = 0; i <= 5; i++) {
                 const tierRow = document.getElementById(`tier${i}`);
                 const tierStatus = tierRow.querySelector('.tier-status');
                 tierRow.classList.remove('active', 'completed');
@@ -1130,28 +1146,35 @@
                 const bitsNeeded = 1000 - bitCount;
                 const numbersNeeded = Math.ceil(bitsNeeded / bitsPerNumber);
                 tierIndicator.className = 'tier-indicator tier-minimal';
-                tierIndicator.innerHTML = `<span class="tier-label">Minimal Coverage</span><span class="tier-target">+${numbersNeeded} for better tests</span>`;
+                tierIndicator.innerHTML = `<span class="tier-label">Tier 1: Minimal</span><span class="tier-target">+${numbersNeeded} for Tier 2</span>`;
                 guidanceBox.style.display = 'block';
-                guidanceText.innerHTML = `Limited NIST testing possible. <strong>Add ${numbersNeeded} more number${numbersNeeded !== 1 ? 's' : ''}</strong> to reach 1,000 bits for improved test coverage.`;
-            } else if (bitCount < 4000) {
-                const bitsNeeded = 4000 - bitCount;
-                const numbersNeeded = Math.ceil(bitsNeeded / bitsPerNumber);
-                tierIndicator.className = 'tier-indicator tier-limited';
-                tierIndicator.innerHTML = `<span class="tier-label">Partial Coverage</span><span class="tier-target">+${numbersNeeded} for most tests</span>`;
-                guidanceBox.style.display = 'block';
-                guidanceText.innerHTML = `Some NIST tests will run. <strong>Add ${numbersNeeded} more number${numbersNeeded !== 1 ? 's' : ''}</strong> to reach 4,000 bits for most tests.`;
+                guidanceText.innerHTML = `Basic NIST tests will run (5 tests). <strong>Add ${numbersNeeded} more number${numbersNeeded !== 1 ? 's' : ''}</strong> to reach 1,000 bits for Tier 2 (Light - 10+ tests).`;
             } else if (bitCount < 10000) {
                 const bitsNeeded = 10000 - bitCount;
                 const numbersNeeded = Math.ceil(bitsNeeded / bitsPerNumber);
+                tierIndicator.className = 'tier-indicator tier-limited';
+                tierIndicator.innerHTML = `<span class="tier-label">Tier 2: Light</span><span class="tier-target">+${numbersNeeded} for Tier 3</span>`;
+                guidanceBox.style.display = 'block';
+                guidanceText.innerHTML = `Basic + Block tests will run (10+ tests). <strong>Add ${numbersNeeded} more number${numbersNeeded !== 1 ? 's' : ''}</strong> to reach 10,000 bits for Tier 3 (Standard - 15+ tests).`;
+            } else if (bitCount < 100000) {
+                const bitsNeeded = 100000 - bitCount;
+                const numbersNeeded = Math.ceil(bitsNeeded / bitsPerNumber);
                 tierIndicator.className = 'tier-indicator tier-good';
-                tierIndicator.innerHTML = `<span class="tier-label">Good Coverage</span><span class="tier-target">+${numbersNeeded} for full suite</span>`;
+                tierIndicator.innerHTML = `<span class="tier-label">Tier 3: Standard</span><span class="tier-target">+${numbersNeeded} for Tier 4</span>`;
                 guidanceBox.style.display = 'block';
-                guidanceText.innerHTML = `Most NIST tests will run. <strong>Add ${numbersNeeded} more number${numbersNeeded !== 1 ? 's' : ''}</strong> to reach 10,000 bits for comprehensive coverage.`;
-            } else {
+                guidanceText.innerHTML = `Most NIST tests will run (15+ tests). <strong>Add ${numbersNeeded} more number${numbersNeeded !== 1 ? 's' : ''}</strong> to reach 100,000 bits for Tier 4 (Full - 40+ tests).`;
+            } else if (bitCount < 1000000) {
+                const bitsNeeded = 1000000 - bitCount;
+                const numbersNeeded = Math.ceil(bitsNeeded / bitsPerNumber);
                 tierIndicator.className = 'tier-indicator tier-excellent';
-                tierIndicator.innerHTML = `<span class="tier-label">Full Coverage</span><span class="tier-target">✓ All tests available</span>`;
+                tierIndicator.innerHTML = `<span class="tier-label">Tier 4: Full</span><span class="tier-target">+${numbersNeeded} for Tier 5</span>`;
                 guidanceBox.style.display = 'block';
-                guidanceText.innerHTML = '✓ Comprehensive NIST statistical analysis will be performed with full test coverage.';
+                guidanceText.innerHTML = `Complete NIST suite will run (40+ tests). <strong>Add ${numbersNeeded} more number${numbersNeeded !== 1 ? 's' : ''}</strong> to reach 1,000,000 bits for Tier 5 (Comprehensive - optimal reliability).`;
+            } else {
+                tierIndicator.className = 'tier-indicator tier-comprehensive';
+                tierIndicator.innerHTML = `<span class="tier-label">Tier 5: Comprehensive</span><span class="tier-target">✓ Maximum reliability</span>`;
+                guidanceBox.style.display = 'block';
+                guidanceText.innerHTML = '✓ Full NIST suite with optimal statistical reliability. All 40+ tests available with maximum confidence (recommended for cryptographic validation).';
             }
 
             if (numberCount === 0) {

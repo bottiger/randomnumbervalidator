@@ -1,125 +1,108 @@
+use nistrs::prelude::*;
 use std::collections::HashMap;
-use std::fs;
-use std::io::Write;
-use std::path::PathBuf;
-use std::process::{Command, Stdio};
 
 #[allow(unused_imports)]
 use tracing::{debug, error, info, warn};
 
-use crate::enhanced_stats;
 use crate::{NistResults, NistTestResult};
 
-/// Wrapper for NIST Statistical Test Suite
+/// Test tier information based on input size
+#[derive(Debug, Clone)]
+struct TestTier {
+    level: u8,
+    name: &'static str,
+    description: &'static str,
+    min_bits: usize,
+    recommended_bits: usize,
+}
+
+impl TestTier {
+    /// Tier 1: Minimal (100+ bits) - Basic frequency and runs tests only
+    const TIER_1: TestTier = TestTier {
+        level: 1,
+        name: "Minimal",
+        description: "Basic tests (Frequency, Runs, FFT)",
+        min_bits: 100,
+        recommended_bits: 1_000,
+    };
+
+    /// Tier 2: Light (1,000+ bits) - Add block-based and template tests
+    const TIER_2: TestTier = TestTier {
+        level: 2,
+        name: "Light",
+        description: "Basic + Block tests",
+        min_bits: 1_000,
+        recommended_bits: 10_000,
+    };
+
+    /// Tier 3: Standard (10,000+ bits) - Most tests available
+    const TIER_3: TestTier = TestTier {
+        level: 3,
+        name: "Standard",
+        description: "Most NIST tests",
+        min_bits: 10_000,
+        recommended_bits: 100_000,
+    };
+
+    /// Tier 4: Full (100,000+ bits) - All tests with reliable statistics
+    const TIER_4: TestTier = TestTier {
+        level: 4,
+        name: "Full",
+        description: "Complete NIST suite",
+        min_bits: 100_000,
+        recommended_bits: 1_000_000,
+    };
+
+    /// Tier 5: Comprehensive (1,000,000+ bits) - Maximum statistical reliability
+    const TIER_5: TestTier = TestTier {
+        level: 5,
+        name: "Comprehensive",
+        description: "Full suite with optimal reliability",
+        min_bits: 1_000_000,
+        recommended_bits: 10_000_000,
+    };
+}
+
+/// Wrapper for NIST Statistical Test Suite using nistrs crate
 pub struct NistWrapper {
-    project_root: PathBuf, // Store project root to avoid path issues
-    nist_path: PathBuf,
-    data_dir: PathBuf,
-    experiments_dir: PathBuf,
+    // No need for paths anymore - tests run in-memory
 }
 
 impl NistWrapper {
     pub fn new() -> Self {
-        // Find project root by searching for Cargo.toml
-        let project_root = Self::find_project_root()
-            .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
-
-        let nist_path = project_root.join("nist/sts-2.1.2/sts-2.1.2");
-        let data_dir = nist_path.join("data");
-        let experiments_dir = nist_path.join("experiments/AlgorithmTesting");
-
-        NistWrapper {
-            project_root,
-            nist_path,
-            data_dir,
-            experiments_dir,
-        }
+        NistWrapper {}
     }
 
-    /// Find the project root by looking for Cargo.toml
-    fn find_project_root() -> Option<PathBuf> {
-        let mut current = std::env::current_dir().ok()?;
-
-        // Search upwards for Cargo.toml
-        loop {
-            if current.join("Cargo.toml").exists() {
-                return Some(current);
-            }
-
-            if !current.pop() {
-                break;
-            }
-        }
-
-        None
-    }
-
-    /// Check if NIST test suite is available
+    /// Check if NIST test suite is available (always true with nistrs)
     pub fn is_available(&self) -> bool {
-        self.nist_path.join("assess").exists()
+        true
     }
 
-    /// Ensure all required experiment directories exist
-    /// NIST assess needs these directories to write test results
-    fn ensure_experiment_dirs(&self) -> Result<(), String> {
-        // Create the main experiments/AlgorithmTesting directory
-        fs::create_dir_all(&self.experiments_dir)
-            .map_err(|e| format!("Failed to create experiments directory: {}", e))?;
-
-        // Create subdirectories for each test type
-        let test_dirs = vec![
-            "Frequency",
-            "BlockFrequency",
-            "Runs",
-            "LongestRun",
-            "Rank",
-            "FFT",
-            "NonOverlappingTemplate",
-            "OverlappingTemplate",
-            "Universal",
-            "LinearComplexity",
-            "Serial",
-            "ApproximateEntropy",
-            "CumulativeSums",
-            "RandomExcursions",
-            "RandomExcursionsVariant",
-        ];
-
-        for test_dir in test_dirs {
-            let dir_path = self.experiments_dir.join(test_dir);
-            fs::create_dir_all(&dir_path)
-                .map_err(|e| format!("Failed to create {} directory: {}", test_dir, e))?;
-        }
-
-        debug!("Experiment directories created successfully");
-        Ok(())
-    }
-
-    /// Prepare input file for NIST tests
-    /// NIST expects ASCII '0' and '1' characters
-    pub fn prepare_input_file(&self, bits: &[u8], filename: &str) -> Result<PathBuf, String> {
-        // Ensure the data directory exists
-        fs::create_dir_all(&self.data_dir)
-            .map_err(|e| format!("Failed to create data directory: {}", e))?;
-
-        let output_path = self.data_dir.join(filename);
-        let mut file = fs::File::create(&output_path)
-            .map_err(|e| format!("Failed to create input file: {}", e))?;
-
-        // Write bits to file (NIST expects ASCII '0' and '1')
-        // Add newlines every 25 characters for readability (matching NIST format)
-        for (i, bit) in bits.iter().enumerate() {
-            if i > 0 && i % 25 == 0 {
-                writeln!(file).map_err(|e| format!("Failed to write newline: {}", e))?;
+    /// Determine which test tier to use based on input size
+    fn determine_tier(bit_count: usize) -> TestTier {
+        if bit_count >= TestTier::TIER_5.min_bits {
+            TestTier::TIER_5
+        } else if bit_count >= TestTier::TIER_4.min_bits {
+            TestTier::TIER_4
+        } else if bit_count >= TestTier::TIER_3.min_bits {
+            TestTier::TIER_3
+        } else if bit_count >= TestTier::TIER_2.min_bits {
+            TestTier::TIER_2
+        } else if bit_count >= TestTier::TIER_1.min_bits {
+            TestTier::TIER_1
+        } else {
+            // Return error tier with details
+            TestTier {
+                level: 0,
+                name: "Insufficient",
+                description: "Too few bits for NIST tests",
+                min_bits: 0,
+                recommended_bits: TestTier::TIER_1.min_bits,
             }
-            write!(file, "{}", bit).map_err(|e| format!("Failed to write bit: {}", e))?;
         }
-        writeln!(file).map_err(|e| format!("Failed to write final newline: {}", e))?;
-
-        Ok(output_path)
     }
 
-    /// Run NIST test suite by automating the interactive prompts
+    /// Run NIST test suite directly on the bits
     /// Returns structured test results
     pub fn run_tests(&self, bits: &[u8]) -> Result<NistResults, String> {
         self.run_tests_structured(bits)
@@ -127,238 +110,205 @@ impl NistWrapper {
 
     /// Run NIST tests and return structured data
     pub fn run_tests_structured(&self, bits: &[u8]) -> Result<NistResults, String> {
-        info!("Starting NIST statistical tests");
-        debug!("Project root: {}", self.project_root.display());
-        debug!("NIST path: {}", self.nist_path.display());
+        info!("Starting NIST statistical tests with nistrs");
 
-        let assess_path = self.nist_path.join("assess");
+        // Determine test tier based on input size
+        let tier = Self::determine_tier(bits.len());
 
-        if !self.is_available() {
-            error!(
-                "NIST test suite not available at: {}",
-                assess_path.display()
-            );
+        // Check if we have enough data
+        if tier.level == 0 {
+            warn!("Insufficient bits for NIST tests: {} < {}", bits.len(), TestTier::TIER_1.min_bits);
             return Err(format!(
-                "NIST test suite not found at: {}\nProject root: {}\nRun 'make nist' to compile the test suite.",
-                assess_path.display(),
-                self.project_root.display()
-            ));
-        }
-
-        // Need at least 100 bits for basic NIST tests
-        // Some tests require more data, but basic tests like Frequency can work with less
-        if bits.len() < 100 {
-            warn!("Insufficient bits for NIST tests: {} < 100", bits.len());
-            return Err(format!(
-                "Need at least 100 bits for NIST tests (minimum 4 numbers). You provided {} bits (~{} numbers).",
+                "NIST statistical tests require at least {} bits (~{} numbers with 32-bit encoding) for basic tests. \
+                 You provided {} bits (~{} numbers). The system will use enhanced statistical tests instead, \
+                 which are designed for smaller datasets.",
+                TestTier::TIER_1.min_bits,
+                TestTier::TIER_1.min_bits / 32,
                 bits.len(),
                 bits.len() / 32
             ));
         }
 
-        info!("Running NIST tests on {} bits", bits.len());
+        info!("Running NIST tests on {} bits (Tier {}: {})", bits.len(), tier.level, tier.name);
 
-        // Ensure experiment directories exist
-        debug!("Ensuring experiment directories exist");
-        self.ensure_experiment_dirs()?;
+        // Convert Vec<u8> (0s and 1s) to packed bytes for nistrs
+        let packed_bytes = Self::pack_bits_to_bytes(bits);
+        let bits_data = BitsData::from_binary(packed_bytes);
 
-        // Generate unique filename for this test
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_err(|e| format!("Time error: {}", e))?
-            .as_secs();
-        let filename = format!("test_data_{}.txt", timestamp);
+        // Run tests appropriate for this tier
+        let test_results = Self::run_all_tests(&bits_data, &tier);
 
-        // Write input file
-        debug!("Preparing input file: {}", filename);
-        let _input_path = self.prepare_input_file(bits, &filename)?;
-        let bit_length = bits.len();
-        debug!("Input file written: {} bits", bit_length);
-
-        // Create input string for automation
-        // The NIST assess program expects:
-        // 1. Generator option (0 = input from file)
-        // 2. Filename (relative to data directory - just the filename!)
-        // 3. Number of bitstreams (1 = single stream)
-        // 4. Input format (0 = ASCII '0' and '1' characters)
-        // 5. Test selection (0 = all tests)
-        let automated_input = format!("0\ndata/{}\n1\n0\n0\n", filename);
-
-        // Run assess with automated input
-        debug!("Spawning NIST assess process");
-        let mut child = Command::new(&assess_path)
-            .arg(bit_length.to_string())
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .current_dir(&self.nist_path)
-            .spawn()
-            .map_err(|e| {
-                error!("Failed to spawn assess: {}", e);
-                format!("Failed to spawn assess: {}", e)
-            })?;
-
-        // Write automated input to stdin and then close it
-        if let Some(mut stdin) = child.stdin.take() {
-            stdin
-                .write_all(automated_input.as_bytes())
-                .map_err(|e| format!("Failed to write to stdin: {}", e))?;
-            // stdin is dropped here, closing the pipe
-        }
-
-        // Wait for completion
-        debug!("Waiting for NIST assess to complete");
-        let result = child.wait_with_output().map_err(|e| {
-            error!("Failed to wait for assess: {}", e);
-            format!("Failed to wait for assess: {}", e)
-        })?;
-
-        // Capture output
-        let stdout = String::from_utf8_lossy(&result.stdout);
-        let stderr = String::from_utf8_lossy(&result.stderr);
-
-        debug!("NIST assess completed with status: {}", result.status);
-
-        // Check if tests completed (NIST may exit with non-zero even on success)
-        if !stdout.contains("Statistical Testing Complete") {
-            error!("NIST tests did not complete successfully");
-            return Err(format!(
-                "NIST assess did not complete successfully.\nExit status: {}\nStdout:\n{}\nStderr:\n{}",
-                result.status, stdout, stderr
-            ));
-        }
-
-        info!("NIST tests completed successfully, parsing results");
-
-        // Parse results
-        self.parse_all_results(bits, bit_length)
+        // Parse results into structured format
+        self.parse_test_results(bits, test_results, &tier)
     }
 
-    /// Parse all NIST test results from the experiments directory
-    fn parse_all_results(&self, bits: &[u8], bit_count: usize) -> Result<NistResults, String> {
-        let test_names = vec![
-            "Frequency",
-            "BlockFrequency",
-            "CumulativeSums",
-            "Runs",
-            "LongestRun",
-            "Rank",
-            "FFT",
-            "NonOverlappingTemplate",
-            "OverlappingTemplate",
-            "Universal",
-            "ApproximateEntropy",
-            "RandomExcursions",
-            "RandomExcursionsVariant",
-            "Serial",
-            "LinearComplexity",
-        ];
+    /// Convert Vec<u8> where each element is 0 or 1 into packed bytes
+    fn pack_bits_to_bytes(bits: &[u8]) -> Vec<u8> {
+        let mut packed = Vec::new();
+        let mut current_byte = 0u8;
+        let mut bit_count = 0;
 
+        for &bit in bits {
+            current_byte = (current_byte << 1) | (bit & 1);
+            bit_count += 1;
+
+            if bit_count == 8 {
+                packed.push(current_byte);
+                current_byte = 0;
+                bit_count = 0;
+            }
+        }
+
+        // Handle remaining bits
+        if bit_count > 0 {
+            // Pad with zeros on the right
+            current_byte <<= 8 - bit_count;
+            packed.push(current_byte);
+        }
+
+        packed
+    }
+
+    /// Run NIST tests appropriate for the given tier
+    fn run_all_tests(data: &BitsData, tier: &TestTier) -> HashMap<String, Vec<TestResultT>> {
         let mut results = HashMap::new();
+
+        // Tier 1: Basic tests (100+ bits)
+        if tier.level >= 1 {
+            results.insert("Frequency".to_string(), vec![frequency_test(data)]);
+            results.insert("Runs".to_string(), vec![runs_test(data)]);
+            results.insert("FFT".to_string(), vec![fft_test(data)]);
+
+            // Universal test requires at least 1,000 bits to avoid overflow in nistrs
+            if data.len() >= 1000 {
+                results.insert("Universal".to_string(), vec![universal_test(data)]);
+            }
+
+            // Cumulative Sums (returns [TestResultT; 2])
+            let cusum_results = cumulative_sums_test(data);
+            results.insert("CumulativeSums-Forward".to_string(), vec![cusum_results[0]]);
+            results.insert("CumulativeSums-Reverse".to_string(), vec![cusum_results[1]]);
+        }
+
+        // Tier 2: Add block and template tests (1,000+ bits)
+        if tier.level >= 2 {
+            let block_size = if data.len() >= 1000 { 100 } else { data.len() / 10 };
+            if block_size > 0 {
+                if let Ok(result) = block_frequency_test(data, block_size) {
+                    results.insert("BlockFrequency".to_string(), vec![result]);
+                }
+            }
+
+            // Template tests
+            let template_size = 9; // Standard NIST template size
+            if let Ok(result_vec) = non_overlapping_template_test(data, template_size) {
+                results.insert("NonOverlappingTemplate".to_string(), result_vec);
+            }
+            let result = overlapping_template_test(data, template_size);
+            results.insert("OverlappingTemplate".to_string(), vec![result]);
+        }
+
+        // Tier 3: Add more complex tests (10,000+ bits)
+        if tier.level >= 3 {
+            if let Ok(result) = longest_run_of_ones_test(data) {
+                results.insert("LongestRun".to_string(), vec![result]);
+            }
+            if let Ok(result) = rank_test(data) {
+                results.insert("Rank".to_string(), vec![result]);
+            }
+
+            // Approximate Entropy (use m=10 as recommended)
+            let m_param = 10.min(data.len() / 100);
+            if m_param >= 2 {
+                let result = approximate_entropy_test(data, m_param);
+                results.insert("ApproximateEntropy".to_string(), vec![result]);
+            }
+
+            // Serial test (returns [TestResultT; 2])
+            let serial_m = 16.min(data.len() / 100);
+            if serial_m >= 2 {
+                let serial_results = serial_test(data, serial_m);
+                results.insert("Serial-1".to_string(), vec![serial_results[0]]);
+                results.insert("Serial-2".to_string(), vec![serial_results[1]]);
+            }
+        }
+
+        // Tier 4: Add heavy tests requiring substantial data (100,000+ bits)
+        if tier.level >= 4 {
+            // Random Excursions test (returns Result<[(bool, f64); 8], String>)
+            if let Ok(excursions_results) = random_excursions_test(data) {
+                results.insert("RandomExcursions".to_string(), excursions_results.to_vec());
+            }
+
+            // Random Excursions Variant (returns Result<[(bool, f64); 18], String>)
+            if let Ok(variant_results) = random_excursions_variant_test(data) {
+                results.insert("RandomExcursionsVariant".to_string(), variant_results.to_vec());
+            }
+
+            // Linear Complexity (use block size) - returns (bool, f64) directly
+            let lc_block_size = 500.min(data.len() / 100);
+            if lc_block_size >= 100 {
+                let result = linear_complexity_test(data, lc_block_size);
+                results.insert("LinearComplexity".to_string(), vec![result]);
+            }
+        }
+
+        results
+    }
+
+    /// Parse test results into structured format
+    fn parse_test_results(
+        &self,
+        bits: &[u8],
+        test_results: HashMap<String, Vec<TestResultT>>,
+        tier: &TestTier,
+    ) -> Result<NistResults, String> {
+        let bit_count = bits.len();
         let mut success_count = 0;
         let mut total_tests = 0;
 
-        for test_name in &test_names {
-            let stats_path = self.experiments_dir.join(test_name).join("stats.txt");
-
-            if !stats_path.exists() {
-                continue; // Skip tests that weren't run
-            }
-
-            match self.parse_test_result(&stats_path) {
-                Ok((success, p_values, metrics)) => {
-                    total_tests += 1;
-                    if success {
-                        success_count += 1;
-                    }
-                    results.insert(test_name.to_string(), (success, p_values, metrics));
+        // Build individual test results
+        let mut individual_tests = Vec::new();
+        for (test_name, results_vec) in &test_results {
+            // Each test may have multiple sub-results
+            for (i, (passed, p_value)) in results_vec.iter().enumerate() {
+                total_tests += 1;
+                if *passed {
+                    success_count += 1;
                 }
-                Err(_) => continue, // Skip if we can't parse this test
-            }
-        }
 
-        // Check if any tests ran and provide tier-appropriate feedback
-        if total_tests == 0 {
-            // NIST couldn't run, so use enhanced statistical tests instead
-            info!("NIST tests produced no results, using enhanced statistical analysis instead");
-            let enhanced_results = enhanced_stats::run_enhanced_tests_structured(bits);
+                // If multiple results, add index to name
+                let name = if results_vec.len() > 1 {
+                    format!("{}-{}", test_name, i + 1)
+                } else {
+                    test_name.clone()
+                };
 
-            // Convert EnhancedTestResults to NistTestResult format
-            let mut nist_tests = Vec::new();
-            for test in enhanced_results.individual_tests {
-                nist_tests.push(NistTestResult {
-                    name: test.test_name,
-                    passed: test.passed,
-                    p_value: test.p_value.unwrap_or(test.statistic),
-                    p_values: vec![test.p_value.unwrap_or(test.statistic)],
-                    description: test.description,
-                    metrics: None, // No metrics from enhanced stats
+                individual_tests.push(NistTestResult {
+                    name,
+                    passed: *passed,
+                    p_value: *p_value,
+                    p_values: vec![*p_value],
+                    description: format!("P-value: {:.4}", p_value),
+                    metrics: None,
                 });
             }
-
-            // Read raw NIST output even in fallback case (it may have partial results)
-            let raw_output = {
-                let report_path = self.experiments_dir.join("finalAnalysisReport.txt");
-                if report_path.exists() {
-                    fs::read_to_string(&report_path)
-                        .map_err(|e| format!("Failed to read finalAnalysisReport.txt: {}", e))
-                        .ok()
-                } else {
-                    None
-                }
-            };
-
-            return Ok(NistResults {
-                bit_count,
-                tests_passed: enhanced_results.tests_passed,
-                total_tests: enhanced_results.tests_run,
-                success_rate: enhanced_results.pass_rate,
-                individual_tests: nist_tests,
-                fallback_message: None,
-                raw_output,
-            });
         }
 
-        // Generate structured data
+        // Sort tests by name for consistent display
+        individual_tests.sort_by(|a, b| a.name.cmp(&b.name));
+
+        // Calculate success rate
         let success_rate = if total_tests > 0 {
             (success_count as f64 / total_tests as f64) * 100.0
         } else {
             0.0
         };
 
-        let mut individual_tests = Vec::new();
-        for (test_name, (success, p_values, metrics)) in &results {
-            let (avg_p_value, description) = if p_values.is_empty() {
-                (0.0, "No p-values found in result".to_string())
-            } else {
-                let avg: f64 = p_values.iter().sum::<f64>() / p_values.len() as f64;
-                (avg, format!("{} p-values tested, average: {:.4}", p_values.len(), avg))
-            };
+        // Generate raw output text with tier information
+        let raw_output = Self::generate_raw_output(bit_count, &individual_tests, success_count, total_tests, success_rate, tier);
 
-            individual_tests.push(NistTestResult {
-                name: test_name.clone(),
-                passed: *success,
-                p_value: avg_p_value,
-                p_values: p_values.clone(),
-                description,
-                metrics: metrics.clone(),
-            });
-        }
-
-        // Sort tests by name for consistent display
-        individual_tests.sort_by(|a, b| a.name.cmp(&b.name));
-
-        // Read raw NIST output from finalAnalysisReport.txt
-        let raw_output = {
-            let report_path = self.experiments_dir.join("finalAnalysisReport.txt");
-            if report_path.exists() {
-                fs::read_to_string(&report_path)
-                    .map_err(|e| format!("Failed to read finalAnalysisReport.txt: {}", e))
-                    .ok()
-            } else {
-                None
-            }
-        };
+        info!("NIST tests completed (Tier {}): {}/{} passed ({:.1}%)", tier.level, success_count, total_tests, success_rate);
 
         Ok(NistResults {
             bit_count,
@@ -367,53 +317,78 @@ impl NistWrapper {
             success_rate,
             individual_tests,
             fallback_message: None,
-            raw_output,
+            raw_output: Some(raw_output),
         })
     }
 
-    /// Parse a single test result file
-    fn parse_test_result(&self, stats_path: &PathBuf) -> Result<(bool, Vec<f64>, Option<Vec<(String, String)>>), String> {
-        let content = fs::read_to_string(stats_path)
-            .map_err(|e| format!("Failed to read stats file: {}", e))?;
+    /// Generate raw output text for display
+    fn generate_raw_output(
+        bit_count: usize,
+        individual_tests: &[NistTestResult],
+        success_count: usize,
+        total_tests: usize,
+        success_rate: f64,
+        tier: &TestTier,
+    ) -> String {
+        let mut output = format!(
+            "NIST Statistical Test Suite - Results\n\
+             ======================================\n\n\
+             Dataset: {} bits\n\
+             Test Tier: Level {} - {} ({})\n\n\
+             Overall: {}/{} tests passed ({:.1}%)\n\n\
+             Individual Test Results:\n\
+             ------------------------\n",
+            bit_count, tier.level, tier.name, tier.description, success_count, total_tests, success_rate
+        );
 
-        if content.contains("not applicable") {
-            return Err("Test not applicable".to_string());
+        for test in individual_tests {
+            output.push_str(&format!(
+                "  {} {}: p-value = {:.6}\n",
+                if test.passed { "✓" } else { "✗" },
+                test.name,
+                test.p_value
+            ));
         }
 
-        let mut p_values = Vec::new();
-        let mut all_success = true;
-        let mut metrics = Vec::new();
+        output.push_str("\n\nAll tests use significance level α = 0.01\n");
+        output.push_str("Tests pass if p-value ≥ 0.01\n\n");
 
-        for line in content.lines() {
-            if line.contains("p_value") {
-                if line.contains("FAILURE") {
-                    all_success = false;
-                }
-                if let Some(value_str) = line.split('=').nth(1) {
-                    if let Ok(p_value) = value_str.trim().parse::<f64>() {
-                        p_values.push(p_value);
-                    }
-                }
-            }
-            if let Some((key, value)) = line.split_once(':') {
-                metrics.push((key.trim().to_string(), value.trim().to_string()));
-            }
+        // Add tier guidance
+        output.push_str("Test Coverage:\n");
+        output.push_str("-------------\n");
+        if tier.level < 5 {
+            let next_tier = match tier.level {
+                1 => TestTier::TIER_2,
+                2 => TestTier::TIER_3,
+                3 => TestTier::TIER_4,
+                4 => TestTier::TIER_5,
+                _ => TestTier::TIER_5,
+            };
+            output.push_str(&format!(
+                "Current: Tier {} ({}) - {} tests run\n\
+                 Next Tier: Level {} ({}) requires {} bits (~{} numbers)\n",
+                tier.level,
+                tier.description,
+                total_tests,
+                next_tier.level,
+                next_tier.name,
+                next_tier.min_bits,
+                next_tier.min_bits / 32
+            ));
+        } else {
+            output.push_str(&format!(
+                "Maximum tier reached (Tier {}). All NIST tests available with optimal reliability.\n",
+                tier.level
+            ));
         }
 
-        if p_values.is_empty() {
-            return Err("No p-values found".to_string());
-        }
-
-        Ok((all_success, p_values, Some(metrics)))
+        output
     }
 
     /// Parse NIST results from a specific directory (for backwards compatibility)
     pub fn parse_results(&self, _results_dir: &str) -> Result<NistResults, String> {
-        // Use a default bit count for backwards compatibility
-        // This is a legacy method, so we assume a reasonable default
-        // For legacy calls, we don't have the bits, so pass empty slice
-        let empty_bits: Vec<u8> = Vec::new();
-        self.parse_all_results(&empty_bits, 10000)
+        // Legacy method - not used with nistrs
+        Err("parse_results() is deprecated with nistrs integration".to_string())
     }
 }
 
@@ -430,243 +405,66 @@ mod tests {
     #[test]
     fn test_nist_wrapper_creation() {
         let wrapper = NistWrapper::new();
-        // Just verify we can create the wrapper
-        assert!(wrapper.nist_path.as_os_str().len() > 0);
-        assert!(wrapper.project_root.as_os_str().len() > 0);
-    }
-
-    #[test]
-    fn test_prepare_input_file() {
-        let wrapper = NistWrapper::new();
-        let bits = vec![1, 0, 1, 1, 0, 0, 1, 0];
-        let temp_file = "test_nist_input.txt";
-
-        let result = wrapper.prepare_input_file(&bits, temp_file);
-        assert!(result.is_ok());
-
-        // Verify file was created in data directory
-        let file_path = result.unwrap();
-        assert!(file_path.exists());
-
-        // Verify content
-        let content = fs::read_to_string(&file_path).unwrap();
-        assert!(content.contains('0'));
-        assert!(content.contains('1'));
-
-        // Clean up
-        let _ = fs::remove_file(file_path);
-    }
-
-    #[test]
-    fn test_prepare_input_file_empty_bits() {
-        let wrapper = NistWrapper::new();
-        let bits = vec![];
-        let result = wrapper.prepare_input_file(&bits, "test_empty.txt");
-
-        assert!(result.is_ok());
-
-        // Clean up
-        if let Ok(path) = result {
-            let _ = fs::remove_file(path);
-        }
-    }
-
-    #[test]
-    fn test_prepare_input_file_all_zeros() {
-        let wrapper = NistWrapper::new();
-        let bits = vec![0, 0, 0, 0, 0, 0, 0, 0];
-        let result = wrapper.prepare_input_file(&bits, "test_zeros.txt");
-
-        assert!(result.is_ok());
-
-        let file_path = result.unwrap();
-        let content = fs::read_to_string(&file_path).unwrap();
-        assert!(content.chars().filter(|&c| c == '0').count() == 8);
-
-        // Clean up
-        let _ = fs::remove_file(file_path);
-    }
-
-    #[test]
-    fn test_prepare_input_file_all_ones() {
-        let wrapper = NistWrapper::new();
-        let bits = vec![1, 1, 1, 1, 1, 1, 1, 1];
-        let result = wrapper.prepare_input_file(&bits, "test_ones.txt");
-
-        assert!(result.is_ok());
-
-        let file_path = result.unwrap();
-        let content = fs::read_to_string(&file_path).unwrap();
-        assert!(content.chars().filter(|&c| c == '1').count() == 8);
-
-        // Clean up
-        let _ = fs::remove_file(file_path);
-    }
-
-    #[test]
-    fn test_prepare_input_file_large_input() {
-        let wrapper = NistWrapper::new();
-        // Create 2000 bits alternating between 0 and 1
-        let bits: Vec<u8> = (0..2000).map(|i| (i % 2) as u8).collect();
-        let result = wrapper.prepare_input_file(&bits, "test_large.txt");
-
-        assert!(result.is_ok());
-
-        let file_path = result.unwrap();
-        assert!(file_path.exists());
-
-        // Verify we got all the bits
-        let content = fs::read_to_string(&file_path).unwrap();
-        let bit_chars = content.chars().filter(|&c| c == '0' || c == '1').count();
-        assert_eq!(bit_chars, 2000);
-
-        // Clean up
-        let _ = fs::remove_file(file_path);
+        // Verify we can create the wrapper
+        assert!(wrapper.is_available());
     }
 
     #[test]
     fn test_is_available() {
         let wrapper = NistWrapper::new();
-        // This will return true or false depending on whether NIST is compiled
-        // We just verify the method works
-        let available = wrapper.is_available();
-        assert!(available == true || available == false);
+        // nistrs is always available
+        assert!(wrapper.is_available());
     }
 
     #[test]
     fn test_run_tests_insufficient_bits() {
         let wrapper = NistWrapper::new();
-        let bits = vec![1, 0, 1, 0]; // Only 4 bits, need at least 100
+        let bits = vec![1, 0, 1, 0]; // Only 4 bits, need at least 100,000
 
         let result = wrapper.run_tests(&bits);
         assert!(result.is_err());
-        // The error should either mention "100" (if NIST is available) or "not found" (if not compiled)
         let error_msg = result.unwrap_err();
-        assert!(error_msg.contains("100") || error_msg.contains("not found"));
-    }
-
-    #[test]
-    fn test_find_project_root() {
-        let root = NistWrapper::find_project_root();
-        // Should find the project root or return None
-        if let Some(path) = root {
-            assert!(path.join("Cargo.toml").exists());
-        }
+        assert!(error_msg.contains("100000") || error_msg.contains("require"));
     }
 
     #[test]
     fn test_nist_wrapper_default() {
         let wrapper = NistWrapper::default();
-        assert!(wrapper.nist_path.as_os_str().len() > 0);
+        assert!(wrapper.is_available());
     }
 
     #[test]
-    fn test_prepare_input_file_formatting() {
-        let wrapper = NistWrapper::new();
-        // Test that lines are broken every 25 characters as expected by NIST
-        let bits = vec![0; 60]; // 60 zeros
-        let result = wrapper.prepare_input_file(&bits, "test_format.txt");
-
-        assert!(result.is_ok());
-
-        let file_path = result.unwrap();
-        let content = fs::read_to_string(&file_path).unwrap();
-
-        // Should have newlines for formatting
-        assert!(content.contains('\n'));
-
-        // Clean up
-        let _ = fs::remove_file(file_path);
+    fn test_pack_bits_to_bytes() {
+        // Test: 8 bits should pack into 1 byte
+        let bits = vec![1, 0, 1, 0, 1, 0, 1, 0];
+        let packed = NistWrapper::pack_bits_to_bytes(&bits);
+        assert_eq!(packed.len(), 1);
+        assert_eq!(packed[0], 0b10101010);
     }
 
     #[test]
-    fn test_prepare_input_binary_values_only() {
-        let wrapper = NistWrapper::new();
-        let bits = vec![0, 1, 0, 1, 1, 0, 1, 0];
-        let result = wrapper.prepare_input_file(&bits, "test_binary.txt");
-
-        assert!(result.is_ok());
-
-        let file_path = result.unwrap();
-        let content = fs::read_to_string(&file_path).unwrap();
-
-        // Verify only '0', '1', and newlines are in the file
-        for c in content.chars() {
-            assert!(c == '0' || c == '1' || c == '\n');
-        }
-
-        // Clean up
-        let _ = fs::remove_file(file_path);
+    fn test_pack_bits_to_bytes_partial() {
+        // Test: 12 bits should pack into 2 bytes (last byte padded)
+        let bits = vec![1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 0];
+        let packed = NistWrapper::pack_bits_to_bytes(&bits);
+        assert_eq!(packed.len(), 2);
+        assert_eq!(packed[0], 0b11110000);
+        assert_eq!(packed[1], 0b10100000); // Padded with zeros
     }
 
     #[test]
-    fn test_parse_results_backwards_compat() {
-        let wrapper = NistWrapper::new();
-        // Test the backwards compatible parse_results method
-        // It should work even with an arbitrary directory name
-        let result = wrapper.parse_results("some_directory");
-        // This will try to parse all results, may succeed or fail depending on state
-        // We just verify it doesn't panic
-        assert!(result.is_ok() || result.is_err());
+    fn test_pack_bits_all_zeros() {
+        let bits = vec![0, 0, 0, 0, 0, 0, 0, 0];
+        let packed = NistWrapper::pack_bits_to_bytes(&bits);
+        assert_eq!(packed.len(), 1);
+        assert_eq!(packed[0], 0);
     }
 
     #[test]
-    fn test_ensure_experiment_dirs() {
-        let wrapper = NistWrapper::new();
-
-        // This should create all required directories
-        let result = wrapper.ensure_experiment_dirs();
-        assert!(
-            result.is_ok(),
-            "Failed to create experiment directories: {:?}",
-            result
-        );
-
-        // Verify the main experiments directory exists
-        assert!(
-            wrapper.experiments_dir.exists(),
-            "Experiments directory should exist"
-        );
-
-        // Verify all test subdirectories exist
-        let test_dirs = vec![
-            "Frequency",
-            "BlockFrequency",
-            "Runs",
-            "LongestRun",
-            "Rank",
-            "FFT",
-            "NonOverlappingTemplate",
-            "OverlappingTemplate",
-            "Universal",
-            "LinearComplexity",
-            "Serial",
-            "ApproximateEntropy",
-            "CumulativeSums",
-            "RandomExcursions",
-            "RandomExcursionsVariant",
-        ];
-
-        for test_dir in test_dirs {
-            let dir_path = wrapper.experiments_dir.join(test_dir);
-            assert!(
-                dir_path.exists(),
-                "Test directory should exist: {}",
-                test_dir
-            );
-        }
-    }
-
-    #[test]
-    fn test_ensure_experiment_dirs_idempotent() {
-        let wrapper = NistWrapper::new();
-
-        // Call it once
-        let result1 = wrapper.ensure_experiment_dirs();
-        assert!(result1.is_ok());
-
-        // Call it again - should still succeed (idempotent)
-        let result2 = wrapper.ensure_experiment_dirs();
-        assert!(result2.is_ok());
+    fn test_pack_bits_all_ones() {
+        let bits = vec![1, 1, 1, 1, 1, 1, 1, 1];
+        let packed = NistWrapper::pack_bits_to_bytes(&bits);
+        assert_eq!(packed.len(), 1);
+        assert_eq!(packed[0], 0xFF);
     }
 }
