@@ -63,6 +63,33 @@ fi
 # Create config directory
 sudo mkdir -p /etc/cloudflared
 
+# Create tunnel configuration file with proper ingress rules
+echo "Creating tunnel configuration..."
+sudo tee /etc/cloudflared/config.yml > /dev/null <<EOF
+tunnel: ${TUNNEL_ID}
+credentials-file: /etc/cloudflared/credentials.json
+
+# Only allow connections from localhost (no public HTTP access)
+ingress:
+  - service: http://localhost:3000
+    originRequest:
+      # Disable HTTP/2 for better compatibility
+      noTLSVerify: false
+      # Connect timeout
+      connectTimeout: 30s
+      # Keep connection alive
+      keepAliveConnections: 100
+EOF
+
+# Create credentials file
+echo "Creating credentials file..."
+CREDS_RESPONSE=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}/credentials" \
+    -H "Authorization: Bearer ${API_TOKEN}" \
+    -H "Content-Type: application/json")
+
+# Extract credentials and save
+echo "$CREDS_RESPONSE" | jq -r '.result' | sudo tee /etc/cloudflared/credentials.json > /dev/null
+
 # Check if service already exists and uninstall it
 if sudo systemctl list-unit-files | grep -q "cloudflared.service"; then
     echo "Removing existing cloudflared service..."
@@ -70,9 +97,9 @@ if sudo systemctl list-unit-files | grep -q "cloudflared.service"; then
     sleep 1
 fi
 
-# Install service with token (this is the correct way to use the tunnel token)
+# Install service (uses config file instead of token)
 echo "Installing cloudflared service..."
-sudo cloudflared service install "${TUNNEL_TOKEN}"
+sudo cloudflared --config /etc/cloudflared/config.yml service install
 
 # The service install command automatically:
 # - Creates the systemd service

@@ -32,21 +32,9 @@ resource "google_compute_address" "static_ip" {
   depends_on = [google_project_service.compute]
 }
 
-# Firewall rule to allow HTTP traffic
-resource "google_compute_firewall" "allow_http" {
-  name    = "allow-http-randomvalidator"
-  network = "default"
-
-  allow {
-    protocol = "tcp"
-    ports    = ["80", "3000"]
-  }
-
-  source_ranges = ["0.0.0.0/0"]
-  target_tags   = ["randomvalidator"]
-
-  depends_on = [google_project_service.compute]
-}
+# Firewall rule removed - all HTTP/HTTPS traffic is now handled through Cloudflare Tunnel
+# Port 3000 is only accessible from localhost (not exposed to the internet)
+# This improves security by ensuring all traffic goes through Cloudflare's TLS termination
 
 # Firewall rule to allow SSH
 resource "google_compute_firewall" "allow_ssh" {
@@ -171,7 +159,6 @@ resource "google_compute_instance" "randomvalidator" {
 
   depends_on = [
     google_project_service.compute,
-    google_compute_firewall.allow_http,
     google_compute_firewall.allow_ssh
   ]
 }
@@ -189,6 +176,6 @@ output "instance_name" {
 }
 
 output "application_url" {
-  value       = "http://${google_compute_address.static_ip.address}:3000"
-  description = "URL to access the application"
+  value       = "Port 3000 is only accessible via Cloudflare Tunnel (HTTPS only). Configure DOMAIN_NAME in GitHub Actions to enable public access."
+  description = "Note: Direct IP access has been disabled for security. All traffic must go through Cloudflare Tunnel with TLS."
 }

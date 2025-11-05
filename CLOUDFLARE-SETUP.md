@@ -78,10 +78,52 @@ If validation fails, the error message will include:
 The deployment will:
 1. ✅ Create a Cloudflare Tunnel (if doesn't exist)
 2. ✅ Install `cloudflared` on your GCP instance
-3. ✅ Configure the tunnel to proxy `localhost:3000`
+3. ✅ Configure the tunnel to proxy `localhost:3000` (not publicly exposed)
 4. ✅ Create a DNS CNAME record pointing to the tunnel
 5. ✅ Enable Cloudflare's free SSL (automatic)
 6. ✅ Enable Cloudflare's CDN, DDoS protection, and caching
+7. ✅ **Enforce TLS-only access** - HTTP ports are not publicly exposed
+8. ✅ **Automatic HTTP to HTTPS redirect** via Cloudflare (see configuration below)
+
+## Cloudflare SSL/TLS Configuration (HTTPS Enforcement)
+
+To ensure all traffic uses HTTPS and HTTP requests are automatically redirected:
+
+### Step 1: Configure SSL/TLS Mode
+
+1. Go to your domain in Cloudflare Dashboard: https://dash.cloudflare.com
+2. Navigate to **SSL/TLS** → **Overview**
+3. Set the encryption mode to **Full** (recommended)
+   - **Full**: Encrypts traffic between visitors and Cloudflare, and between Cloudflare and your origin server
+   - The origin server (your app on port 3000) uses HTTP, but it's only accessible via localhost (not publicly exposed)
+
+### Step 2: Enable Always Use HTTPS
+
+1. In the same SSL/TLS section, go to **Edge Certificates**
+2. Scroll down to **Always Use HTTPS**
+3. Toggle it to **On**
+4. This ensures all HTTP requests are automatically redirected to HTTPS
+
+### Step 3: Enable HSTS (Optional but Recommended)
+
+1. Scroll to **HTTP Strict Transport Security (HSTS)**
+2. Click **Enable HSTS**
+3. Configure the settings:
+   - Max Age Header: 6 months (recommended)
+   - Apply HSTS policy to subdomains: On (if using subdomains)
+   - No-Sniff Header: On
+   - Preload: Off (only enable if you want to be added to browser preload lists)
+4. Click **Next** and **I understand** to confirm
+
+### Security Benefits
+
+With this configuration:
+- ✅ All traffic is encrypted end-to-end
+- ✅ HTTP requests automatically redirect to HTTPS
+- ✅ Port 3000 is only accessible via localhost (not publicly exposed)
+- ✅ Cloudflare provides TLS termination with automatic certificate renewal
+- ✅ HSTS prevents downgrade attacks
+- ✅ No direct IP access to the application
 
 ## Troubleshooting
 
@@ -142,8 +184,12 @@ If the automated DNS setup fails, add manually in Cloudflare:
 ## Benefits
 
 ✅ Free SSL certificate (automatic renewal)
+✅ **TLS-only access** - HTTP ports not publicly exposed
+✅ **Automatic HTTP to HTTPS redirect**
 ✅ Cloudflare CDN (faster global access)
 ✅ DDoS protection
-✅ No exposed ports (port 3000 is only accessible via tunnel)
+✅ No exposed ports (port 3000 is only accessible via localhost)
 ✅ Automatic failover and health checks
 ✅ No need to manage certificates
+✅ HSTS support for additional security
+✅ Protection against man-in-the-middle attacks
