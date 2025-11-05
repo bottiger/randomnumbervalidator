@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Randomness Game - Can You Be Random?</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 30px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin: 10px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 15px;
+            font-size: 48px;
+            text-align: center;
+            border: 3px solid #667eea;
+            border-radius: 15px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #764ba2;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        .progress {
+            margin: 30px 0;
+        }
+
+        .progress-text {
+            font-size: 1.5em;
+            color: #333;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .progress-percentage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: bold;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+
+        .number-history {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .number-history-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .number-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .number-chip {
+            background: white;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .instructions {
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #2196F3;
+        }
+
+        .instructions h3 {
+            color: #1976D2;
+            margin-bottom: 10px;
+        }
+
+        .instructions ul {
+            text-align: left;
+            padding-left: 20px;
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .difficulty-selector {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .difficulty-option {
+            flex: 1;
+            max-width: 150px;
+            padding: 20px;
+            border: 3px solid #e0e0e0;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .difficulty-option:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .difficulty-option.selected {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .difficulty-option .title {
+            font-weight: 600;
+            font-size: 1.2em;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .difficulty-option .count {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+
+        .difficulty-option .time {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .result-score {
+            font-size: 4em;
+            font-weight: bold;
+            margin: 20px 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .result-title {
+            font-size: 2em;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .result-message {
+            font-size: 1.2em;
+            color: #666;
+            margin: 20px 0;
+            line-height: 1.6;
+        }
+
+        .result-details {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .result-value {
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .footer {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.9);
+            margin-top: 20px;
+            padding: 15px;
+            font-size: 0.85em;
+        }
+
+        .footer a {
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .back-link {
+            margin-top: 20px;
+        }
+
+        .back-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .ranking-badge {
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 1.2em;
+            font-weight: 600;
+            margin: 10px 0;
+        }
+
+        .ranking-master {
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: #333;
+        }
+
+        .ranking-expert {
+            background: linear-gradient(135deg, #C0C0C0, #808080);
+            color: white;
+        }
+
+        .ranking-intermediate {
+            background: linear-gradient(135deg, #CD7F32, #8B4513);
+            color: white;
+        }
+
+        .ranking-beginner {
+            background: linear-gradient(135deg, #90EE90, #228B22);
+            color: white;
+        }
+
+        .ranking-novice {
+            background: linear-gradient(135deg, #FFB6C1, #FF69B4);
+            color: white;
+        }
+
+        .hint {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #ffc107;
+            font-size: 0.95em;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Start Screen -->
+        <div id="startScreen" class="screen active">
+            <h1>The Randomness Game</h1>
+            <p class="subtitle">Can you think like a computer?</p>
+
+            <div class="instructions">
+                <h3>How to Play:</h3>
+                <ul>
+                    <li>Enter numbers between 0 and 255, one at a time</li>
+                    <li>Try to be as RANDOM as possible!</li>
+                    <li>Don't follow patterns (humans love patterns!)</li>
+                    <li>Your sequence will be analyzed using NIST statistical tests</li>
+                    <li>Can you beat the computer at its own game?</li>
+                </ul>
+            </div>
+
+            <div class="hint">
+                <strong>Pro tip:</strong> True randomness is harder than you think. Humans tend to avoid repetition and create patterns without realizing it!
+            </div>
+
+            <h3 style="margin: 30px 0 15px; color: #333;">Choose Input Mode:</h3>
+            <div class="difficulty-selector" style="max-width: 400px; margin: 0 auto 30px;">
+                <div class="difficulty-option selected" data-mode="manual" onclick="selectMode(this)" style="max-width: none;">
+                    <div class="title">Manual Entry</div>
+                    <div class="count" style="font-size: 1.5em;">🎮</div>
+                    <div class="time">Type numbers one-by-one</div>
+                </div>
+                <div class="difficulty-option" data-mode="base64" onclick="selectMode(this)" style="max-width: none;">
+                    <div class="title">Base64 Mode</div>
+                    <div class="count" style="font-size: 1.5em;">⚡</div>
+                    <div class="time">Paste encoded bytes</div>
+                </div>
+            </div>
+
+            <div id="manualOptions">
+                <h3 style="margin: 30px 0 15px; color: #333;">Choose Difficulty:</h3>
+                <div class="difficulty-selector">
+                    <div class="difficulty-option" data-count="50" onclick="selectDifficulty(this)">
+                        <div class="title">Quick</div>
+                        <div class="count">50</div>
+                        <div class="time">~2 minutes</div>
+                    </div>
+                    <div class="difficulty-option selected" data-count="100" onclick="selectDifficulty(this)">
+                        <div class="title">Standard</div>
+                        <div class="count">100</div>
+                        <div class="time">~4 minutes</div>
+                    </div>
+                    <div class="difficulty-option" data-count="200" onclick="selectDifficulty(this)">
+                        <div class="title">Challenge</div>
+                        <div class="count">200</div>
+                        <div class="time">~8 minutes</div>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="startGame()">Start Game</button>
+            <div class="back-link">
+                <a href="/">← Back to Validator</a>
+            </div>
+        </div>
+
+        <!-- Game Screen (Manual) -->
+        <div id="gameScreen" class="screen">
+            <h1>Enter Your Numbers</h1>
+            <div class="progress">
+                <div class="progress-text">
+                    Number <span id="currentNumber">1</span> of <span id="totalNumbers">100</span>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="progressBar"></div>
+                    <div class="progress-percentage" id="progressPercentage">0%</div>
+                </div>
+            </div>
+
+            <form id="numberForm" onsubmit="submitNumber(event)">
+                <input
+                    type="number"
+                    id="numberInput"
+                    min="0"
+                    max="255"
+                    placeholder="0-255"
+                    required
+                    autofocus
+                >
+                <button type="submit">Submit</button>
+            </form>
+
+            <div class="number-history">
+                <div class="number-history-title">Your Numbers (Last 20):</div>
+                <div class="number-chips" id="numberHistory"></div>
+            </div>
+        </div>
+
+        <!-- Base64 Screen -->
+        <div id="base64Screen" class="screen">
+            <h1>Paste Base64 Data</h1>
+            <p class="subtitle">Paste random bytes encoded as base64</p>
+
+            <div class="instructions" style="margin: 20px 0;">
+                <h3>How to generate random base64:</h3>
+                <ul>
+                    <li>Linux/Mac: <code>head -c 1000 /dev/urandom | base64</code></li>
+                    <li>Or use any random byte generator and encode to base64</li>
+                    <li>Minimum: 100 bytes (~133 base64 chars)</li>
+                </ul>
+            </div>
+
+            <form id="base64Form" onsubmit="submitBase64(event)">
+                <textarea
+                    id="base64Input"
+                    rows="8"
+                    placeholder="SGVsbG8gV29ybGQh..."
+                    required
+                    style="width: 100%; padding: 15px; border: 3px solid #667eea; border-radius: 15px; font-family: monospace; font-size: 14px;"
+                ></textarea>
+                <div id="base64Stats" style="margin: 15px 0; color: #666; font-size: 0.9em;">
+                    <span id="base64ByteCount">0</span> bytes (~<span id="base64BitCount">0</span> bits)
+                </div>
+                <button type="submit">Analyze My Data</button>
+            </form>
+        </div>
+
+        <!-- Loading Screen -->
+        <div id="loadingScreen" class="screen">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <h2>Analyzing Your Randomness...</h2>
+                <p style="margin-top: 15px; color: #666;">Running statistical tests on your sequence</p>
+            </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="resultsScreen" class="screen">
+            <h1>Your Results</h1>
+
+            <div id="rankingBadge" class="ranking-badge"></div>
+
+            <div class="result-score" id="resultScore">0%</div>
+            <div class="result-title" id="resultTitle"></div>
+            <div class="result-message" id="resultMessage"></div>
+
+            <div class="result-details">
+                <div class="result-item">
+                    <span class="result-label">Numbers Entered:</span>
+                    <span class="result-value" id="numbersEntered">0</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Quality Score:</span>
+                    <span class="result-value" id="qualityScore">0%</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">NIST Tests Passed:</span>
+                    <span class="result-value" id="testsPassedDisplay">N/A</span>
+                </div>
+            </div>
+
+            <div id="adviceBox" class="instructions" style="margin-top: 20px;">
+                <h3>What This Means:</h3>
+                <p id="adviceText"></p>
+            </div>
+
+            <button onclick="playAgain()">Play Again</button>
+            <button class="secondary" onclick="viewFullReport()">View Full Report</button>
+            <div class="back-link">
+                <a href="/">← Back to Validator</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        Version <a href="https://github.com/bottiger/randomnumbervalidator/commit/{{GIT_HASH}}" target="_blank">{{GIT_HASH}}</a>
+        ({{GIT_DATE}})
+    </div>
+
+    <script>
+        let selectedCount = 100;
+        let selectedMode = 'manual';
+        let numbers = [];
+        let currentIndex = 0;
+        let validationResult = null;
+        let base64Data = '';
+
+        function selectMode(element) {
+            // Update visual selection for mode options
+            element.parentElement.querySelectorAll('.difficulty-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            element.classList.add('selected');
+            selectedMode = element.dataset.mode;
+
+            // Show/hide difficulty options based on mode
+            const manualOptions = document.getElementById('manualOptions');
+            if (selectedMode === 'manual') {
+                manualOptions.style.display = 'block';
+            } else {
+                manualOptions.style.display = 'none';
+            }
+        }
+
+        function selectDifficulty(element) {
+            document.querySelectorAll('#manualOptions .difficulty-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            element.classList.add('selected');
+            selectedCount = parseInt(element.dataset.count);
+        }
+
+        function startGame() {
+            if (selectedMode === 'manual') {
+                numbers = [];
+                currentIndex = 0;
+                document.getElementById('totalNumbers').textContent = selectedCount;
+                showScreen('gameScreen');
+                updateProgress();
+                document.getElementById('numberInput').focus();
+            } else {
+                showScreen('base64Screen');
+                document.getElementById('base64Input').focus();
+                updateBase64Stats();
+            }
+        }
+
+        function updateBase64Stats() {
+            const input = document.getElementById('base64Input');
+            input.addEventListener('input', () => {
+                const cleanInput = input.value.replace(/\s/g, '');
+                const estimatedBytes = Math.floor(cleanInput.length * 3 / 4);
+                const estimatedBits = estimatedBytes * 8;
+                document.getElementById('base64ByteCount').textContent = estimatedBytes;
+                document.getElementById('base64BitCount').textContent = estimatedBits;
+            });
+        }
+
+        function submitBase64(event) {
+            event.preventDefault();
+            base64Data = document.getElementById('base64Input').value;
+
+            if (!base64Data.trim()) {
+                alert('Please paste some base64 data');
+                return;
+            }
+
+            // Validate base64 format (basic check)
+            const cleanData = base64Data.replace(/\s/g, '');
+            if (!/^[A-Za-z0-9+/]+=*$/.test(cleanData)) {
+                alert('Invalid base64 format');
+                return;
+            }
+
+            finishBase64Game();
+        }
+
+        function submitNumber(event) {
+            event.preventDefault();
+            const input = document.getElementById('numberInput');
+            const value = parseInt(input.value);
+
+            if (value < 0 || value > 255) {
+                alert('Please enter a number between 0 and 255');
+                return;
+            }
+
+            numbers.push(value);
+            currentIndex++;
+
+            updateProgress();
+            updateHistory();
+
+            if (currentIndex >= selectedCount) {
+                finishGame();
+            } else {
+                input.value = '';
+                input.focus();
+            }
+        }
+
+        function updateProgress() {
+            const percentage = (currentIndex / selectedCount) * 100;
+            document.getElementById('currentNumber').textContent = currentIndex + 1;
+            document.getElementById('progressBar').style.width = percentage + '%';
+            document.getElementById('progressPercentage').textContent = Math.round(percentage) + '%';
+        }
+
+        function updateHistory() {
+            const historyContainer = document.getElementById('numberHistory');
+            const lastNumbers = numbers.slice(-20).reverse();
+
+            historyContainer.innerHTML = lastNumbers
+                .map(num => `<span class="number-chip">${num}</span>`)
+                .join('');
+        }
+
+        async function finishGame() {
+            showScreen('loadingScreen');
+
+            try {
+                const response = await fetch('/api/validate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        numbers: numbers.join(','),
+                        use_nist: true,
+                        input_format: 'numbers',
+                        bit_width: 8
+                    }),
+                });
+
+                validationResult = await response.json();
+                showResults();
+            } catch (error) {
+                alert('Error analyzing your numbers: ' + error.message);
+                showScreen('startScreen');
+            }
+        }
+
+        async function finishBase64Game() {
+            showScreen('loadingScreen');
+
+            try {
+                const response = await fetch('/api/validate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        numbers: base64Data,
+                        use_nist: true,
+                        input_format: 'base64'
+                    }),
+                });
+
+                validationResult = await response.json();
+                showResults();
+            } catch (error) {
+                alert('Error analyzing your data: ' + error.message);
+                showScreen('startScreen');
+            }
+        }
+
+        function showResults() {
+            const score = (validationResult.quality_score * 100).toFixed(1);
+
+            document.getElementById('resultScore').textContent = score + '%';
+
+            // Display appropriate count based on mode
+            if (selectedMode === 'base64') {
+                const cleanData = base64Data.replace(/\s/g, '');
+                const bytes = Math.floor(cleanData.length * 3 / 4);
+                document.getElementById('numbersEntered').textContent = bytes + ' bytes';
+            } else {
+                document.getElementById('numbersEntered').textContent = numbers.length;
+            }
+
+            document.getElementById('qualityScore').textContent = score + '%';
+
+            // Determine ranking
+            let ranking, rankingClass, title, message, advice;
+
+            if (validationResult.nist_data) {
+                const passRate = validationResult.nist_data.success_rate;
+                const testsPassed = validationResult.nist_data.tests_passed;
+                const totalTests = validationResult.nist_data.total_tests;
+
+                document.getElementById('testsPassedDisplay').textContent =
+                    `${testsPassed}/${totalTests} (${passRate.toFixed(1)}%)`;
+
+                if (passRate >= 90) {
+                    ranking = "Randomness Master";
+                    rankingClass = "ranking-master";
+                    title = "Incredible!";
+                    message = "Your sequence passed " + passRate.toFixed(0) + "% of NIST tests. You're thinking like a true random number generator!";
+                    advice = "Your numbers show excellent randomness with no detectable patterns. This is extremely difficult for humans to achieve!";
+                } else if (passRate >= 75) {
+                    ranking = "Randomness Expert";
+                    rankingClass = "ranking-expert";
+                    title = "Excellent Work!";
+                    message = "You passed " + passRate.toFixed(0) + "% of tests. Very impressive for a human!";
+                    advice = "You're doing great! A few patterns were detected, but overall your randomness is strong.";
+                } else if (passRate >= 50) {
+                    ranking = "Intermediate";
+                    rankingClass = "ranking-intermediate";
+                    title = "Good Effort!";
+                    message = "You passed " + passRate.toFixed(0) + "% of tests. Not bad for a human brain!";
+                    advice = "You're getting there! Try to avoid favoring certain ranges or creating unintentional patterns. Don't avoid repetition - true randomness includes runs of the same number.";
+                } else if (passRate >= 25) {
+                    ranking = "Beginner";
+                    rankingClass = "ranking-beginner";
+                    title = "Keep Practicing!";
+                    message = "You passed " + passRate.toFixed(0) + "% of tests. Being random is harder than it looks!";
+                    advice = "Humans naturally create patterns without realizing it. Try to embrace true randomness: consecutive identical numbers are OK, and don't favor certain ranges.";
+                } else {
+                    ranking = "Novice";
+                    rankingClass = "ranking-novice";
+                    title = "Try Again!";
+                    message = "You only passed " + passRate.toFixed(0) + "% of tests. Randomness is tricky!";
+                    advice = "Your sequence shows clear patterns. Remember: true randomness has no patterns, includes repetition, and uses the full range equally. Don't think - just feel!";
+                }
+            } else {
+                // Fallback if NIST tests didn't run
+                document.getElementById('testsPassedDisplay').textContent = 'N/A';
+                if (score >= 80) {
+                    ranking = "Good Effort";
+                    rankingClass = "ranking-intermediate";
+                    title = "Nice Try!";
+                    message = "Your quality score is " + score + "%. Not enough data for full NIST analysis.";
+                    advice = "Try entering more numbers for a comprehensive analysis.";
+                } else {
+                    ranking = "Keep Trying";
+                    rankingClass = "ranking-novice";
+                    title = "Keep Practicing!";
+                    message = "Your quality score is " + score + "%. Being random is harder than it looks!";
+                    advice = "Try to avoid patterns and use the full range of numbers (0-255) more evenly.";
+                }
+            }
+
+            document.getElementById('rankingBadge').textContent = ranking;
+            document.getElementById('rankingBadge').className = 'ranking-badge ' + rankingClass;
+            document.getElementById('resultTitle').textContent = title;
+            document.getElementById('resultMessage').textContent = message;
+            document.getElementById('adviceText').textContent = advice;
+
+            showScreen('resultsScreen');
+        }
+
+        function viewFullReport() {
+            // Store results and redirect to main validator with pre-filled data
+            const numbersStr = numbers.join(',');
+            localStorage.setItem('gameNumbers', numbersStr);
+            window.location.href = '/?game=true';
+        }
+
+        function playAgain() {
+            showScreen('startScreen');
+        }
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        // Auto-fill from game if coming from results
+        if (window.location.search.includes('game=true')) {
+            const gameNumbers = localStorage.getItem('gameNumbers');
+            if (gameNumbers) {
+                document.getElementById('numbers').value = gameNumbers;
+                localStorage.removeItem('gameNumbers');
+            }
+        }
+    </script>
+</body>
+</html>
