@@ -1,7 +1,7 @@
+use serde::{Deserialize, Serialize};
 /// Enhanced statistical tests for small datasets
 /// These tests work well with limited data where NIST tests cannot run
 use std::collections::HashMap;
-use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StatisticalTestResult {
@@ -64,21 +64,27 @@ pub fn run_enhanced_tests(bits: &[u8]) -> String {
          Tests Passed: {}/{} ({:.1}%)\n\n\
          Individual Test Results:\n\
          -----------------------\n",
-        bits.len(), total_tests, passed_tests, total_tests, pass_rate
+        bits.len(),
+        total_tests,
+        passed_tests,
+        total_tests,
+        pass_rate
     );
 
     for result in results {
-        let status = if result.passed { "PASS ✓" } else { "FAIL ✗" };
-        let p_val_str = result.p_value
+        let status = if result.passed {
+            "PASS ✓"
+        } else {
+            "FAIL ✗"
+        };
+        let p_val_str = result
+            .p_value
             .map(|p| format!("p={:.4}", p))
             .unwrap_or_else(|| format!("stat={:.4}", result.statistic));
 
         summary.push_str(&format!(
             "{:30} {} ({})\n  {}\n\n",
-            result.test_name,
-            status,
-            p_val_str,
-            result.description
+            result.test_name, status, p_val_str, result.description
         ));
     }
 
@@ -93,7 +99,8 @@ pub fn run_enhanced_tests(bits: &[u8]) -> String {
         summary.push_str("✗ POOR: The sequence shows poor randomness properties.\n");
     }
 
-    summary.push_str("\nNote: These are simplified statistical tests suitable for small datasets.\n");
+    summary
+        .push_str("\nNote: These are simplified statistical tests suitable for small datasets.\n");
     summary.push_str("For comprehensive analysis, provide 313+ numbers (10,000+ bits) to enable full NIST testing.\n");
 
     summary
@@ -114,7 +121,9 @@ fn frequency_test(bits: &[u8]) -> StatisticalTestResult {
     let passed = statistic < 2.0;
     let description = format!(
         "Ones: {:.0}, Zeros: {:.0}, Ratio: {:.3} (expect ~0.500)",
-        ones, zeros, ones / n
+        ones,
+        zeros,
+        ones / n
     );
 
     StatisticalTestResult {
@@ -146,7 +155,7 @@ fn runs_test(bits: &[u8]) -> StatisticalTestResult {
     // Count runs (sequences of consecutive identical bits)
     let mut runs = 1;
     for i in 1..bits.len() {
-        if bits[i] != bits[i-1] {
+        if bits[i] != bits[i - 1] {
             runs += 1;
         }
     }
@@ -214,7 +223,11 @@ fn longest_run_test(bits: &[u8]) -> StatisticalTestResult {
         "Longest run: {}, Expected: ~{}, {}",
         longest_run,
         expected_longest,
-        if passed { "within normal range" } else { "suspiciously long" }
+        if passed {
+            "within normal range"
+        } else {
+            "suspiciously long"
+        }
     );
 
     StatisticalTestResult {
@@ -297,9 +310,9 @@ fn autocorrelation_test(bits: &[u8]) -> StatisticalTestResult {
     let mut max_correlation: f64 = 0.0;
     let n = bits.len();
 
-    for lag in 1..=2.min(n/4) {
+    for lag in 1..=2.min(n / 4) {
         let mut matches = 0;
-        for i in 0..n-lag {
+        for i in 0..n - lag {
             if bits[i] == bits[i + lag] {
                 matches += 1;
             }
@@ -353,7 +366,10 @@ fn pattern_distribution_test(bits: &[u8]) -> StatisticalTestResult {
     let alternating_count = count_alternating_pattern(bits);
     let alternating_ratio = alternating_count as f64 / bits.len() as f64;
     if alternating_ratio > 0.9 {
-        issues.push(format!("{:.0}% alternating pattern", alternating_ratio * 100.0));
+        issues.push(format!(
+            "{:.0}% alternating pattern",
+            alternating_ratio * 100.0
+        ));
     }
 
     // Check for repeating blocks
@@ -386,7 +402,7 @@ fn find_max_consecutive_same(bits: &[u8]) -> usize {
     let mut current_count = 1;
 
     for i in 1..bits.len() {
-        if bits[i] == bits[i-1] {
+        if bits[i] == bits[i - 1] {
             current_count += 1;
             max_count = max_count.max(current_count);
         } else {
@@ -404,7 +420,7 @@ fn count_alternating_pattern(bits: &[u8]) -> usize {
 
     let mut count = 0;
     for i in 1..bits.len() {
-        if bits[i] != bits[i-1] {
+        if bits[i] != bits[i - 1] {
             count += 1;
         }
     }
@@ -419,8 +435,8 @@ fn has_repeating_blocks(bits: &[u8]) -> bool {
     // Check for repeating 8-bit blocks
     let block_size = 8;
     for i in 0..bits.len().saturating_sub(block_size * 2) {
-        let block1 = &bits[i..i+block_size];
-        let block2 = &bits[i+block_size..i+block_size*2];
+        let block1 = &bits[i..i + block_size];
+        let block2 = &bits[i + block_size..i + block_size * 2];
 
         if block1 == block2 {
             // Found a repeating block, check if it repeats more

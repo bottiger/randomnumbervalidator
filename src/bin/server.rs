@@ -5,9 +5,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use randomnumbervalidator::{
-    validate_random_numbers_full, ValidationRequest, ValidationResponse,
-};
+use randomnumbervalidator::{validate_random_numbers_full, ValidationRequest, ValidationResponse};
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::net::SocketAddr;
 use std::time::Instant;
