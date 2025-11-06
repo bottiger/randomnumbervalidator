@@ -29,13 +29,13 @@ CREATE TABLE IF NOT EXISTS query_logs (
 
     -- Additional metadata
     processing_time_ms INTEGER,  -- How long the validation took
-    error_message TEXT,           -- If there was an error
-
-    -- Indexes for common queries
-    INDEX idx_created_at (created_at),
-    INDEX idx_client_ip (client_ip),
-    INDEX idx_valid (valid)
+    error_message TEXT            -- If there was an error
 );
+
+-- Create indexes for common queries
+CREATE INDEX IF NOT EXISTS idx_created_at ON query_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_client_ip ON query_logs(client_ip);
+CREATE INDEX IF NOT EXISTS idx_valid ON query_logs(valid);
 
 -- Add comment to table
 COMMENT ON TABLE query_logs IS 'Logs all random number validation queries with request details and results';
