@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use num_bigint::BigUint;
+use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -7,8 +7,8 @@ use std::path::Path;
 #[allow(unused_imports)]
 use tracing::{debug, info, warn};
 
-pub mod nist_wrapper;
 pub mod enhanced_stats;
+pub mod nist_wrapper;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "lowercase")]
@@ -274,7 +274,11 @@ pub fn prepare_input_for_nist_with_range_and_bitwidth(
 
 /// Convert numbers to bits using base conversion (for non-standard ranges)
 /// This extracts the true entropy without bias from leading zeros
-fn convert_to_bits_base_conversion(numbers: &[u32], range_min: u32, range_max: u32) -> Result<Vec<u8>, String> {
+fn convert_to_bits_base_conversion(
+    numbers: &[u32],
+    range_min: u32,
+    range_max: u32,
+) -> Result<Vec<u8>, String> {
     let range_size = (range_max - range_min + 1) as u64;
 
     // Convert the sequence of numbers to a large integer (base-range_size representation)
@@ -319,17 +323,24 @@ pub fn parse_base64_to_bits(input: &str) -> Result<Vec<u8>, String> {
     use base64::prelude::*;
 
     // Remove whitespace from base64 input
-    let mut clean_input = input.chars().filter(|c| !c.is_whitespace()).collect::<String>();
+    let mut clean_input = input
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect::<String>();
 
     // Add padding if missing (base64 length must be multiple of 4)
     let padding_needed = (4 - (clean_input.len() % 4)) % 4;
     if padding_needed > 0 {
         clean_input.push_str(&"=".repeat(padding_needed));
-        info!("Added {} padding character(s) to base64 input", padding_needed);
+        info!(
+            "Added {} padding character(s) to base64 input",
+            padding_needed
+        );
     }
 
     // Decode base64
-    let bytes = BASE64_STANDARD.decode(clean_input.as_bytes())
+    let bytes = BASE64_STANDARD
+        .decode(clean_input.as_bytes())
         .map_err(|e| format!("Invalid base64 input: {}", e))?;
 
     if bytes.is_empty() {
@@ -344,7 +355,11 @@ pub fn parse_base64_to_bits(input: &str) -> Result<Vec<u8>, String> {
         }
     }
 
-    info!("Decoded {} bytes from base64 → {} bits", bytes.len(), bits.len());
+    info!(
+        "Decoded {} bytes from base64 → {} bits",
+        bytes.len(),
+        bits.len()
+    );
 
     Ok(bits)
 }
@@ -365,8 +380,8 @@ pub fn write_bits_to_debug_file(bits: &[u8]) -> Result<String, String> {
     let filepath = debug_dir.join(&filename);
 
     // Write bits to file
-    let mut file = File::create(&filepath)
-        .map_err(|e| format!("Failed to create debug file: {}", e))?;
+    let mut file =
+        File::create(&filepath).map_err(|e| format!("Failed to create debug file: {}", e))?;
 
     // Write header
     writeln!(file, "# Bit Stream Debug Output")
@@ -375,12 +390,14 @@ pub fn write_bits_to_debug_file(bits: &[u8]) -> Result<String, String> {
         .map_err(|e| format!("Failed to write to debug file: {}", e))?;
     writeln!(file, "# Timestamp: {}", chrono::Utc::now())
         .map_err(|e| format!("Failed to write to debug file: {}", e))?;
-    writeln!(file, "#")
-        .map_err(|e| format!("Failed to write to debug file: {}", e))?;
+    writeln!(file, "#").map_err(|e| format!("Failed to write to debug file: {}", e))?;
 
     // Write bits in groups of 64 for readability
     for (i, chunk) in bits.chunks(64).enumerate() {
-        let bit_string: String = chunk.iter().map(|&b| if b == 1 { '1' } else { '0' }).collect();
+        let bit_string: String = chunk
+            .iter()
+            .map(|&b| if b == 1 { '1' } else { '0' })
+            .collect();
         writeln!(file, "{:08}: {}", i * 64, bit_string)
             .map_err(|e| format!("Failed to write to debug file: {}", e))?;
     }
@@ -465,12 +482,10 @@ pub fn validate_random_numbers_full(
     );
 
     // Prepare input based on format
-    let bits = match prepare_input_with_format(input, input_format, range_min, range_max, bit_width) {
+    let bits = match prepare_input_with_format(input, input_format, range_min, range_max, bit_width)
+    {
         Ok(b) => {
-            debug!(
-                "Successfully parsed input into {} bits",
-                b.len()
-            );
+            debug!("Successfully parsed input into {} bits", b.len());
             b
         }
         Err(e) => {
@@ -522,8 +537,11 @@ pub fn validate_random_numbers_full(
     } else {
         debug!("NIST tests not requested");
         (
-            Some("NIST tests not requested. Use NIST option to enable comprehensive testing.".to_string()),
-            None
+            Some(
+                "NIST tests not requested. Use NIST option to enable comprehensive testing."
+                    .to_string(),
+            ),
+            None,
         )
     };
 
@@ -582,7 +600,9 @@ mod tests {
         let result = prepare_input_for_nist("1,2,3");
         // Range 1-3 doesn't start at 0, so should require range specification
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("doesn't fit standard bit widths"));
+        assert!(result
+            .unwrap_err()
+            .contains("doesn't fit standard bit widths"));
     }
 
     #[test]
@@ -686,7 +706,7 @@ mod tests {
         assert!(result.is_ok());
         let bits = result.unwrap();
         assert_eq!(bits.len(), 64); // 2 numbers * 32 bits
-        // Last 32 bits should be all 1
+                                    // Last 32 bits should be all 1
         assert!(bits[32..].iter().all(|&b| b == 1));
     }
 
@@ -789,7 +809,9 @@ mod tests {
         let input = numbers.join(",");
         let result = prepare_input_for_nist(&input);
         assert!(result.is_err()); // Should fail without range
-        assert!(result.unwrap_err().contains("doesn't fit standard bit widths"));
+        assert!(result
+            .unwrap_err()
+            .contains("doesn't fit standard bit widths"));
     }
 
     // ========== Tests for standard bit width detection ==========
@@ -927,7 +949,8 @@ mod tests {
     #[test]
     fn test_bitwidth_enforced_8bit() {
         // With bit_width=8, should use 8 bits regardless of actual max
-        let result = prepare_input_for_nist_with_range_and_bitwidth("0,50,100", None, None, Some(8));
+        let result =
+            prepare_input_for_nist_with_range_and_bitwidth("0,50,100", None, None, Some(8));
         assert!(result.is_ok());
         let bits = result.unwrap();
         assert_eq!(bits.len(), 24); // 3 numbers * 8 bits
@@ -936,7 +959,8 @@ mod tests {
     #[test]
     fn test_bitwidth_enforced_16bit() {
         // With bit_width=16, should use 16 bits
-        let result = prepare_input_for_nist_with_range_and_bitwidth("0,256,1000", None, None, Some(16));
+        let result =
+            prepare_input_for_nist_with_range_and_bitwidth("0,256,1000", None, None, Some(16));
         assert!(result.is_ok());
         let bits = result.unwrap();
         assert_eq!(bits.len(), 48); // 3 numbers * 16 bits
@@ -945,7 +969,8 @@ mod tests {
     #[test]
     fn test_bitwidth_enforced_32bit() {
         // With bit_width=32, should use 32 bits
-        let result = prepare_input_for_nist_with_range_and_bitwidth("0,65536,100000", None, None, Some(32));
+        let result =
+            prepare_input_for_nist_with_range_and_bitwidth("0,65536,100000", None, None, Some(32));
         assert!(result.is_ok());
         let bits = result.unwrap();
         assert_eq!(bits.len(), 96); // 3 numbers * 32 bits
@@ -954,7 +979,8 @@ mod tests {
     #[test]
     fn test_bitwidth_rejection_exceeds_8bit() {
         // Number 256 exceeds 8-bit max (255)
-        let result = prepare_input_for_nist_with_range_and_bitwidth("0,100,256", None, None, Some(8));
+        let result =
+            prepare_input_for_nist_with_range_and_bitwidth("0,100,256", None, None, Some(8));
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert!(err.contains("exceeds"));
@@ -965,7 +991,8 @@ mod tests {
     #[test]
     fn test_bitwidth_rejection_exceeds_16bit() {
         // Number 65536 exceeds 16-bit max (65535)
-        let result = prepare_input_for_nist_with_range_and_bitwidth("0,1000,65536", None, None, Some(16));
+        let result =
+            prepare_input_for_nist_with_range_and_bitwidth("0,1000,65536", None, None, Some(16));
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert!(err.contains("exceeds"));
@@ -976,7 +1003,8 @@ mod tests {
     fn test_bitwidth_allows_nonzero_min() {
         // Numbers starting at 1 (not 0) are allowed - might just be a small sample
         // The statistical tests will detect bias if it exists
-        let result = prepare_input_for_nist_with_range_and_bitwidth("1,50,100", None, None, Some(8));
+        let result =
+            prepare_input_for_nist_with_range_and_bitwidth("1,50,100", None, None, Some(8));
         assert!(result.is_ok());
         let bits = result.unwrap();
         assert_eq!(bits.len(), 24); // 3 numbers * 8 bits
@@ -1051,15 +1079,20 @@ mod tests {
     fn test_base64_auto_padding() {
         // Test different padding scenarios
         let test_cases = vec![
-            ("SGVsbG8", 40),        // "Hello" - needs 1 padding
-            ("Zm9v", 24),            // "foo" - needs 0 padding (already multiple of 4)
-            ("SGVsbG8=", 40),        // "Hello" - already has padding
+            ("SGVsbG8", 40),  // "Hello" - needs 1 padding
+            ("Zm9v", 24),     // "foo" - needs 0 padding (already multiple of 4)
+            ("SGVsbG8=", 40), // "Hello" - already has padding
         ];
 
         for (input, expected_bits) in test_cases {
             let result = parse_base64_to_bits(input);
             assert!(result.is_ok(), "Failed to parse: {}", input);
-            assert_eq!(result.unwrap().len(), expected_bits, "Wrong bit count for: {}", input);
+            assert_eq!(
+                result.unwrap().len(),
+                expected_bits,
+                "Wrong bit count for: {}",
+                input
+            );
         }
     }
 
@@ -1077,7 +1110,8 @@ mod tests {
 
     #[test]
     fn test_prepare_input_with_format_numbers() {
-        let result = prepare_input_with_format("0,128,255", &InputFormat::Numbers, None, None, None);
+        let result =
+            prepare_input_with_format("0,128,255", &InputFormat::Numbers, None, None, None);
         assert!(result.is_ok());
         let bits = result.unwrap();
         assert_eq!(bits.len(), 24); // 3 numbers * 8 bits

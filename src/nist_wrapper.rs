@@ -117,7 +117,11 @@ impl NistWrapper {
 
         // Check if we have enough data
         if tier.level == 0 {
-            warn!("Insufficient bits for NIST tests: {} < {}", bits.len(), TestTier::TIER_1.min_bits);
+            warn!(
+                "Insufficient bits for NIST tests: {} < {}",
+                bits.len(),
+                TestTier::TIER_1.min_bits
+            );
             return Err(format!(
                 "NIST statistical tests require at least {} bits (~{} numbers with 32-bit encoding) for basic tests. \
                  You provided {} bits (~{} numbers). The system will use enhanced statistical tests instead, \
@@ -129,7 +133,12 @@ impl NistWrapper {
             ));
         }
 
-        info!("Running NIST tests on {} bits (Tier {}: {})", bits.len(), tier.level, tier.name);
+        info!(
+            "Running NIST tests on {} bits (Tier {}: {})",
+            bits.len(),
+            tier.level,
+            tier.name
+        );
 
         // Convert Vec<u8> (0s and 1s) to packed bytes for nistrs
         let packed_bytes = Self::pack_bits_to_bytes(bits);
@@ -192,7 +201,11 @@ impl NistWrapper {
 
         // Tier 2: Add block and template tests (1,000+ bits)
         if tier.level >= 2 {
-            let block_size = if data.len() >= 1000 { 100 } else { data.len() / 10 };
+            let block_size = if data.len() >= 1000 {
+                100
+            } else {
+                data.len() / 10
+            };
             if block_size > 0 {
                 if let Ok(result) = block_frequency_test(data, block_size) {
                     results.insert("BlockFrequency".to_string(), vec![result]);
@@ -242,7 +255,10 @@ impl NistWrapper {
 
             // Random Excursions Variant (returns Result<[(bool, f64); 18], String>)
             if let Ok(variant_results) = random_excursions_variant_test(data) {
-                results.insert("RandomExcursionsVariant".to_string(), variant_results.to_vec());
+                results.insert(
+                    "RandomExcursionsVariant".to_string(),
+                    variant_results.to_vec(),
+                );
             }
 
             // Linear Complexity (use block size) - returns (bool, f64) directly
@@ -306,9 +322,19 @@ impl NistWrapper {
         };
 
         // Generate raw output text with tier information
-        let raw_output = Self::generate_raw_output(bit_count, &individual_tests, success_count, total_tests, success_rate, tier);
+        let raw_output = Self::generate_raw_output(
+            bit_count,
+            &individual_tests,
+            success_count,
+            total_tests,
+            success_rate,
+            tier,
+        );
 
-        info!("NIST tests completed (Tier {}): {}/{} passed ({:.1}%)", tier.level, success_count, total_tests, success_rate);
+        info!(
+            "NIST tests completed (Tier {}): {}/{} passed ({:.1}%)",
+            tier.level, success_count, total_tests, success_rate
+        );
 
         Ok(NistResults {
             bit_count,
@@ -338,7 +364,13 @@ impl NistWrapper {
              Overall: {}/{} tests passed ({:.1}%)\n\n\
              Individual Test Results:\n\
              ------------------------\n",
-            bit_count, tier.level, tier.name, tier.description, success_count, total_tests, success_rate
+            bit_count,
+            tier.level,
+            tier.name,
+            tier.description,
+            success_count,
+            total_tests,
+            success_rate
         );
 
         for test in individual_tests {
