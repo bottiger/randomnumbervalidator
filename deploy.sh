@@ -8,6 +8,9 @@ echo ""
 # Application directory
 APP_DIR="/opt/randomvalidator"
 SERVICE_NAME="randomvalidator"
+DB_NAME="randomvalidator"
+DB_USER="randomvalidator"
+DB_PASSWORD="randomvalidator"
 
 # Change to application directory
 if [ ! -d "$APP_DIR" ]; then
@@ -17,6 +20,28 @@ if [ ! -d "$APP_DIR" ]; then
 fi
 
 cd "$APP_DIR"
+
+echo "🗄️  Setting up PostgreSQL..."
+# Install PostgreSQL if not already installed
+if ! command -v psql &> /dev/null; then
+    echo "  Installing PostgreSQL..."
+    apt-get update
+    apt-get install -y postgresql postgresql-contrib
+fi
+
+# Start and enable PostgreSQL service
+echo "  Starting PostgreSQL service..."
+systemctl start postgresql || true
+systemctl enable postgresql || true
+
+# Create database and user (idempotent - will fail silently if already exists)
+echo "  Setting up database..."
+sudo -u postgres psql -c "CREATE DATABASE $DB_NAME;" 2>/dev/null || echo "  Database already exists"
+sudo -u postgres psql -c "CREATE USER $DB_USER WITH PASSWORD '$DB_PASSWORD';" 2>/dev/null || echo "  User already exists"
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;" 2>/dev/null || true
+sudo -u postgres psql -d $DB_NAME -c "GRANT ALL ON SCHEMA public TO $DB_USER;" 2>/dev/null || true
+echo "  ✅ PostgreSQL setup complete"
+echo ""
 
 echo "📥 Pulling latest code..."
 git fetch origin
@@ -47,6 +72,30 @@ cargo --version
 echo ""
 echo "🦀 Building Rust application..."
 cargo build --release --bin server
+
+echo ""
+echo "⚙️  Configuring systemd service..."
+cat > /etc/systemd/system/$SERVICE_NAME.service <<EOF
+[Unit]
+Description=Random Number Validator
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=$APP_DIR
+Environment="RUST_LOG=info"
+Environment="HOST=0.0.0.0"
+Environment="PORT=3000"
+Environment="DATABASE_URL=postgresql://$DB_USER:$DB_PASSWORD@localhost:5432/$DB_NAME"
+ExecStart=$APP_DIR/target/release/server
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+echo "  ✅ Service configuration updated"
 
 echo ""
 echo "🔄 Restarting application service..."
