@@ -532,6 +532,47 @@
             font-size: 1.2em;
         }
 
+        .test-group-row {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .test-group-row:hover {
+            background-color: #e9ecef;
+        }
+
+        .test-group-row .expand-icon {
+            display: inline-block;
+            margin-right: 8px;
+            transition: transform 0.2s;
+        }
+
+        .test-group-row.expanded .expand-icon {
+            transform: rotate(90deg);
+        }
+
+        .test-group-child {
+            display: none;
+        }
+
+        .test-group-child.visible {
+            display: table-row;
+        }
+
+        .test-group-child td:first-child {
+            padding-left: 32px;
+            font-weight: normal;
+        }
+
+        .group-summary {
+            font-size: 0.9em;
+            color: #666;
+            font-weight: normal;
+            margin-left: 5px;
+        }
+
         .view-toggle {
             display: flex;
             gap: 10px;
@@ -1663,8 +1704,26 @@
                 'patterndistribution': 'patterndistribution'
             };
 
-            // Compact table rows
+            // Group tests by base name (e.g., NonOverlappingTemplate-1, NonOverlappingTemplate-2, etc.)
+            const testGroups = {};
+            const ungroupedTests = [];
+
             for (const test of nistData.individual_tests) {
+                // Check if test name has a "-number" suffix
+                const match = test.name.match(/^(.+)-(\d+)$/);
+                if (match) {
+                    const baseName = match[1];
+                    if (!testGroups[baseName]) {
+                        testGroups[baseName] = [];
+                    }
+                    testGroups[baseName].push(test);
+                } else {
+                    ungroupedTests.push(test);
+                }
+            }
+
+            // Render ungrouped tests first
+            for (const test of ungroupedTests) {
                 const rowClass = test.passed ? '' : 'fail';
                 const statusIcon = test.passed ? '✓' : '✗';
                 const pValueClass = test.p_value < 0.01 ? 'bad' : test.p_value > 0.1 ? 'good' : 'warning';
@@ -1681,6 +1740,69 @@
                         <td style="text-align: center;" data-sort-value="${test.p_value}"><span class="p-value ${pValueClass}">${test.p_value.toFixed(4)}</span></td>
                         <td class="status-icon" data-sort-value="${test.passed ? 1 : 0}">${statusIcon}</td>
                     </tr>`;
+            }
+
+            // Render grouped tests
+            for (const [baseName, tests] of Object.entries(testGroups)) {
+                if (tests.length > 1) {
+                    // Multiple tests in group - create collapsible group
+                    const groupPassed = tests.filter(t => t.passed).length;
+                    const groupTotal = tests.length;
+                    const groupAvgPValue = tests.reduce((sum, t) => sum + t.p_value, 0) / tests.length;
+                    const allPassed = groupPassed === groupTotal;
+                    const groupRowClass = allPassed ? '' : 'fail';
+                    const groupStatusIcon = allPassed ? '✓' : `${groupPassed}/${groupTotal}`;
+                    const groupPValueClass = groupAvgPValue < 0.01 ? 'bad' : groupAvgPValue > 0.1 ? 'good' : 'warning';
+
+                    let testFileName = baseName.toLowerCase().replace(/ test/g, '').replace(/ /g, '');
+                    const hasTestPage = testPageMap.hasOwnProperty(testFileName);
+                    const testNameDisplay = hasTestPage ?
+                        `<a href="/static/tests/${testPageMap[testFileName]}.html" target="_blank" style="color: #333; text-decoration: none; border-bottom: 1px dashed #9fef00;">${baseName}</a>` :
+                        baseName;
+
+                    html += `
+                        <tr class="test-group-row ${groupRowClass}" onclick="toggleTestGroup('${baseName.replace(/'/g, "\\'")}')">
+                            <td class="test-name" data-sort-value="${baseName.toLowerCase()}">
+                                <span class="expand-icon">▶</span>${testNameDisplay}
+                                <span class="group-summary">(${groupTotal} variants)</span>
+                            </td>
+                            <td style="text-align: center;" data-sort-value="${groupAvgPValue}">
+                                <span class="p-value ${groupPValueClass}">${groupAvgPValue.toFixed(4)}</span>
+                            </td>
+                            <td class="status-icon" data-sort-value="${allPassed ? 1 : 0}">${groupStatusIcon}</td>
+                        </tr>`;
+
+                    // Render child tests (hidden by default)
+                    for (const test of tests) {
+                        const rowClass = test.passed ? '' : 'fail';
+                        const statusIcon = test.passed ? '✓' : '✗';
+                        const pValueClass = test.p_value < 0.01 ? 'bad' : test.p_value > 0.1 ? 'good' : 'warning';
+
+                        html += `
+                            <tr class="test-group-child ${rowClass}" data-group="${baseName}">
+                                <td class="test-name" data-sort-value="${test.name.toLowerCase()}">${test.name}</td>
+                                <td style="text-align: center;" data-sort-value="${test.p_value}">
+                                    <span class="p-value ${pValueClass}">${test.p_value.toFixed(4)}</span>
+                                </td>
+                                <td class="status-icon" data-sort-value="${test.passed ? 1 : 0}">${statusIcon}</td>
+                            </tr>`;
+                    }
+                } else {
+                    // Single test in group - render normally
+                    const test = tests[0];
+                    const rowClass = test.passed ? '' : 'fail';
+                    const statusIcon = test.passed ? '✓' : '✗';
+                    const pValueClass = test.p_value < 0.01 ? 'bad' : test.p_value > 0.1 ? 'good' : 'warning';
+
+                    html += `
+                        <tr class="${rowClass}">
+                            <td class="test-name" data-sort-value="${test.name.toLowerCase()}">${test.name}</td>
+                            <td style="text-align: center;" data-sort-value="${test.p_value}">
+                                <span class="p-value ${pValueClass}">${test.p_value.toFixed(4)}</span>
+                            </td>
+                            <td class="status-icon" data-sort-value="${test.passed ? 1 : 0}">${statusIcon}</td>
+                        </tr>`;
+                }
             }
 
             html += `
@@ -1735,6 +1857,22 @@
 
             html += `</div></div>`;
             return html;
+        }
+
+        // Function to toggle test group expansion
+        function toggleTestGroup(baseName) {
+            const groupRow = event.target.closest('.test-group-row');
+            const childRows = document.querySelectorAll(`.test-group-child[data-group="${baseName}"]`);
+
+            if (groupRow.classList.contains('expanded')) {
+                // Collapse
+                groupRow.classList.remove('expanded');
+                childRows.forEach(row => row.classList.remove('visible'));
+            } else {
+                // Expand
+                groupRow.classList.add('expanded');
+                childRows.forEach(row => row.classList.add('visible'));
+            }
         }
 
         // Function to switch between compact and detailed view
