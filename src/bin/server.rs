@@ -5,13 +5,44 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use randomnumbervalidator::{validate_random_numbers_full, ValidationRequest, ValidationResponse};
+use randomnumbervalidator::{
+    validate_random_numbers_full, InputFormat, NistResults, NistTestResult, ValidationRequest,
+    ValidationResponse,
+};
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::net::SocketAddr;
 use std::time::Instant;
 use tower_http::{cors::CorsLayer, services::ServeDir, trace::TraceLayer};
 use tracing::{error, info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
+
+/// OpenAPI documentation for the Random Number Validator API
+#[derive(OpenApi)]
+#[openapi(
+    paths(validate_handler),
+    components(schemas(
+        ValidationRequest,
+        ValidationResponse,
+        InputFormat,
+        NistResults,
+        NistTestResult
+    )),
+    tags(
+        (name = "validation", description = "Random number validation endpoints")
+    ),
+    info(
+        title = "Random Number Validator API",
+        version = "0.1.0",
+        description = "API for validating the quality of random numbers using NIST statistical tests",
+        contact(
+            name = "API Support",
+            url = "https://github.com/yourusername/randomnumbervalidator"
+        )
+    )
+)]
+struct ApiDoc;
 
 #[tokio::main]
 async fn main() {
@@ -70,6 +101,7 @@ async fn main() {
         .route("/", get(serve_index))
         .route("/game", get(serve_game))
         .route("/api/validate", post(validate_handler))
+        .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .nest_service("/static", ServeDir::new("static"))
         .layer(TraceLayer::new_for_http())
         .layer(CorsLayer::permissive())
@@ -114,6 +146,21 @@ async fn serve_game() -> impl IntoResponse {
     Html(html_with_version)
 }
 
+/// Validate the quality of random numbers using NIST statistical tests
+///
+/// This endpoint analyzes a sequence of random numbers and returns a quality score
+/// based on the NIST Statistical Test Suite. The numbers can be provided in various
+/// formats and with different parameters.
+#[utoipa::path(
+    post,
+    path = "/api/validate",
+    tag = "validation",
+    request_body = ValidationRequest,
+    responses(
+        (status = 200, description = "Validation completed successfully", body = ValidationResponse),
+        (status = 400, description = "Invalid request format")
+    )
+)]
 async fn validate_handler(
     State(pool): State<Option<PgPool>>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,

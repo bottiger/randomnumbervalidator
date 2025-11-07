@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
+use utoipa::ToSchema;
 
 #[allow(unused_imports)]
 use tracing::{debug, info, warn};
@@ -11,66 +12,201 @@ pub mod enhanced_stats;
 pub mod nist_tests;
 pub mod nist_wrapper;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+/// Format of the input random numbers.
+///
+/// Determines how the input string should be parsed before analysis.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum InputFormat {
+    /// Input is a sequence of numbers separated by delimiters (commas, spaces, newlines, etc.).
+    ///
+    /// # Example
+    /// ```text
+    /// "1,2,3,4,5"
+    /// "42 17 89 12"
+    /// ```
     #[default]
     Numbers,
+
+    /// Input is base64-encoded binary data.
+    ///
+    /// Base64 is decoded to bytes, then converted to individual bits for analysis.
+    ///
+    /// # Example
+    /// ```text
+    /// "SGVsbG8gV29ybGQ="
+    /// ```
     Base64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+/// Request payload for validating random number quality.
+///
+/// This structure defines all parameters needed to analyze a sequence of random numbers
+/// using NIST statistical tests.
+///
+/// # Example (Numbers)
+///
+/// ```json
+/// {
+///   "numbers": "1,2,3,4,5,6,7,8,9,10",
+///   "input_format": "numbers",
+///   "range_min": 1,
+///   "range_max": 100
+/// }
+/// ```
+///
+/// # Example (Base64)
+///
+/// ```json
+/// {
+///   "numbers": "SGVsbG8gV29ybGQ=",
+///   "input_format": "base64"
+/// }
+/// ```
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ValidationRequest {
+    /// The random numbers to validate.
+    ///
+    /// For `input_format: "numbers"`: comma/space/newline separated numbers.
+    /// For `input_format: "base64"`: base64-encoded binary data.
     pub numbers: String,
-    /// Optional: specify the input format (numbers or base64)
+
+    /// The format of the input data (default: "numbers").
+    ///
+    /// Use "numbers" for numeric sequences, or "base64" for binary data.
     #[serde(default)]
     pub input_format: InputFormat,
-    /// Optional: specify the minimum value of your RNG range (e.g., 1 for range 1-100)
+
+    /// Minimum value of your RNG range (optional).
+    ///
+    /// Required for custom ranges that don't fit standard bit widths (0-255, 0-65535, 0-4294967295).
+    ///
+    /// # Example
+    /// For a dice roll (1-6): set `range_min: 1` and `range_max: 6`.
     pub range_min: Option<u32>,
-    /// Optional: specify the maximum value of your RNG range (e.g., 100 for range 1-100)
+
+    /// Maximum value of your RNG range (optional).
+    ///
+    /// Required for custom ranges that don't fit standard bit widths.
+    ///
+    /// # Example
+    /// For a percentage (1-100): set `range_min: 1` and `range_max: 100`.
     pub range_max: Option<u32>,
-    /// Optional: enforce a specific bit-width (8, 16, or 32) for fixed-width encoding
-    /// If specified, all numbers must fit within this bit-width
+
+    /// Enforce a specific bit-width (8, 16, or 32) for fixed-width encoding (optional).
+    ///
+    /// If specified, all numbers must fit within this bit-width.
+    /// Only valid for `input_format: "numbers"`.
     pub bit_width: Option<u8>,
-    /// Optional: enable debug logging of bit stream to file
+
+    /// Enable debug logging of the bit stream to a file (default: false).
+    ///
+    /// When enabled, writes the converted bit stream to a timestamped file in the `debug/` directory.
     #[serde(default)]
     pub debug_log: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+/// Result of a single NIST statistical test.
+///
+/// Each test analyzes the randomness of the bit sequence using different statistical methods.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct NistTestResult {
+    /// Name of the test (e.g., "Frequency", "BlockFrequency", "Runs").
     pub name: String,
+
+    /// Whether the test passed (p-value >= 0.01).
     pub passed: bool,
+
+    /// The p-value of the test (0.0 to 1.0).
+    ///
+    /// Higher values indicate more random-like behavior. Values >= 0.01 typically pass.
     pub p_value: f64,
+
+    /// Individual p-values for each test iteration (if applicable).
     pub p_values: Vec<f64>,
+
+    /// Human-readable description of what this test measures.
     pub description: String,
+
+    /// Additional test-specific metrics (optional).
+    ///
+    /// Contains key-value pairs with extra information about the test results.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metrics: Option<Vec<(String, String)>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+/// Aggregate results from all NIST statistical tests.
+///
+/// Contains summary statistics and detailed results for each individual test.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct NistResults {
+    /// Total number of bits analyzed.
     pub bit_count: usize,
+
+    /// Number of tests that passed.
     pub tests_passed: usize,
+
+    /// Total number of tests executed.
     pub total_tests: usize,
+
+    /// Percentage of tests that passed (0.0 to 100.0).
     pub success_rate: f64,
+
+    /// Detailed results for each individual test.
     pub individual_tests: Vec<NistTestResult>,
+
+    /// Optional message if fallback behavior was used.
     pub fallback_message: Option<String>,
+
+    /// Raw output from NIST test suite (optional, for debugging).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub raw_output: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+/// Response from the random number validation endpoint.
+///
+/// Contains the validation result, quality score, and detailed test results.
+///
+/// # Example
+///
+/// ```json
+/// {
+///   "valid": true,
+///   "quality_score": 0.95,
+///   "message": "Analyzed 1000 bits using 15 NIST tests (14/15 passed)",
+///   "nist_data": {
+///     "bit_count": 1000,
+///     "tests_passed": 14,
+///     "total_tests": 15,
+///     "success_rate": 93.33,
+///     "individual_tests": [...]
+///   }
+/// }
+/// ```
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ValidationResponse {
+    /// Whether the random numbers are considered valid (quality_score >= 0.8).
     pub valid: bool,
+
+    /// Quality score from 0.0 to 1.0 based on NIST test success rate.
+    ///
+    /// Calculated as `success_rate / 100`. A score >= 0.8 indicates good quality randomness.
     pub quality_score: f64,
+
+    /// Human-readable summary message.
     pub message: String,
+
+    /// Legacy field: raw NIST output as string (deprecated, for backwards compatibility).
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub nist_results: Option<String>, // Legacy field for backwards compatibility
+    pub nist_results: Option<String>,
+
+    /// Structured NIST test results with detailed metrics.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub nist_data: Option<NistResults>, // New structured data
+    pub nist_data: Option<NistResults>,
+
+    /// Path to debug bit stream file (only present if debug_log was enabled in request).
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub debug_file: Option<String>, // Path to debug bit stream file
+    pub debug_file: Option<String>,
 }
 
 /// Parse the input string and convert to binary format for NIST tests
