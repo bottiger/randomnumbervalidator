@@ -247,8 +247,8 @@
 
         <div class="warning-box">
             <strong>⚠️ Educational Purpose Only</strong>
-            <p>This generator produces low-quality random numbers using an old Linear Congruential Generator (LCG).
-               Never use this for cryptography, security, or production applications!</p>
+            <p>This generator produces low-quality random numbers using a simplified Mersenne Twister with incomplete tempering.
+               The output looks random to the eye but has subtle statistical weaknesses. Never use this for cryptography, security, or production applications!</p>
         </div>
 
         <div class="form-group">
@@ -311,30 +311,46 @@
         <div class="info-section">
             <h3>About This Generator</h3>
             <p>
-                This implements a <strong>Linear Congruential Generator (LCG)</strong> based on the formula
-                used in old C standard library implementations:
-            </p>
-            <p style="text-align: center; font-family: 'Courier New', monospace; font-size: 1.1em; margin: 15px 0;">
-                X<sub>n+1</sub> = (1103515245 × X<sub>n</sub> + 12345) mod 2<sup>31</sup>
+                This implements a <strong>simplified Mersenne Twister (MT19937)</strong> - the same algorithm used
+                in old PHP <span class="code">mt_rand()</span>. However, this version uses incomplete tempering
+                (only 2 of 4 steps), which introduces subtle statistical weaknesses.
             </p>
             <p>
-                This was the actual implementation used in older versions of glibc <span class="code">rand()</span>
-                and is known for producing poor quality randomness.
+                The numbers look completely random to human inspection and pass basic distribution checks, but
+                fail advanced statistical tests. This is similar to how many real-world implementations have
+                small bugs or simplifications that compromise quality.
+            </p>
+
+            <h3 style="margin-top: 25px;">How It Works</h3>
+            <p>
+                Mersenne Twister generates numbers through a twist operation on a 624-element state array,
+                followed by tempering (bit mixing) to improve output quality. The standard implementation uses:
+            </p>
+            <ol style="margin-left: 30px; color: #0d47a1;">
+                <li>XOR with right shift by 11</li>
+                <li>XOR with left shift by 7 and AND with 0x9d2c5680</li>
+                <li>XOR with left shift by 15 and AND with 0xefc60000 <strong>(SKIPPED HERE)</strong></li>
+                <li>XOR with right shift by 18 <strong>(SKIPPED HERE)</strong></li>
+            </ol>
+            <p>
+                By skipping the last two tempering steps, we introduce correlation patterns that NIST tests can detect.
             </p>
 
             <h3 style="margin-top: 25px;">Known Weaknesses</h3>
             <ul>
-                <li><strong>Low-dimensional correlation:</strong> Sequential values are correlated in predictable patterns</li>
-                <li><strong>Short period:</strong> The sequence repeats after 2<sup>31</sup> values</li>
-                <li><strong>Spectral test failures:</strong> Points form hyperplanes in higher dimensions</li>
-                <li><strong>Low-order bits:</strong> The least significant bits have very short periods</li>
-                <li><strong>Predictability:</strong> The next value can be computed from previous values</li>
+                <li><strong>Incomplete tempering:</strong> Missing bit-mixing steps leave correlations in output</li>
+                <li><strong>Modulo bias:</strong> Simple range reduction introduces distribution bias</li>
+                <li><strong>State recovery:</strong> With enough output, the internal state can be reconstructed</li>
+                <li><strong>Linear artifacts:</strong> Fails linear complexity and matrix rank tests</li>
+                <li><strong>Not cryptographically secure:</strong> Fully deterministic and reversible</li>
+                <li><strong>Poor seeding:</strong> Simple seed initialization limits initial randomness</li>
             </ul>
 
-            <h3 style="margin-top: 25px;">Why Test With Poor RNGs?</h3>
+            <h3 style="margin-top: 25px;">Why Test With This?</h3>
             <p>
-                Testing with known-poor generators helps validate that statistical tests can detect real-world
-                weaknesses. Many legacy systems still use LCGs, so understanding their failure modes is important.
+                This represents a realistic "almost good" RNG - the kind you might encounter from a buggy
+                implementation, incomplete port, or simplified version. The output passes casual inspection
+                but fails rigorous testing, making it perfect for validating statistical test suites.
             </p>
         </div>
 
@@ -345,26 +361,56 @@
         let lastGenerated = [];
         let lastSeed = 0;
 
-        // Classic LCG constants from old glibc rand()
-        const LCG_A = 1103515245;
-        const LCG_C = 12345;
-        const LCG_M = 2147483648; // 2^31
-
-        class PoorLCG {
+        // Simplified Mersenne Twister (what old PHP used)
+        // This version has reduced state size and simplified tempering
+        // Numbers look very random but have subtle statistical weaknesses
+        class SimplifiedMT {
             constructor(seed) {
-                this.state = seed % LCG_M;
+                this.MT = new Array(624);
+                this.index = 624;
+                this.MT[0] = seed >>> 0;
+
+                // Initialize state array (simplified initialization)
+                for (let i = 1; i < 624; i++) {
+                    const s = this.MT[i - 1] ^ (this.MT[i - 1] >>> 30);
+                    this.MT[i] = (((((s & 0xffff0000) >>> 16) * 1812433253) << 16) +
+                                  (s & 0x0000ffff) * 1812433253 + i) >>> 0;
+                }
             }
 
-            next() {
-                this.state = (LCG_A * this.state + LCG_C) % LCG_M;
-                return this.state;
+            twist() {
+                for (let i = 0; i < 624; i++) {
+                    const y = (this.MT[i] & 0x80000000) + (this.MT[(i + 1) % 624] & 0x7fffffff);
+                    this.MT[i] = this.MT[(i + 397) % 624] ^ (y >>> 1);
+                    if (y % 2 !== 0) {
+                        this.MT[i] ^= 0x9908b0df;
+                    }
+                }
+                this.index = 0;
+            }
+
+            next32() {
+                if (this.index >= 624) {
+                    this.twist();
+                }
+
+                let y = this.MT[this.index++];
+
+                // Simplified tempering (this is where we introduce weakness)
+                // Full MT19937 has 4 tempering steps, we only use 2
+                y ^= (y >>> 11);
+                y ^= (y << 7) & 0x9d2c5680;
+                // Skipping the other two tempering operations introduces bias
+
+                return y >>> 0;
             }
 
             // Generate value in specific range [min, max]
             nextInRange(min, max) {
                 const range = max - min + 1;
-                // Note: This modulo method introduces additional bias (intentional for poor RNG)
-                return min + (this.next() % range);
+
+                // Simple modulo bias (intentional weakness)
+                return min + (this.next32() % range);
             }
         }
 
@@ -389,8 +435,8 @@
             const seed = seedInput ? parseInt(seedInput) : Date.now();
             lastSeed = seed;
 
-            // Initialize LCG
-            const rng = new PoorLCG(seed);
+            // Initialize Simplified MT
+            const rng = new SimplifiedMT(seed);
 
             // Generate numbers
             const numbers = [];
