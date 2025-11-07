@@ -852,7 +852,7 @@
                     id="numbers"
                     name="numbers"
                     rows="5"
-                    placeholder="Example: 42, 17, 89, 3, 56, 91, 23, 67"
+                    placeholder="Loading..."
                     required
                 ></textarea>
 
@@ -1581,6 +1581,87 @@
         updateInputStats();
         validateInputRealtime();
 
+        // Flip-board animation for textbox
+        function startFlipBoardAnimation() {
+            const textarea = document.getElementById('numbers');
+            const targetCount = 25; // Generate 25 random 8-bit numbers
+            const numbers = [];
+
+            // Generate random 8-bit numbers (0-255)
+            for (let i = 0; i < targetCount; i++) {
+                numbers.push(Math.floor(Math.random() * 256));
+            }
+
+            let completedNumbers = [];
+            let currentIndex = 0;
+
+            function animateNumber(numberValue, callback) {
+                const targetStr = numberValue.toString();
+                const numDigits = targetStr.length;
+
+                // Start fast (15ms), gradually slow to 50ms based on progress
+                const baseInterval = Math.min(15 + currentIndex * 1.3, 50);
+                const cyclesPerDigit = 6; // How many flips before each digit settles
+
+                let currentDigitIndex = 0;
+                let cycleCount = 0;
+                let displayDigits = [];
+
+                // Initialize with random digits
+                for (let i = 0; i < numDigits; i++) {
+                    displayDigits.push(Math.floor(Math.random() * 10).toString());
+                }
+
+                const intervalId = setInterval(() => {
+                    if (currentDigitIndex < numDigits) {
+                        // Cycle all unsettled digits
+                        for (let i = currentDigitIndex; i < numDigits; i++) {
+                            displayDigits[i] = Math.floor(Math.random() * 10).toString();
+                        }
+
+                        // Update display
+                        const currentDisplay = displayDigits.join('');
+                        const fullText = [...completedNumbers, currentDisplay].join(', ');
+                        textarea.value = fullText;
+
+                        cycleCount++;
+
+                        // After enough cycles, settle this digit
+                        if (cycleCount >= cyclesPerDigit) {
+                            displayDigits[currentDigitIndex] = targetStr[currentDigitIndex];
+                            currentDigitIndex++;
+                            cycleCount = 0;
+                        }
+                    } else {
+                        // All digits settled
+                        clearInterval(intervalId);
+                        completedNumbers.push(numberValue);
+                        textarea.value = completedNumbers.join(', ');
+                        callback();
+                    }
+                }, baseInterval);
+            }
+
+            function animateNext() {
+                if (currentIndex >= numbers.length) {
+                    // Animation complete - update stats
+                    updateInputStats();
+                    return;
+                }
+
+                animateNumber(numbers[currentIndex], () => {
+                    currentIndex++;
+                    // Shorter pauses as we progress (faster overall)
+                    const pause = Math.max(30, 150 - currentIndex * 3);
+                    setTimeout(animateNext, pause);
+                });
+            }
+
+            // Clear placeholder and start animation
+            textarea.placeholder = '';
+            animateNext();
+        }
+
         // Check for pending test data from other pages (e.g., poor-rng generator)
         window.addEventListener('DOMContentLoaded', () => {
             const pendingTest = localStorage.getItem('pendingTest');
@@ -1630,6 +1711,9 @@
                     console.error('Failed to load pending test data:', e);
                     localStorage.removeItem('pendingTest');
                 }
+            } else {
+                // No pending data - start flip-board animation
+                setTimeout(startFlipBoardAnimation, 400);
             }
         });
 
