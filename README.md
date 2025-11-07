@@ -168,15 +168,6 @@ curl -X POST http://127.0.0.1:3000/api/validate \
   -H "Content-Type: application/json" \
   -d '{"numbers":"42,17,89,3,56,91,23,67"}'
 
-# Or explicitly enable (same result)
-curl -X POST http://127.0.0.1:3000/api/validate \
-  -H "Content-Type: application/json" \
-  -d '{"numbers":"42,17,89,3,56,91,23,67","use_nist":true}'
-
-# Disable NIST (basic tests only)
-curl -X POST http://127.0.0.1:3000/api/validate \
-  -H "Content-Type: application/json" \
-  -d '{"numbers":"42,17,89,3,56,91,23,67","use_nist":false}'
 ```
 
 ### NIST Test Results
@@ -216,7 +207,7 @@ Validates a sequence of random numbers.
 }
 ```
 
-Note: `use_nist` defaults to `true`. NIST tests run automatically unless explicitly disabled.
+Note: NIST statistical tests always run for all validations. The input must contain at least 100 bits of data for NIST tests to run successfully.
 
 **Response:**
 ```json

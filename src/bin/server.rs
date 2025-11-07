@@ -131,17 +131,15 @@ async fn validate_handler(
         .unwrap_or("Unknown");
 
     info!(
-        "Validation request received: query_id={}, ip={}, {} numbers, NIST={}",
+        "Validation request received: query_id={}, ip={}, {} numbers",
         query_id,
         client_ip,
-        payload.numbers.split(',').count(),
-        payload.use_nist
+        payload.numbers.split(',').count()
     );
 
-    // Perform validation
+    // Perform validation (always uses NIST)
     let response = validate_random_numbers_full(
         &payload.numbers,
-        payload.use_nist,
         &payload.input_format,
         payload.range_min,
         payload.range_max,
@@ -238,7 +236,7 @@ async fn log_query_to_database(
         total_numbers_count * 32 // Fallback estimate
     };
 
-    // Insert into queries table
+    // Insert into queries table (NIST is always used now)
     sqlx::query(
         r#"
         INSERT INTO queries (
@@ -249,8 +247,8 @@ async fn log_query_to_database(
         ) VALUES (
             $1, NOW(), $2, $3, NULL,
             $4, $5, $6, $7,
-            $8, $9, $10,
-            $11, NULL
+            $8, $9, true,
+            $10, NULL
         )
         "#,
     )
@@ -263,7 +261,6 @@ async fn log_query_to_database(
     .bind(total_bits_count)
     .bind(response.valid)
     .bind(response.quality_score)
-    .bind(request.use_nist)
     .bind(processing_time_ms)
     .execute(pool)
     .await?;

@@ -62,24 +62,23 @@ BlockFrequency            PASS (avg p-value: 0.6891)
 **Request Structure:**
 ```json
 {
-  "numbers": "42, 17, 89, 3, 56, 91, 23, 67",
-  "use_nist": true
+  "numbers": "42, 17, 89, 3, 56, 91, 23, 67"
 }
 ```
 
 **Response:**
-- Basic quality metrics (bit balance, runs test)
-- Full NIST test results when `use_nist: true`
+- NIST statistical test results (always runs)
 - Detailed summary with pass/fail status
-- Average p-values for each test
+- P-values for each test
+- Overall quality score based on NIST results
 
 ### 4. Frontend Integration
 
 **UI Updates:**
-- Checkbox to enable NIST tests
+- NIST tests always run automatically
 - Results displayed in formatted preformatted text
-- Clear indication when NIST is not available
-- Helpful error messages
+- Clear error messages if data is insufficient
+- Minimum 100 bits required for NIST tests
 
 ## Technical Details
 
@@ -117,7 +116,7 @@ experiments/AlgorithmTesting/
 
 ### Process Flow
 
-1. **User Input** → Numbers submitted with `use_nist: true`
+1. **User Input** → Numbers submitted via API
 2. **Conversion** → Numbers converted to 32-bit binary representation
 3. **File Preparation** → Binary written as ASCII '0' and '1' characters
 4. **NIST Execution** → assess binary spawned with automated input:
@@ -134,9 +133,8 @@ experiments/AlgorithmTesting/
 ```
 1. Open http://127.0.0.1:3000
 2. Enter numbers: 42, 17, 89, 3, 56, 91, 23, 67, 14, 88
-3. Check "Run comprehensive NIST Statistical Tests"
-4. Click "Validate Numbers"
-5. View results including full NIST analysis
+3. Click "Validate Numbers"
+4. View results including full NIST analysis (runs automatically)
 ```
 
 ### API Call
@@ -144,16 +142,15 @@ experiments/AlgorithmTesting/
 curl -X POST http://127.0.0.1:3000/api/validate \
   -H "Content-Type: application/json" \
   -d '{
-    "numbers": "42,17,89,3,56,91,23,67,14,88",
-    "use_nist": true
+    "numbers": "42,17,89,3,56,91,23,67,14,88"
   }' | jq .
 ```
 
 ### Programmatic Use
 ```rust
-use randomnumbervalidator::validate_random_numbers_with_nist;
+use randomnumbervalidator::validate_random_numbers;
 
-let response = validate_random_numbers_with_nist("42,17,89,3,56", true);
+let response = validate_random_numbers("42,17,89,3,56");
 println!("NIST Results:\n{}", response.nist_results.unwrap());
 ```
 

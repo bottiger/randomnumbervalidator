@@ -1,5 +1,5 @@
 use randomnumbervalidator::{
-    prepare_input_for_nist, validate_random_numbers, validate_random_numbers_with_nist,
+    prepare_input_for_nist, validate_random_numbers,
     ValidationRequest,
 };
 
@@ -109,23 +109,12 @@ fn test_integration_overflow_number() {
     assert_eq!(response.quality_score, 0.0);
 }
 
-#[test]
-fn test_integration_without_nist() {
-    let input = "0,1,2,3,4,5,6,7,8,9,10";
-    let response = validate_random_numbers_with_nist(input, false);
-
-    assert!(response.quality_score >= 0.0);
-    assert!(response.quality_score <= 1.0);
-    assert!(response.nist_results.is_some());
-    assert!(response.nist_results.unwrap().contains("not requested"));
-}
 
 #[test]
 fn test_integration_validation_request_structure() {
     // Test that ValidationRequest can be created and serialized
     let request = ValidationRequest {
         numbers: "0,1,2,3".to_string(),
-        use_nist: true,
         input_format: Default::default(),
         range_min: None,
         range_max: None,
@@ -134,15 +123,14 @@ fn test_integration_validation_request_structure() {
     };
 
     assert_eq!(request.numbers, "0,1,2,3");
-    assert!(request.use_nist);
     assert_eq!(request.range_min, None);
     assert_eq!(request.range_max, None);
     assert_eq!(request.bit_width, None);
 
-    // Test default use_nist
+    // Test JSON parsing
     let json = r#"{"numbers":"1,2,3"}"#;
     let parsed: ValidationRequest = serde_json::from_str(json).unwrap();
-    assert!(parsed.use_nist); // Should default to true
+    assert_eq!(parsed.numbers, "1,2,3");
 }
 
 #[test]

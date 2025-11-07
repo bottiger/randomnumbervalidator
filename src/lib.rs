@@ -21,8 +21,6 @@ pub enum InputFormat {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ValidationRequest {
     pub numbers: String,
-    #[serde(default = "default_use_nist")]
-    pub use_nist: bool,
     /// Optional: specify the input format (numbers or base64)
     #[serde(default)]
     pub input_format: InputFormat,
@@ -36,10 +34,6 @@ pub struct ValidationRequest {
     /// Optional: enable debug logging of bit stream to file
     #[serde(default)]
     pub debug_log: bool,
-}
-
-fn default_use_nist() -> bool {
-    true
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -431,39 +425,14 @@ pub fn prepare_input_with_format(
     }
 }
 
-/// Validate random numbers and return quality assessment (defaults to using NIST)
+/// Validate random numbers and return quality assessment (always uses NIST)
 pub fn validate_random_numbers(input: &str) -> ValidationResponse {
-    validate_random_numbers_with_nist(input, true)
+    validate_random_numbers_full(input, &InputFormat::Numbers, None, None, None, false)
 }
 
-/// Validate random numbers with optional NIST test suite integration
-pub fn validate_random_numbers_with_nist(input: &str, use_nist: bool) -> ValidationResponse {
-    validate_random_numbers_with_nist_and_range(input, use_nist, None, None, None)
-}
-
-/// Validate random numbers with optional NIST test suite integration and custom range
-pub fn validate_random_numbers_with_nist_and_range(
-    input: &str,
-    use_nist: bool,
-    range_min: Option<u32>,
-    range_max: Option<u32>,
-    bit_width: Option<u8>,
-) -> ValidationResponse {
-    validate_random_numbers_full(
-        input,
-        use_nist,
-        &InputFormat::Numbers,
-        range_min,
-        range_max,
-        bit_width,
-        false,
-    )
-}
-
-/// Validate random numbers with full control over all parameters
+/// Validate random numbers with full control over all parameters (always uses NIST)
 pub fn validate_random_numbers_full(
     input: &str,
-    use_nist: bool,
     input_format: &InputFormat,
     range_min: Option<u32>,
     range_max: Option<u32>,
@@ -471,9 +440,8 @@ pub fn validate_random_numbers_full(
     debug_log: bool,
 ) -> ValidationResponse {
     debug!(
-        "Starting validation: input_length={}, use_nist={}, format={:?}, range={:?}-{:?}, bit_width={:?}, debug_log={}",
+        "Starting validation: input_length={}, format={:?}, range={:?}-{:?}, bit_width={:?}, debug_log={}",
         input.len(),
-        use_nist,
         input_format,
         range_min,
         range_max,
@@ -514,82 +482,56 @@ pub fn validate_random_numbers_full(
         None
     };
 
-    // Basic validation: calculate simple randomness metrics
-    let quality_score = calculate_basic_quality(&bits);
-    debug!("Basic quality score calculated: {:.4}", quality_score);
-
-    // Run NIST tests if requested and available
-    let (nist_results, nist_data) = if use_nist {
-        info!("NIST tests requested, initializing wrapper");
-        let wrapper = nist_wrapper::NistWrapper::new();
-        match wrapper.run_tests(&bits) {
-            Ok(results) => {
-                info!("NIST tests completed successfully");
-                // Extract raw output from results if available
-                let raw_output = results.raw_output.clone();
-                (raw_output, Some(results))
-            }
-            Err(e) => {
-                warn!("NIST tests failed: {}", e);
-                (Some(format!("NIST tests could not be run: {}", e)), None)
-            }
+    // Run NIST tests (always required)
+    info!("Running NIST statistical tests");
+    let wrapper = nist_wrapper::NistWrapper::new();
+    let nist_data = match wrapper.run_tests(&bits) {
+        Ok(results) => {
+            info!("NIST tests completed successfully");
+            results
         }
-    } else {
-        debug!("NIST tests not requested");
-        (
-            Some(
-                "NIST tests not requested. Use NIST option to enable comprehensive testing."
-                    .to_string(),
-            ),
-            None,
-        )
+        Err(e) => {
+            warn!("NIST tests failed: {}", e);
+            return ValidationResponse {
+                valid: false,
+                quality_score: 0.0,
+                message: format!("NIST tests failed: {}", e),
+                nist_results: None,
+                nist_data: None,
+                debug_file,
+            };
+        }
     };
 
-    let is_valid = quality_score > 0.3;
+    // Calculate quality score from NIST results (success_rate / 100)
+    let quality_score = nist_data.success_rate / 100.0;
+    let is_valid = quality_score >= 0.8; // Require 80% of tests to pass
+
     info!(
-        "Validation complete: valid={}, quality_score={:.4}, bits={}",
+        "Validation complete: valid={}, quality_score={:.4}, bits={}, tests_passed={}/{}",
         is_valid,
         quality_score,
-        bits.len()
+        bits.len(),
+        nist_data.tests_passed,
+        nist_data.total_tests
     );
 
     ValidationResponse {
         valid: is_valid,
         quality_score,
-        message: format!("Analyzed {} bits", bits.len()),
-        nist_results,
-        nist_data,
+        message: format!(
+            "Analyzed {} bits using {} NIST tests ({}/{} passed)",
+            bits.len(),
+            nist_data.total_tests,
+            nist_data.tests_passed,
+            nist_data.total_tests
+        ),
+        nist_results: nist_data.raw_output.clone(),
+        nist_data: Some(nist_data),
         debug_file,
     }
 }
 
-/// Calculate basic quality score (0.0 to 1.0)
-fn calculate_basic_quality(bits: &[u8]) -> f64 {
-    if bits.is_empty() {
-        return 0.0;
-    }
-
-    // Count ones and zeros
-    let ones = bits.iter().filter(|&&b| b == 1).count();
-    let zeros = bits.len() - ones;
-
-    // Good randomness should have roughly equal ones and zeros
-    let balance = 1.0 - ((ones as f64 - zeros as f64).abs() / bits.len() as f64);
-
-    // Simple runs test: count consecutive identical bits
-    let mut runs = 0;
-    for i in 1..bits.len() {
-        if bits[i] != bits[i - 1] {
-            runs += 1;
-        }
-    }
-    let expected_runs = bits.len() / 2;
-    let runs_score =
-        1.0 - ((runs as f64 - expected_runs as f64).abs() / expected_runs as f64).min(1.0);
-
-    // Average the metrics
-    (balance + runs_score) / 2.0
-}
 
 #[cfg(test)]
 mod tests {
@@ -650,37 +592,6 @@ mod tests {
         assert!(response.quality_score <= 1.0);
     }
 
-    #[test]
-    fn test_basic_quality_balanced() {
-        // Perfectly balanced: alternating bits
-        let bits = vec![0, 1, 0, 1, 0, 1, 0, 1];
-        let score = calculate_basic_quality(&bits);
-        assert!(score > 0.5, "Expected score > 0.5, got {}", score);
-    }
-
-    #[test]
-    fn test_basic_quality_poor() {
-        // Poor randomness: all zeros
-        let bits = vec![0, 0, 0, 0, 0, 0, 0, 0];
-        let score = calculate_basic_quality(&bits);
-        assert!(score < 0.5);
-    }
-
-    #[test]
-    fn test_basic_quality_all_ones() {
-        // Poor randomness: all ones
-        let bits = vec![1, 1, 1, 1, 1, 1, 1, 1];
-        let score = calculate_basic_quality(&bits);
-        assert!(score < 0.5);
-    }
-
-    #[test]
-    fn test_basic_quality_empty() {
-        // Edge case: empty bits
-        let bits = vec![];
-        let score = calculate_basic_quality(&bits);
-        assert_eq!(score, 0.0);
-    }
 
     #[test]
     fn test_prepare_input_single_number() {
@@ -757,25 +668,7 @@ mod tests {
         assert!(response.message.contains("letters"));
     }
 
-    #[test]
-    fn test_validate_with_nist_disabled() {
-        let response = validate_random_numbers_with_nist("0,1,2,3,4,5", false);
-        assert!(response.quality_score >= 0.0);
-        assert!(response.nist_results.is_some());
-        let nist_msg = response.nist_results.unwrap();
-        assert!(nist_msg.contains("not requested"));
-    }
 
-    #[test]
-    fn test_validate_quality_threshold() {
-        // Test that quality_score > 0.3 determines validity
-        let response = validate_random_numbers("0,1,2,3,4,5");
-        if response.quality_score > 0.3 {
-            assert!(response.valid);
-        } else {
-            assert!(!response.valid);
-        }
-    }
 
     #[test]
     fn test_prepare_input_leading_zeros() {
@@ -788,19 +681,18 @@ mod tests {
 
     #[test]
     fn test_validation_response_structure() {
-        let response = validate_random_numbers("0,1,2,3,4,5");
+        // Generate enough numbers for NIST (at least 100 bits, so 13+ numbers with 8-bit encoding)
+        let numbers: Vec<String> = (0..20).map(|n| (n * 10).to_string()).collect();
+        let input = numbers.join(",");
+        let response = validate_random_numbers(&input);
+
         // Verify all fields are populated
         assert!(response.quality_score >= 0.0 && response.quality_score <= 1.0);
         assert!(!response.message.is_empty());
         assert!(response.nist_results.is_some());
+        assert!(response.nist_data.is_some());
     }
 
-    #[test]
-    fn test_basic_quality_single_bit() {
-        let bits = vec![1];
-        let score = calculate_basic_quality(&bits);
-        assert!(score >= 0.0 && score <= 1.0);
-    }
 
     #[test]
     fn test_prepare_input_large_sequence() {
@@ -1129,13 +1021,16 @@ mod tests {
     fn test_validate_with_base64_format() {
         // Test validation with base64 input (needs enough data for NIST)
         // Generate a large base64 string (at least 12500 bytes = 100,000 bits)
-        let bytes = vec![0xAA; 12500]; // Alternating bits pattern
+        // Use a varied pattern to avoid issues with statistical tests
+        let mut bytes = Vec::new();
+        for i in 0..12500 {
+            bytes.push(((i * 7 + 13) % 256) as u8); // Pseudo-random pattern
+        }
         use base64::prelude::*;
         let base64_input = BASE64_STANDARD.encode(&bytes);
 
         let response = validate_random_numbers_full(
             &base64_input,
-            false, // Don't use NIST for speed
             &InputFormat::Base64,
             None,
             None,
@@ -1175,9 +1070,12 @@ mod tests {
 
     #[test]
     fn test_validate_with_debug_log() {
+        // Generate enough numbers for NIST (at least 100 bits, so 13+ numbers with 8-bit encoding)
+        let numbers: Vec<String> = (0..20).map(|n| (n * 10).to_string()).collect();
+        let input = numbers.join(",");
+
         let response = validate_random_numbers_full(
-            "0,128,255",
-            false,
+            &input,
             &InputFormat::Numbers,
             None,
             None,
@@ -1198,9 +1096,12 @@ mod tests {
 
     #[test]
     fn test_validate_without_debug_log() {
+        // Generate enough numbers for NIST (at least 100 bits, so 13+ numbers with 8-bit encoding)
+        let numbers: Vec<String> = (0..20).map(|n| (n * 10).to_string()).collect();
+        let input = numbers.join(",");
+
         let response = validate_random_numbers_full(
-            "0,128,255",
-            false,
+            &input,
             &InputFormat::Numbers,
             None,
             None,
