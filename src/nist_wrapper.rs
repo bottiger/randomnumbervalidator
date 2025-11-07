@@ -250,7 +250,7 @@ impl NistWrapper {
             // Linear penalty: 100% at deviation=0, 0% at deviation=0.5
             let quality = 100.0 * (1.0 - (deviation / 0.5));
 
-            quality.max(0.0).min(100.0)
+            quality.clamp(0.0, 100.0)
         } else {
             // If no tests pass, p-value quality is 0
             0.0
