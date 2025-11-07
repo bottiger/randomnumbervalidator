@@ -54,24 +54,30 @@ make clean || true
 make
 
 echo ""
-echo "🦀 Preparing Rust environment..."
+echo "🦀 Checking Rust binary..."
 cd "$APP_DIR"
-source $HOME/.cargo/env || true
 
-# Fix corrupted Rust toolchain
-echo "  Reinstalling stable toolchain..."
-rustup toolchain uninstall stable || true
-rustup toolchain install stable
-rustup default stable
+# Check if pre-built binary exists (from GitHub Actions)
+if [ -f "$APP_DIR/target/release/server" ]; then
+    echo "  ✅ Using pre-built binary from GitHub Actions"
+else
+    echo "  Building Rust application on server..."
+    source $HOME/.cargo/env || true
 
-# Verify installation
-echo "  Verifying Rust installation..."
-rustc --version
-cargo --version
+    # Fix corrupted Rust toolchain if needed
+    echo "  Preparing Rust environment..."
+    rustup toolchain uninstall stable || true
+    rustup toolchain install stable
+    rustup default stable
 
-echo ""
-echo "🦀 Building Rust application..."
-cargo build --release --bin server
+    # Verify installation
+    echo "  Verifying Rust installation..."
+    rustc --version
+    cargo --version
+
+    echo "  Compiling..."
+    cargo build --release --bin server
+fi
 
 echo ""
 echo "⚙️  Configuring systemd service..."
