@@ -8,6 +8,7 @@ use std::path::Path;
 use tracing::{debug, info, warn};
 
 pub mod enhanced_stats;
+pub mod nist_tests;
 pub mod nist_wrapper;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]

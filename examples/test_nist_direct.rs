@@ -7,7 +7,6 @@ fn main() {
     let wrapper = NistWrapper::new();
 
     println!("Current working directory: {:?}", std::env::current_dir());
-    println!("NIST available: {}", wrapper.is_available());
 
     // Test with some sample bits
     let test_numbers = "42,17,89,3,56,91,23,67";

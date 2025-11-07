@@ -4,6 +4,7 @@ use std::collections::HashMap;
 #[allow(unused_imports)]
 use tracing::{debug, error, info, warn};
 
+use crate::nist_tests;
 use crate::{NistResults, NistTestResult};
 
 /// Test tier information based on input size
@@ -71,11 +72,6 @@ pub struct NistWrapper {
 impl NistWrapper {
     pub fn new() -> Self {
         NistWrapper {}
-    }
-
-    /// Check if NIST test suite is available (always true with nistrs)
-    pub fn is_available(&self) -> bool {
-        true
     }
 
     /// Determine which test tier to use based on input size
@@ -181,95 +177,41 @@ impl NistWrapper {
     /// Run NIST tests appropriate for the given tier
     fn run_all_tests(data: &BitsData, tier: &TestTier) -> HashMap<String, Vec<TestResultT>> {
         let mut results = HashMap::new();
+        let bit_count = data.len();
 
-        // Tier 1: Basic tests (100+ bits)
-        if tier.level >= 1 {
-            results.insert("Frequency".to_string(), vec![frequency_test(data)]);
-            results.insert("Runs".to_string(), vec![runs_test(data)]);
-            results.insert("FFT".to_string(), vec![fft_test(data)]);
-
-            // Universal test requires at least 1,000 bits to avoid overflow in nistrs
-            if data.len() >= 1000 {
-                results.insert("Universal".to_string(), vec![universal_test(data)]);
-            }
-
-            // Cumulative Sums (returns [TestResultT; 2])
-            let cusum_results = cumulative_sums_test(data);
-            results.insert("CumulativeSums-Forward".to_string(), vec![cusum_results[0]]);
-            results.insert("CumulativeSums-Reverse".to_string(), vec![cusum_results[1]]);
-        }
-
-        // Tier 2: Add block and template tests (1,000+ bits)
-        if tier.level >= 2 {
-            let block_size = if data.len() >= 1000 {
-                100
-            } else {
-                data.len() / 10
-            };
-            if block_size > 0 {
-                if let Ok(result) = block_frequency_test(data, block_size) {
-                    results.insert("BlockFrequency".to_string(), vec![result]);
+        // Get all test definitions and filter by tier and bit requirements
+        for test_def in nist_tests::get_all_tests() {
+            if test_def.should_run(tier.level, bit_count) {
+                let test_results = (test_def.execute)(data);
+                if !test_results.is_empty() {
+                    results.insert(test_def.name.to_string(), test_results);
                 }
-            }
-
-            // Template tests
-            let template_size = 9; // Standard NIST template size
-            if let Ok(result_vec) = non_overlapping_template_test(data, template_size) {
-                results.insert("NonOverlappingTemplate".to_string(), result_vec);
-            }
-            let result = overlapping_template_test(data, template_size);
-            results.insert("OverlappingTemplate".to_string(), vec![result]);
-        }
-
-        // Tier 3: Add more complex tests (10,000+ bits)
-        if tier.level >= 3 {
-            if let Ok(result) = longest_run_of_ones_test(data) {
-                results.insert("LongestRun".to_string(), vec![result]);
-            }
-            if let Ok(result) = rank_test(data) {
-                results.insert("Rank".to_string(), vec![result]);
-            }
-
-            // Approximate Entropy (use m=10 as recommended)
-            let m_param = 10.min(data.len() / 100);
-            if m_param >= 2 {
-                let result = approximate_entropy_test(data, m_param);
-                results.insert("ApproximateEntropy".to_string(), vec![result]);
-            }
-
-            // Serial test (returns [TestResultT; 2])
-            let serial_m = 16.min(data.len() / 100);
-            if serial_m >= 2 {
-                let serial_results = serial_test(data, serial_m);
-                results.insert("Serial-1".to_string(), vec![serial_results[0]]);
-                results.insert("Serial-2".to_string(), vec![serial_results[1]]);
-            }
-        }
-
-        // Tier 4: Add heavy tests requiring substantial data (100,000+ bits)
-        if tier.level >= 4 {
-            // Random Excursions test (returns Result<[(bool, f64); 8], String>)
-            if let Ok(excursions_results) = random_excursions_test(data) {
-                results.insert("RandomExcursions".to_string(), excursions_results.to_vec());
-            }
-
-            // Random Excursions Variant (returns Result<[(bool, f64); 18], String>)
-            if let Ok(variant_results) = random_excursions_variant_test(data) {
-                results.insert(
-                    "RandomExcursionsVariant".to_string(),
-                    variant_results.to_vec(),
-                );
-            }
-
-            // Linear Complexity (use block size) - returns (bool, f64) directly
-            let lc_block_size = 500.min(data.len() / 100);
-            if lc_block_size >= 100 {
-                let result = linear_complexity_test(data, lc_block_size);
-                results.insert("LinearComplexity".to_string(), vec![result]);
             }
         }
 
         results
+    }
+
+    /// Calculate quality score from individual test results
+    /// Returns (success_count, total_tests, avg_p_value, success_rate)
+    fn calculate_quality_score(individual_tests: &[NistTestResult]) -> (usize, usize, f64, f64) {
+        let total_tests = individual_tests.len();
+        let success_count = individual_tests.iter().filter(|t| t.passed).count();
+
+        // Calculate average p-value as quality metric (0.0 to 1.0)
+        // Higher p-values indicate better randomness quality
+        let sum_p_values: f64 = individual_tests.iter().map(|t| t.p_value).sum();
+        let avg_p_value = if total_tests > 0 {
+            sum_p_values / total_tests as f64
+        } else {
+            0.0
+        };
+
+        // Store as percentage for backward compatibility (0-100 range)
+        // This represents the weighted quality score based on p-values, not just pass/fail count
+        let success_rate = avg_p_value * 100.0;
+
+        (success_count, total_tests, avg_p_value, success_rate)
     }
 
     /// Parse test results into structured format
@@ -280,19 +222,12 @@ impl NistWrapper {
         tier: &TestTier,
     ) -> Result<NistResults, String> {
         let bit_count = bits.len();
-        let mut success_count = 0;
-        let mut total_tests = 0;
 
         // Build individual test results
         let mut individual_tests = Vec::new();
         for (test_name, results_vec) in &test_results {
             // Each test may have multiple sub-results
             for (i, (passed, p_value)) in results_vec.iter().enumerate() {
-                total_tests += 1;
-                if *passed {
-                    success_count += 1;
-                }
-
                 // If multiple results, add index to name
                 let name = if results_vec.len() > 1 {
                     format!("{}-{}", test_name, i + 1)
@@ -314,12 +249,9 @@ impl NistWrapper {
         // Sort tests by name for consistent display
         individual_tests.sort_by(|a, b| a.name.cmp(&b.name));
 
-        // Calculate success rate
-        let success_rate = if total_tests > 0 {
-            (success_count as f64 / total_tests as f64) * 100.0
-        } else {
-            0.0
-        };
+        // Calculate quality score
+        let (success_count, total_tests, avg_p_value, success_rate) =
+            Self::calculate_quality_score(&individual_tests);
 
         // Generate raw output text with tier information
         let raw_output = Self::generate_raw_output(
@@ -332,8 +264,8 @@ impl NistWrapper {
         );
 
         info!(
-            "NIST tests completed (Tier {}): {}/{} passed ({:.1}%)",
-            tier.level, success_count, total_tests, success_rate
+            "NIST tests completed (Tier {}): {}/{} passed, quality score: {:.1}% (avg p-value: {:.4})",
+            tier.level, success_count, total_tests, success_rate, avg_p_value
         );
 
         Ok(NistResults {
@@ -361,7 +293,8 @@ impl NistWrapper {
              ======================================\n\n\
              Dataset: {} bits\n\
              Test Tier: Level {} - {} ({})\n\n\
-             Overall: {}/{} tests passed ({:.1}%)\n\n\
+             Overall: {}/{} tests passed (binary pass/fail)\n\
+             Quality Score: {:.1}% (weighted by p-values)\n\n\
              Individual Test Results:\n\
              ------------------------\n",
             bit_count,
@@ -439,16 +372,8 @@ mod tests {
 
     #[test]
     fn test_nist_wrapper_creation() {
-        let wrapper = NistWrapper::new();
+        let _wrapper = NistWrapper::new();
         // Verify we can create the wrapper
-        assert!(wrapper.is_available());
-    }
-
-    #[test]
-    fn test_is_available() {
-        let wrapper = NistWrapper::new();
-        // nistrs is always available
-        assert!(wrapper.is_available());
     }
 
     #[test]
@@ -464,8 +389,8 @@ mod tests {
 
     #[test]
     fn test_nist_wrapper_default() {
-        let wrapper = NistWrapper::default();
-        assert!(wrapper.is_available());
+        let _wrapper = NistWrapper::default();
+        // Verify we can create the wrapper with default
     }
 
     #[test]
