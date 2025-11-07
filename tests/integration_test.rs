@@ -29,6 +29,24 @@ fn test_integration_large_sequence() {
 }
 
 #[test]
+fn test_integration_sequential_pattern_low_score() {
+    // Sequential patterns should be detected as non-random and get LOW quality scores
+    let input = "0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40";
+    let response = validate_random_numbers(input);
+
+    // Sequential pattern should have VERY low quality (< 30%)
+    assert!(
+        response.quality_score < 0.3,
+        "Sequential pattern got quality score {:.1}%, expected < 30%",
+        response.quality_score * 100.0
+    );
+    assert!(
+        !response.valid,
+        "Sequential pattern should be marked as invalid"
+    );
+}
+
+#[test]
 fn test_prepare_input_format() {
     let result = prepare_input_for_nist("0,42,17");
     assert!(result.is_ok());

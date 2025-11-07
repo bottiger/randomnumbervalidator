@@ -119,13 +119,13 @@ impl NistWrapper {
                 TestTier::TIER_1.min_bits
             );
             return Err(format!(
-                "NIST statistical tests require at least {} bits (~{} numbers with 32-bit encoding) for basic tests. \
-                 You provided {} bits (~{} numbers). The system will use enhanced statistical tests instead, \
-                 which are designed for smaller datasets.",
+                "NIST statistical tests require at least {} bits (~{} numbers with 8-bit encoding) for basic tests. \
+                 You provided {} bits (~{} numbers with 8-bit encoding). \
+                 Please provide more numbers for statistical analysis.",
                 TestTier::TIER_1.min_bits,
-                TestTier::TIER_1.min_bits / 32,
+                TestTier::TIER_1.min_bits / 8,
                 bits.len(),
-                bits.len() / 32
+                bits.len() / 8
             ));
         }
 
