@@ -13,3 +13,4 @@ This is a simple application to validate a sequence of random numbers.
 * Do not ask me som many questions about running commands. Just run them unless you are going to delete a large amount of files
 * for every feature you add, add one or more tests for it
 * always ensure the local dev server is serving the most recent version
+* never push changes, only commit
