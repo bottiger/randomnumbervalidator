@@ -205,7 +205,7 @@ fn extract_client_ip(headers: &HeaderMap, addr: SocketAddr) -> String {
     addr.ip().to_string()
 }
 
-/// Log query information to the database
+/// Log query information to the database using the normalized schema
 async fn log_query_to_database(
     pool: &PgPool,
     query_id: uuid::Uuid,
@@ -230,26 +230,27 @@ async fn log_query_to_database(
         .split(|c: char| !c.is_numeric())
         .filter(|s| !s.is_empty())
         .count() as i32;
-    let total_bits_count = total_numbers_count * 32; // Each u32 is 32 bits
 
-    // Parse NIST results for summary metrics
-    let (nist_tests_passed, nist_tests_total, nist_avg_p_value) =
-        parse_nist_summary(response.nist_results.as_deref());
+    // Get actual bit count from NIST data if available
+    let total_bits_count = if let Some(ref nist_data) = response.nist_data {
+        nist_data.bit_count as i32
+    } else {
+        total_numbers_count * 32 // Fallback estimate
+    };
 
+    // Insert into queries table
     sqlx::query(
         r#"
-        INSERT INTO query_logs (
+        INSERT INTO queries (
             query_id, created_at, client_ip, user_agent, country,
             numbers_sample, numbers_truncated, total_numbers_count, total_bits_count,
             valid, quality_score, nist_used,
-            nist_tests_passed, nist_tests_total, nist_avg_p_value,
             processing_time_ms, error_message
         ) VALUES (
             $1, NOW(), $2, $3, NULL,
             $4, $5, $6, $7,
             $8, $9, $10,
-            $11, $12, $13,
-            $14, NULL
+            $11, NULL
         )
         "#,
     )
@@ -263,45 +264,78 @@ async fn log_query_to_database(
     .bind(response.valid)
     .bind(response.quality_score)
     .bind(request.use_nist)
-    .bind(nist_tests_passed)
-    .bind(nist_tests_total)
-    .bind(nist_avg_p_value)
     .bind(processing_time_ms)
     .execute(pool)
     .await?;
+
+    // Insert individual test results if available
+    if let Some(ref nist_data) = response.nist_data {
+        for test_result in &nist_data.individual_tests {
+            if let Err(e) = log_test_result_to_database(pool, query_id, test_result).await {
+                warn!(
+                    "Failed to log test result '{}' for query {}: {}",
+                    test_result.name, query_id, e
+                );
+            }
+        }
+    }
 
     info!("Query logged to database: query_id={}", query_id);
     Ok(())
 }
 
-/// Parse NIST results to extract summary metrics
-fn parse_nist_summary(nist_results: Option<&str>) -> (Option<i32>, Option<i32>, Option<f64>) {
-    if let Some(results) = nist_results {
-        // Try to parse the summary line that looks like: "Overall: 142/188 tests passed (75.5%)"
-        if let Some(line) = results.lines().find(|l| l.contains("tests passed")) {
-            let parts: Vec<&str> = line.split_whitespace().collect();
+/// Log an individual test result to the database
+async fn log_test_result_to_database(
+    pool: &PgPool,
+    query_id: uuid::Uuid,
+    test_result: &randomnumbervalidator::NistTestResult,
+) -> Result<(), sqlx::Error> {
+    // First, ensure the test definition exists (get or create)
+    let test_id: i32 = sqlx::query_scalar(
+        r#"
+        INSERT INTO test_definitions (test_name, description)
+        VALUES ($1, $2)
+        ON CONFLICT (test_name) DO UPDATE SET test_name = EXCLUDED.test_name
+        RETURNING id
+        "#,
+    )
+    .bind(&test_result.name)
+    .bind(&test_result.description)
+    .fetch_one(pool)
+    .await?;
 
-            // Look for pattern "X/Y tests passed"
-            for (i, part) in parts.iter().enumerate() {
-                if part.contains('/') && i + 2 < parts.len() && parts[i + 1] == "tests" {
-                    if let Some((passed, total)) = part.split_once('/') {
-                        let passed_count = passed.parse::<i32>().ok();
-                        let total_count = total.parse::<i32>().ok();
+    // Convert p_values Vec to JSON
+    let p_values_json = serde_json::to_value(&test_result.p_values)
+        .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
 
-                        // Try to extract percentage if available
-                        let avg_p = if i + 3 < parts.len() {
-                            let pct_str =
-                                parts[i + 3].trim_matches(|c| c == '(' || c == ')' || c == '%');
-                            pct_str.parse::<f64>().ok().map(|v| v / 100.0)
-                        } else {
-                            None
-                        };
+    // Convert metrics Option<Vec<(String, String)>> to JSON
+    let metrics_json = if let Some(ref metrics) = test_result.metrics {
+        serde_json::to_value(metrics).map_err(|e| sqlx::Error::Decode(Box::new(e)))?
+    } else {
+        serde_json::Value::Null
+    };
 
-                        return (passed_count, total_count, avg_p);
-                    }
-                }
-            }
-        }
-    }
-    (None, None, None)
+    // Insert test result
+    sqlx::query(
+        r#"
+        INSERT INTO test_results (query_id, test_id, passed, p_value, p_values, metrics)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT (query_id, test_id) DO UPDATE SET
+            passed = EXCLUDED.passed,
+            p_value = EXCLUDED.p_value,
+            p_values = EXCLUDED.p_values,
+            metrics = EXCLUDED.metrics
+        "#,
+    )
+    .bind(query_id)
+    .bind(test_id)
+    .bind(test_result.passed)
+    .bind(test_result.p_value)
+    .bind(p_values_json)
+    .bind(metrics_json)
+    .execute(pool)
+    .await?;
+
+    Ok(())
 }
+
