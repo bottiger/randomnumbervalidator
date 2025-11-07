@@ -108,7 +108,7 @@ pub fn run_enhanced_tests(bits: &[u8]) -> String {
 
 /// Frequency (Monobit) Test
 /// Tests if the number of 1s and 0s are approximately equal
-fn frequency_test(bits: &[u8]) -> StatisticalTestResult {
+pub fn frequency_test(bits: &[u8]) -> StatisticalTestResult {
     let n = bits.len() as f64;
     let ones = bits.iter().filter(|&&b| b == 1).count() as f64;
     let zeros = (bits.len() - ones as usize) as f64;
@@ -137,7 +137,7 @@ fn frequency_test(bits: &[u8]) -> StatisticalTestResult {
 
 /// Runs Test
 /// Tests for oscillation between 0 and 1
-fn runs_test(bits: &[u8]) -> StatisticalTestResult {
+pub fn runs_test(bits: &[u8]) -> StatisticalTestResult {
     if bits.len() < 2 {
         return StatisticalTestResult {
             test_name: "Runs Test".to_string(),
@@ -189,7 +189,7 @@ fn runs_test(bits: &[u8]) -> StatisticalTestResult {
 
 /// Longest Run Test
 /// Tests the length of longest run of 1s or 0s
-fn longest_run_test(bits: &[u8]) -> StatisticalTestResult {
+pub fn longest_run_test(bits: &[u8]) -> StatisticalTestResult {
     if bits.is_empty() {
         return StatisticalTestResult {
             test_name: "Longest Run Test".to_string(),
@@ -447,43 +447,3 @@ fn has_repeating_blocks(bits: &[u8]) -> bool {
     false
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_frequency_test_balanced() {
-        let bits = vec![0, 1, 0, 1, 0, 1, 0, 1];
-        let result = frequency_test(&bits);
-        assert!(result.passed);
-    }
-
-    #[test]
-    fn test_frequency_test_unbalanced() {
-        let bits = vec![1, 1, 1, 1, 1, 1, 1, 1];
-        let result = frequency_test(&bits);
-        assert!(!result.passed);
-    }
-
-    #[test]
-    fn test_runs_test() {
-        let bits = vec![0, 1, 0, 1, 1, 0, 0, 1];
-        let result = runs_test(&bits);
-        assert!(result.statistic >= 0.0);
-    }
-
-    #[test]
-    fn test_longest_run_test() {
-        let bits = vec![0, 0, 0, 0, 1, 1, 1, 0];
-        let result = longest_run_test(&bits);
-        assert_eq!(result.statistic, 4.0);
-    }
-
-    #[test]
-    fn test_enhanced_tests() {
-        let bits = vec![0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1];
-        let summary = run_enhanced_tests(&bits);
-        assert!(summary.contains("Enhanced Statistical Analysis"));
-        assert!(summary.contains("Tests Run"));
-    }
-}

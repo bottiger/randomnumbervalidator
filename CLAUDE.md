@@ -15,3 +15,4 @@ This is a simple application to validate a sequence of random numbers.
 * always ensure the local dev server is serving the most recent version
 * never push changes, only commit
 # never build and deploy locally. always do this from github
+# always fmt det tests before commiting
