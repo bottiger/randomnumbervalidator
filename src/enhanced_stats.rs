@@ -446,4 +446,3 @@ fn has_repeating_blocks(bits: &[u8]) -> bool {
 
     false
 }
-

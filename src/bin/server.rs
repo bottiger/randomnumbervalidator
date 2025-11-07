@@ -335,4 +335,3 @@ async fn log_test_result_to_database(
 
     Ok(())
 }
-

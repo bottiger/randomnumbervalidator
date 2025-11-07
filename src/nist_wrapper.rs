@@ -365,4 +365,3 @@ impl Default for NistWrapper {
         Self::new()
     }
 }
-

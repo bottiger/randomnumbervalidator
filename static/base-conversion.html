@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Base Conversion Strategy - Random Number Validator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.2em;
+            border-bottom: 3px solid #9fef00;
+            padding-bottom: 15px;
+        }
+
+        h2 {
+            color: #444;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        h3 {
+            color: #555;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        p {
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .example-box {
+            background: #f8f9fa;
+            border-left: 4px solid #9fef00;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .example-box strong {
+            color: #333;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .code {
+            font-family: 'Courier New', monospace;
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #d63384;
+        }
+
+        .formula {
+            background: #e3f2fd;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 6px;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            font-size: 1.1em;
+            color: #1565c0;
+        }
+
+        ul {
+            margin-left: 25px;
+            margin-bottom: 15px;
+        }
+
+        li {
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .key-point {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 30px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .back-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(159, 239, 0, 0.4);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th, td {
+            border: 1px solid #dee2e6;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+
+        td {
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Base Conversion Strategy</h1>
+
+        <p>
+            The base conversion strategy is a mathematical approach for extracting unbiased random bits
+            from sequences of numbers in custom ranges. This is essential when testing random number
+            generators that don't produce standard 0-based ranges.
+        </p>
+
+        <h2>The Problem</h2>
+
+        <p>
+            Consider a random number generator that produces numbers from 1 to 100. If we simply
+            convert each number to binary using fixed-width encoding (e.g., 8 bits), we introduce
+            systematic bias:
+        </p>
+
+        <div class="example-box">
+            <strong>Example: Number 1 in 8-bit encoding</strong>
+            Binary: <span class="code">00000001</span><br>
+            Result: 7 leading zeros, only 1 trailing one
+        </div>
+
+        <p>
+            These leading zeros don't represent true randomness—they're artifacts of the encoding.
+            Statistical tests would incorrectly detect patterns in these structural zeros.
+        </p>
+
+        <h2>The Solution: Base Conversion</h2>
+
+        <p>
+            Base conversion treats your entire sequence as a single large number represented in
+            base-<em>N</em>, where <em>N</em> is the size of your range. This extracts only the
+            true entropy without encoding artifacts.
+        </p>
+
+        <h3>How It Works</h3>
+
+        <p>For a sequence of numbers [n₁, n₂, n₃, ...] in range [min, max]:</p>
+
+        <ol>
+            <li><strong>Normalize:</strong> Convert each number to 0-based: <span class="code">normalized = number - min</span></li>
+            <li><strong>Calculate range size:</strong> <span class="code">range_size = max - min + 1</span></li>
+            <li><strong>Combine into large integer:</strong> Treat the sequence as a base-<em>range_size</em> number</li>
+            <li><strong>Convert to binary:</strong> Extract the binary representation of this large integer</li>
+            <li><strong>Adjust length:</strong> Ensure output matches expected entropy</li>
+        </ol>
+
+        <div class="formula">
+            Expected bits = ⌈count × log₂(range_size)⌉
+        </div>
+
+        <h3>Concrete Example</h3>
+
+        <div class="example-box">
+            <strong>Input:</strong> [2, 5, 8, 3] with range 2-8 (7 possible values)<br><br>
+
+            <strong>Step 1 - Normalize:</strong> [0, 3, 6, 1]<br><br>
+
+            <strong>Step 2 - Convert to base-7 large number:</strong><br>
+            value = 0×7³ + 3×7² + 6×7¹ + 1×7⁰ = 0 + 147 + 42 + 1 = 190<br><br>
+
+            <strong>Step 3 - Convert to binary:</strong><br>
+            190₁₀ = 10111110₂<br><br>
+
+            <strong>Step 4 - Calculate expected bits:</strong><br>
+            Expected = ⌈4 × log₂(7)⌉ = ⌈4 × 2.807⌉ = 12 bits<br><br>
+
+            <strong>Step 5 - Pad to 12 bits:</strong><br>
+            Final output: <span class="code">000010111110</span> (12 bits)
+        </div>
+
+        <h2>Key Characteristics</h2>
+
+        <table>
+            <tr>
+                <th>Property</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><strong>Deterministic</strong></td>
+                <td>Same input sequence always produces same bit output</td>
+            </tr>
+            <tr>
+                <td><strong>Consistent Length</strong></td>
+                <td>All sequences of same length and range produce same number of bits</td>
+            </tr>
+            <tr>
+                <td><strong>Entropy Preserving</strong></td>
+                <td>Extracts exactly log₂(range_size) bits per number</td>
+            </tr>
+            <tr>
+                <td><strong>Unbiased</strong></td>
+                <td>No leading zeros or encoding artifacts</td>
+            </tr>
+        </table>
+
+        <div class="key-point">
+            <strong>⚠️ Important:</strong> All sequences in the same range produce the same bit length,
+            whether they contain all minimum values, all maximum values, or mixed values. This consistency
+            is crucial for unbiased statistical testing.
+        </div>
+
+        <h2>Entropy Calculation Examples</h2>
+
+        <table>
+            <tr>
+                <th>Range</th>
+                <th>Possible Values</th>
+                <th>Bits per Number</th>
+                <th>Example (4 numbers)</th>
+            </tr>
+            <tr>
+                <td>0-1</td>
+                <td>2</td>
+                <td>1.00</td>
+                <td>4 bits</td>
+            </tr>
+            <tr>
+                <td>0-3</td>
+                <td>4</td>
+                <td>2.00</td>
+                <td>8 bits</td>
+            </tr>
+            <tr>
+                <td>1-6 (dice)</td>
+                <td>6</td>
+                <td>2.58</td>
+                <td>11 bits</td>
+            </tr>
+            <tr>
+                <td>2-8</td>
+                <td>7</td>
+                <td>2.81</td>
+                <td>12 bits</td>
+            </tr>
+            <tr>
+                <td>1-100</td>
+                <td>100</td>
+                <td>6.64</td>
+                <td>27 bits</td>
+            </tr>
+        </table>
+
+        <h2>When to Use Base Conversion</h2>
+
+        <p><strong>Use base conversion when:</strong></p>
+        <ul>
+            <li>Your RNG produces numbers in a specific range (e.g., 1-100, dice rolls 1-6)</li>
+            <li>Your numbers don't start at 0</li>
+            <li>You want to test the true randomness without encoding bias</li>
+        </ul>
+
+        <p><strong>Use fixed bit-width when:</strong></p>
+        <ul>
+            <li>Your numbers start at 0 (0-255, 0-65535, etc.)</li>
+            <li>You're working with raw bytes or standard computer representations</li>
+            <li>You want simpler, faster processing for standard ranges</li>
+        </ul>
+
+        <h2>Technical Implementation</h2>
+
+        <p>
+            The implementation uses arbitrary-precision arithmetic (BigUint) to handle large sequences
+            without overflow. The conversion is mathematically equivalent to treating your sequence as
+            a single number written in a custom base, then converting that to binary.
+        </p>
+
+        <p>
+            The algorithm ensures consistent output length by padding with leading zeros if needed,
+            or trimming excess leading zeros if the binary representation is too long (which only
+            occurs when the output is naturally aligned to byte boundaries).
+        </p>
+
+        <a href="/static/index.html" class="back-link">← Back to Validator</a>
+    </div>
+</body>
+</html>

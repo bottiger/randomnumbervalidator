@@ -56,7 +56,6 @@ fn test_validate_random_numbers() {
     assert!(response.quality_score <= 1.0);
 }
 
-
 #[test]
 fn test_prepare_input_single_number() {
     let result = prepare_input_for_nist("0,42");
@@ -132,8 +131,6 @@ fn test_validate_invalid_input() {
     assert!(response.message.contains("letters"));
 }
 
-
-
 #[test]
 fn test_prepare_input_leading_zeros() {
     // Numbers with leading zeros should be parsed correctly
@@ -156,7 +153,6 @@ fn test_validation_response_structure() {
     assert!(response.nist_results.is_some());
     assert!(response.nist_data.is_some());
 }
-
 
 #[test]
 fn test_prepare_input_large_sequence() {
@@ -305,8 +301,7 @@ fn test_old_test_compatibility() {
 #[test]
 fn test_bitwidth_enforced_8bit() {
     // With bit_width=8, should use 8 bits regardless of actual max
-    let result =
-        prepare_input_for_nist_with_range_and_bitwidth("0,50,100", None, None, Some(8));
+    let result = prepare_input_for_nist_with_range_and_bitwidth("0,50,100", None, None, Some(8));
     assert!(result.is_ok());
     let bits = result.unwrap();
     assert_eq!(bits.len(), 24); // 3 numbers * 8 bits
@@ -315,8 +310,7 @@ fn test_bitwidth_enforced_8bit() {
 #[test]
 fn test_bitwidth_enforced_16bit() {
     // With bit_width=16, should use 16 bits
-    let result =
-        prepare_input_for_nist_with_range_and_bitwidth("0,256,1000", None, None, Some(16));
+    let result = prepare_input_for_nist_with_range_and_bitwidth("0,256,1000", None, None, Some(16));
     assert!(result.is_ok());
     let bits = result.unwrap();
     assert_eq!(bits.len(), 48); // 3 numbers * 16 bits
@@ -335,8 +329,7 @@ fn test_bitwidth_enforced_32bit() {
 #[test]
 fn test_bitwidth_rejection_exceeds_8bit() {
     // Number 256 exceeds 8-bit max (255)
-    let result =
-        prepare_input_for_nist_with_range_and_bitwidth("0,100,256", None, None, Some(8));
+    let result = prepare_input_for_nist_with_range_and_bitwidth("0,100,256", None, None, Some(8));
     assert!(result.is_err());
     let err = result.unwrap_err();
     assert!(err.contains("exceeds"));
@@ -359,8 +352,7 @@ fn test_bitwidth_rejection_exceeds_16bit() {
 fn test_bitwidth_allows_nonzero_min() {
     // Numbers starting at 1 (not 0) are allowed - might just be a small sample
     // The statistical tests will detect bias if it exists
-    let result =
-        prepare_input_for_nist_with_range_and_bitwidth("1,50,100", None, None, Some(8));
+    let result = prepare_input_for_nist_with_range_and_bitwidth("1,50,100", None, None, Some(8));
     assert!(result.is_ok());
     let bits = result.unwrap();
     assert_eq!(bits.len(), 24); // 3 numbers * 8 bits
@@ -466,8 +458,7 @@ fn test_base64_binary_data() {
 
 #[test]
 fn test_prepare_input_with_format_numbers() {
-    let result =
-        prepare_input_with_format("0,128,255", &InputFormat::Numbers, None, None, None);
+    let result = prepare_input_with_format("0,128,255", &InputFormat::Numbers, None, None, None);
     assert!(result.is_ok());
     let bits = result.unwrap();
     assert_eq!(bits.len(), 24); // 3 numbers * 8 bits
@@ -493,14 +484,8 @@ fn test_validate_with_base64_format() {
     use base64::prelude::*;
     let base64_input = BASE64_STANDARD.encode(&bytes);
 
-    let response = validate_random_numbers_full(
-        &base64_input,
-        &InputFormat::Base64,
-        None,
-        None,
-        None,
-        false,
-    );
+    let response =
+        validate_random_numbers_full(&base64_input, &InputFormat::Base64, None, None, None, false);
 
     assert!(response.quality_score >= 0.0 && response.quality_score <= 1.0);
 }
@@ -609,7 +594,10 @@ fn test_base_conversion_leading_zeros() {
     // All minimum values (normalized to [0,0,0,0]) should be very small
     // Should have leading zeros
     let leading_zeros = bits.iter().take_while(|&&b| b == 0).count();
-    assert!(leading_zeros > 0, "Should have leading zeros for small values");
+    assert!(
+        leading_zeros > 0,
+        "Should have leading zeros for small values"
+    );
 }
 
 #[test]
@@ -620,19 +608,31 @@ fn test_base_conversion_entropy_calculation() {
     let result = convert_to_bits_base_conversion(&[0, 1, 0, 1], 0, 1);
     assert!(result.is_ok());
     let bits = result.unwrap();
-    assert_eq!(bits.len(), 4, "Range 0-1 should produce 4 bits for 4 numbers");
+    assert_eq!(
+        bits.len(),
+        4,
+        "Range 0-1 should produce 4 bits for 4 numbers"
+    );
 
     // Range 0-3 (4 values): should produce exactly 2 bits per number
     let result = convert_to_bits_base_conversion(&[0, 1, 2, 3], 0, 3);
     assert!(result.is_ok());
     let bits = result.unwrap();
-    assert_eq!(bits.len(), 8, "Range 0-3 should produce 8 bits for 4 numbers");
+    assert_eq!(
+        bits.len(),
+        8,
+        "Range 0-3 should produce 8 bits for 4 numbers"
+    );
 
     // Range 0-7 (8 values): should produce exactly 3 bits per number
     let result = convert_to_bits_base_conversion(&[0, 1, 2, 3, 4, 5, 6, 7], 0, 7);
     assert!(result.is_ok());
     let bits = result.unwrap();
-    assert_eq!(bits.len(), 24, "Range 0-7 should produce 24 bits for 8 numbers");
+    assert_eq!(
+        bits.len(),
+        24,
+        "Range 0-7 should produce 24 bits for 8 numbers"
+    );
 }
 
 #[test]
@@ -654,8 +654,11 @@ fn test_base_conversion_different_values_same_length() {
     }
 
     // All lengths should be the same
-    assert!(lengths.iter().all(|&l| l == lengths[0]),
-            "All sequences should produce same bit length, got: {:?}", lengths);
+    assert!(
+        lengths.iter().all(|&l| l == lengths[0]),
+        "All sequences should produce same bit length, got: {:?}",
+        lengths
+    );
 }
 
 #[test]
@@ -672,7 +675,16 @@ fn test_base_conversion_uniqueness() {
     let bits3 = result3.unwrap();
 
     // Different sequences should produce different bit patterns
-    assert_ne!(bits1, bits2, "Different sequences should produce different bits");
-    assert_ne!(bits1, bits3, "Different sequences should produce different bits");
-    assert_ne!(bits2, bits3, "Different sequences should produce different bits");
+    assert_ne!(
+        bits1, bits2,
+        "Different sequences should produce different bits"
+    );
+    assert_ne!(
+        bits1, bits3,
+        "Different sequences should produce different bits"
+    );
+    assert_ne!(
+        bits2, bits3,
+        "Different sequences should produce different bits"
+    );
 }

@@ -1,7 +1,4 @@
-use randomnumbervalidator::{
-    prepare_input_for_nist, validate_random_numbers,
-    ValidationRequest,
-};
+use randomnumbervalidator::{prepare_input_for_nist, validate_random_numbers, ValidationRequest};
 
 #[test]
 fn test_integration_basic_validation() {
@@ -108,7 +105,6 @@ fn test_integration_overflow_number() {
     assert!(!response.valid);
     assert_eq!(response.quality_score, 0.0);
 }
-
 
 #[test]
 fn test_integration_validation_request_structure() {

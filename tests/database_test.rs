@@ -196,13 +196,14 @@ async fn test_insert_test_definition_and_result() {
     assert!(result.is_ok(), "Failed to insert test result");
 
     // Verify the test result was inserted
-    let count: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM test_results WHERE query_id = $1 AND test_id = $2")
-            .bind(query_id)
-            .bind(test_id)
-            .fetch_one(&pool)
-            .await
-            .expect("Failed to count test results");
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM test_results WHERE query_id = $1 AND test_id = $2",
+    )
+    .bind(query_id)
+    .bind(test_id)
+    .fetch_one(&pool)
+    .await
+    .expect("Failed to count test results");
 
     assert_eq!(count, 1, "Test result should be inserted");
 
@@ -518,11 +519,12 @@ async fn test_prepopulated_nist_tests() {
 
     assert!(frequency_exists, "Frequency test should be pre-populated");
 
-    let runs_exists: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM test_definitions WHERE test_name = 'Runs')")
-            .fetch_one(&pool)
-            .await
-            .expect("Failed to check for Runs test");
+    let runs_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM test_definitions WHERE test_name = 'Runs')",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("Failed to check for Runs test");
 
     assert!(runs_exists, "Runs test should be pre-populated");
 }

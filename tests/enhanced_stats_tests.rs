@@ -1,5 +1,7 @@
 // Tests for enhanced_stats.rs
-use randomnumbervalidator::enhanced_stats::{frequency_test, runs_test, longest_run_test, run_enhanced_tests};
+use randomnumbervalidator::enhanced_stats::{
+    frequency_test, longest_run_test, run_enhanced_tests, runs_test,
+};
 
 #[test]
 fn test_frequency_test_balanced() {
