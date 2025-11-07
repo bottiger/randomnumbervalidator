@@ -194,12 +194,21 @@ impl NistWrapper {
 
     /// Calculate quality score from individual test results
     /// Returns (success_count, total_tests, avg_p_value, success_rate)
+    ///
+    /// The quality score combines two factors:
+    /// 1. Pass rate (80% weight): Percentage of tests that pass (p >= 0.01)
+    /// 2. P-value distribution (20% weight): How well p-values are distributed
+    ///
+    /// For truly random data:
+    /// - All (or nearly all) tests should pass
+    /// - P-values should average around 0.5
+    /// - P-values all near 1.0 are suspicious (too uniform)
+    /// - P-values all near 0.01 are marginal (barely passing)
     fn calculate_quality_score(individual_tests: &[NistTestResult]) -> (usize, usize, f64, f64) {
         let total_tests = individual_tests.len();
         let success_count = individual_tests.iter().filter(|t| t.passed).count();
 
-        // Calculate average p-value as quality metric (0.0 to 1.0)
-        // Higher p-values indicate better randomness quality
+        // Calculate average p-value for informational purposes
         let sum_p_values: f64 = individual_tests.iter().map(|t| t.p_value).sum();
         let avg_p_value = if total_tests > 0 {
             sum_p_values / total_tests as f64
@@ -207,9 +216,49 @@ impl NistWrapper {
             0.0
         };
 
-        // Store as percentage for backward compatibility (0-100 range)
-        // This represents the weighted quality score based on p-values, not just pass/fail count
-        let success_rate = avg_p_value * 100.0;
+        if total_tests == 0 {
+            return (0, 0, 0.0, 0.0);
+        }
+
+        // Component 1: Pass rate (percentage of tests with p >= 0.01)
+        let pass_rate = (success_count as f64 / total_tests as f64) * 100.0;
+
+        // Component 2: P-value distribution quality
+        // For truly random data, p-values should be uniformly distributed (avg ~0.5)
+        // Calculate average of passing tests only
+        let passing_p_values: Vec<f64> = individual_tests
+            .iter()
+            .filter(|t| t.passed)
+            .map(|t| t.p_value)
+            .collect();
+
+        let p_value_quality = if !passing_p_values.is_empty() {
+            let avg_passing_p =
+                passing_p_values.iter().sum::<f64>() / passing_p_values.len() as f64;
+
+            // Ideal p-value average is 0.5 (uniform distribution)
+            // Apply penalty for deviation from this ideal:
+            // - P-values near 1.0: suspicious (too uniform), reduced quality
+            // - P-values near 0.01: marginal (barely passing), reduced quality
+            // - P-values near 0.5: ideal, full quality
+
+            // Distance from ideal (0.5)
+            let deviation = (avg_passing_p - 0.5).abs();
+
+            // Convert to quality score (0-100)
+            // Maximum deviation is 0.5 (from 0.0 or 1.0 to 0.5)
+            // Linear penalty: 100% at deviation=0, 0% at deviation=0.5
+            let quality = 100.0 * (1.0 - (deviation / 0.5));
+
+            quality.max(0.0).min(100.0)
+        } else {
+            // If no tests pass, p-value quality is 0
+            0.0
+        };
+
+        // Final quality score: weighted combination
+        // Pass rate is dominant (80%), p-value distribution is secondary (20%)
+        let success_rate = pass_rate * 0.8 + p_value_quality * 0.2;
 
         (success_count, total_tests, avg_p_value, success_rate)
     }
