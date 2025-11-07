@@ -835,6 +835,22 @@
             cursor: not-allowed;
             background: #6c757d !important;
         }
+
+        .textarea-wrapper {
+            position: relative;
+        }
+
+        .textarea-watermark {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            color: #ccc;
+            font-size: 0.85em;
+            pointer-events: none;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-style: italic;
+            z-index: 1;
+        }
     </style>
 </head>
 <body>
@@ -848,13 +864,16 @@
                 <div class="help-text" style="margin-bottom: 8px;">
                     Positive integers (commas, spaces, or newlines) or base64 • <a href="/static/poor-rng.html" style="color: #9fef00; text-decoration: none; border-bottom: 1px dashed #9fef00;">Generate test data</a>
                 </div>
-                <textarea
-                    id="numbers"
-                    name="numbers"
-                    rows="5"
-                    placeholder="Loading..."
-                    required
-                ></textarea>
+                <div class="textarea-wrapper">
+                    <div id="exampleWatermark" class="textarea-watermark" style="display: none;">example</div>
+                    <textarea
+                        id="numbers"
+                        name="numbers"
+                        rows="5"
+                        placeholder="Loading..."
+                        required
+                    ></textarea>
+                </div>
 
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
                     <button type="submit">Validate Numbers</button>
@@ -1581,86 +1600,92 @@
         updateInputStats();
         validateInputRealtime();
 
-        // Flip-board animation for textbox
+        // Flip-board animation for textbox - all numbers visible, digits stabilize left to right
         function startFlipBoardAnimation() {
             const textarea = document.getElementById('numbers');
-            const targetCount = 25; // Generate 25 random 8-bit numbers
-            const numbers = [];
+            const watermark = document.getElementById('exampleWatermark');
+            const targetCount = 15;
 
-            // Generate random 8-bit numbers (0-255)
+            // Show watermark
+            watermark.style.display = 'block';
+
+            // Generate target numbers
+            const targetNumbers = [];
             for (let i = 0; i < targetCount; i++) {
-                numbers.push(Math.floor(Math.random() * 256));
+                targetNumbers.push(Math.floor(Math.random() * 256));
             }
 
-            let completedNumbers = [];
-            let currentIndex = 0;
+            // Create display state - array of digit arrays for each number
+            const displayState = targetNumbers.map(num => {
+                const targetStr = num.toString();
+                return targetStr.split('').map(() => Math.floor(Math.random() * 10).toString());
+            });
 
-            function animateNumber(numberValue, callback) {
-                const targetStr = numberValue.toString();
-                const numDigits = targetStr.length;
-
-                // Start fast (15ms), gradually slow to 50ms based on progress
-                const baseInterval = Math.min(15 + currentIndex * 1.3, 50);
-                const cyclesPerDigit = 6; // How many flips before each digit settles
-
-                let currentDigitIndex = 0;
-                let cycleCount = 0;
-                let displayDigits = [];
-
-                // Initialize with random digits
-                for (let i = 0; i < numDigits; i++) {
-                    displayDigits.push(Math.floor(Math.random() * 10).toString());
+            // Build a flat list of digit positions in left-to-right order
+            const digitPositions = [];
+            for (let numIdx = 0; numIdx < targetNumbers.length; numIdx++) {
+                for (let digitIdx = 0; digitIdx < displayState[numIdx].length; digitIdx++) {
+                    digitPositions.push({ numIdx, digitIdx });
                 }
-
-                const intervalId = setInterval(() => {
-                    if (currentDigitIndex < numDigits) {
-                        // Cycle all unsettled digits
-                        for (let i = currentDigitIndex; i < numDigits; i++) {
-                            displayDigits[i] = Math.floor(Math.random() * 10).toString();
-                        }
-
-                        // Update display
-                        const currentDisplay = displayDigits.join('');
-                        const fullText = [...completedNumbers, currentDisplay].join(', ');
-                        textarea.value = fullText;
-
-                        cycleCount++;
-
-                        // After enough cycles, settle this digit
-                        if (cycleCount >= cyclesPerDigit) {
-                            displayDigits[currentDigitIndex] = targetStr[currentDigitIndex];
-                            currentDigitIndex++;
-                            cycleCount = 0;
-                        }
-                    } else {
-                        // All digits settled
-                        clearInterval(intervalId);
-                        completedNumbers.push(numberValue);
-                        textarea.value = completedNumbers.join(', ');
-                        callback();
-                    }
-                }, baseInterval);
             }
 
-            function animateNext() {
-                if (currentIndex >= numbers.length) {
-                    // Animation complete - update stats
-                    updateInputStats();
-                    return;
-                }
+            let settledCount = 0;
+            const totalDigits = digitPositions.length;
 
-                animateNumber(numbers[currentIndex], () => {
-                    currentIndex++;
-                    // Shorter pauses as we progress (faster overall)
-                    const pause = Math.max(30, 150 - currentIndex * 3);
-                    setTimeout(animateNext, pause);
-                });
-            }
-
-            // Clear placeholder and start animation
+            // Clear placeholder and show initial random state
             textarea.placeholder = '';
-            animateNext();
+            textarea.value = displayState.map(digits => digits.join('')).join(', ');
+
+            // Animation loop - settle digits left to right
+            let frameCount = 0;
+            const intervalId = setInterval(() => {
+                // Update all unsettled digits with random values
+                for (let i = settledCount; i < digitPositions.length; i++) {
+                    const { numIdx, digitIdx } = digitPositions[i];
+                    displayState[numIdx][digitIdx] = Math.floor(Math.random() * 10).toString();
+                }
+
+                // Settle digits slower - about every 2 frames to reach ~2 seconds total
+                frameCount++;
+                if (frameCount % 2 === 0 && settledCount < totalDigits) {
+                    const { numIdx, digitIdx } = digitPositions[settledCount];
+                    const targetStr = targetNumbers[numIdx].toString();
+                    displayState[numIdx][digitIdx] = targetStr[digitIdx];
+                    settledCount++;
+                }
+
+                // Update display
+                textarea.value = displayState.map(digits => digits.join('')).join(', ');
+
+                // Check if complete
+                if (settledCount >= totalDigits) {
+                    clearInterval(intervalId);
+                    updateInputStats();
+                }
+            }, 25); // Run at ~40fps for smooth animation
         }
+
+        // Clear textbox and hide watermark when user clicks in it
+        let hasCleared = false;
+        document.getElementById('numbers').addEventListener('focus', function() {
+            if (!hasCleared) {
+                this.value = '';
+                const watermark = document.getElementById('exampleWatermark');
+                if (watermark) {
+                    watermark.style.display = 'none';
+                }
+                hasCleared = true;
+                updateInputStats();
+            }
+        });
+
+        // Also hide watermark when user starts typing
+        document.getElementById('numbers').addEventListener('input', function() {
+            const watermark = document.getElementById('exampleWatermark');
+            if (watermark) {
+                watermark.style.display = 'none';
+            }
+        });
 
         // Check for pending test data from other pages (e.g., poor-rng generator)
         window.addEventListener('DOMContentLoaded', () => {
