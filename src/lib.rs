@@ -286,6 +286,10 @@ fn convert_to_bits_base_conversion(
         big_num = big_num * &base + BigUint::from(normalized);
     }
 
+    // Calculate expected entropy and target bit length
+    let entropy_per_number = (range_size as f64).log2();
+    let expected_bits = (numbers.len() as f64 * entropy_per_number).ceil() as usize;
+
     // Convert to binary bits
     let bytes = big_num.to_bytes_be();
 
@@ -297,17 +301,53 @@ fn convert_to_bits_base_conversion(
         }
     }
 
-    // Calculate expected entropy
-    let entropy_per_number = (range_size as f64).log2();
-    let expected_bits = (numbers.len() as f64 * entropy_per_number) as usize;
+    let current_bits = bits.len();
 
-    info!(
-        "Base conversion: {} numbers → {} bits (expected ~{} bits, {:.2} bits/number)",
-        numbers.len(),
-        bits.len(),
-        expected_bits,
-        entropy_per_number
-    );
+    // Adjust to exactly expected_bits length
+    if current_bits < expected_bits {
+        // Pad with leading zeros
+        let padding_needed = expected_bits - current_bits;
+        let mut padded_bits = vec![0; padding_needed];
+        padded_bits.extend(bits);
+        bits = padded_bits;
+
+        info!(
+            "Base conversion: {} numbers → {} bits (padded {} leading zeros, {:.2} bits/number)",
+            numbers.len(),
+            bits.len(),
+            padding_needed,
+            entropy_per_number
+        );
+    } else if current_bits > expected_bits {
+        // Trim leading zeros (to_bytes_be() returns whole bytes, may have extra leading zeros)
+        let to_trim = current_bits - expected_bits;
+
+        // Verify we're only trimming zeros (sanity check)
+        let leading_zeros = bits.iter().take_while(|&&b| b == 0).count();
+        if leading_zeros < to_trim {
+            return Err(format!(
+                "Value too large: need to trim {} bits but only {} leading zeros available",
+                to_trim, leading_zeros
+            ));
+        }
+
+        bits = bits[to_trim..].to_vec();
+
+        info!(
+            "Base conversion: {} numbers → {} bits (trimmed {} leading zeros, {:.2} bits/number)",
+            numbers.len(),
+            bits.len(),
+            to_trim,
+            entropy_per_number
+        );
+    } else {
+        info!(
+            "Base conversion: {} numbers → {} bits ({:.2} bits/number)",
+            numbers.len(),
+            bits.len(),
+            entropy_per_number
+        );
+    }
 
     Ok(bits)
 }
@@ -1111,5 +1151,104 @@ mod tests {
         );
 
         assert!(response.debug_file.is_none());
+    }
+
+    #[test]
+    fn test_base_conversion_consistent_length() {
+        // Test that base conversion produces consistent bit lengths
+        // For range 2-8 (7 values), 4 numbers should produce ceil(4 * log2(7)) = 12 bits
+
+        let result1 = convert_to_bits_base_conversion(&[2, 2, 2, 2], 2, 8);
+        assert!(result1.is_ok());
+        let bits1 = result1.unwrap();
+        assert_eq!(bits1.len(), 12, "All minimum values should produce 12 bits");
+
+        let result2 = convert_to_bits_base_conversion(&[8, 8, 8, 8], 2, 8);
+        assert!(result2.is_ok());
+        let bits2 = result2.unwrap();
+        assert_eq!(bits2.len(), 12, "All maximum values should produce 12 bits");
+
+        let result3 = convert_to_bits_base_conversion(&[2, 5, 8, 3], 2, 8);
+        assert!(result3.is_ok());
+        let bits3 = result3.unwrap();
+        assert_eq!(bits3.len(), 12, "Mixed values should produce 12 bits");
+    }
+
+    #[test]
+    fn test_base_conversion_leading_zeros() {
+        // Test that all-minimum values produce leading zeros
+        let result = convert_to_bits_base_conversion(&[2, 2, 2, 2], 2, 8);
+        assert!(result.is_ok());
+        let bits = result.unwrap();
+
+        // All minimum values (normalized to [0,0,0,0]) should be very small
+        // Should have leading zeros
+        let leading_zeros = bits.iter().take_while(|&&b| b == 0).count();
+        assert!(leading_zeros > 0, "Should have leading zeros for small values");
+    }
+
+    #[test]
+    fn test_base_conversion_entropy_calculation() {
+        // Test entropy calculation for different ranges
+
+        // Range 0-1 (2 values): should produce exactly 1 bit per number
+        let result = convert_to_bits_base_conversion(&[0, 1, 0, 1], 0, 1);
+        assert!(result.is_ok());
+        let bits = result.unwrap();
+        assert_eq!(bits.len(), 4, "Range 0-1 should produce 4 bits for 4 numbers");
+
+        // Range 0-3 (4 values): should produce exactly 2 bits per number
+        let result = convert_to_bits_base_conversion(&[0, 1, 2, 3], 0, 3);
+        assert!(result.is_ok());
+        let bits = result.unwrap();
+        assert_eq!(bits.len(), 8, "Range 0-3 should produce 8 bits for 4 numbers");
+
+        // Range 0-7 (8 values): should produce exactly 3 bits per number
+        let result = convert_to_bits_base_conversion(&[0, 1, 2, 3, 4, 5, 6, 7], 0, 7);
+        assert!(result.is_ok());
+        let bits = result.unwrap();
+        assert_eq!(bits.len(), 24, "Range 0-7 should produce 24 bits for 8 numbers");
+    }
+
+    #[test]
+    fn test_base_conversion_different_values_same_length() {
+        // Test that different sequences in the same range produce the same bit length
+        let sequences = vec![
+            vec![2, 2, 2, 2],
+            vec![8, 8, 8, 8],
+            vec![2, 8, 2, 8],
+            vec![5, 5, 5, 5],
+            vec![3, 4, 6, 7],
+        ];
+
+        let mut lengths = Vec::new();
+        for seq in sequences {
+            let result = convert_to_bits_base_conversion(&seq, 2, 8);
+            assert!(result.is_ok());
+            lengths.push(result.unwrap().len());
+        }
+
+        // All lengths should be the same
+        assert!(lengths.iter().all(|&l| l == lengths[0]),
+                "All sequences should produce same bit length, got: {:?}", lengths);
+    }
+
+    #[test]
+    fn test_base_conversion_uniqueness() {
+        // Test that different sequences produce different bit patterns (mostly)
+        let result1 = convert_to_bits_base_conversion(&[2, 2, 2, 2], 2, 8);
+        let result2 = convert_to_bits_base_conversion(&[8, 8, 8, 8], 2, 8);
+        let result3 = convert_to_bits_base_conversion(&[2, 8, 2, 8], 2, 8);
+
+        assert!(result1.is_ok() && result2.is_ok() && result3.is_ok());
+
+        let bits1 = result1.unwrap();
+        let bits2 = result2.unwrap();
+        let bits3 = result3.unwrap();
+
+        // Different sequences should produce different bit patterns
+        assert_ne!(bits1, bits2, "Different sequences should produce different bits");
+        assert_ne!(bits1, bits3, "Different sequences should produce different bits");
+        assert_ne!(bits2, bits3, "Different sequences should produce different bits");
     }
 }
