@@ -811,7 +811,9 @@
                     placeholder="Example: 42, 17, 89, 3, 56, 91, 23, 67"
                     required
                 ></textarea>
-                <div class="help-text">Enter positive integers (any delimiter auto-detected: commas, spaces, newlines, etc.) or base64-encoded data</div>
+                <div class="help-text">Enter positive integers (any delimiter auto-detected: commas, spaces, newlines, etc.) or base64-encoded data
+                    • <a href="/static/poor-rng.html" style="color: #9fef00; text-decoration: none; border-bottom: 1px dashed #9fef00;">Generate test data</a>
+                </div>
 
                                 <div class="input-stats">
 
@@ -1525,6 +1527,58 @@
         // Initialize on page load
         updateInputStats();
         validateInputRealtime();
+
+        // Check for pending test data from other pages (e.g., poor-rng generator)
+        window.addEventListener('DOMContentLoaded', () => {
+            const pendingTest = localStorage.getItem('pendingTest');
+            if (pendingTest) {
+                try {
+                    const data = JSON.parse(pendingTest);
+
+                    // Populate the numbers field
+                    document.getElementById('numbers').value = data.numbers;
+
+                    // Set range if provided
+                    if (data.rangeMin !== undefined && data.rangeMax !== undefined) {
+                        document.getElementById('rangeMin').value = data.rangeMin;
+                        document.getElementById('rangeMax').value = data.rangeMax;
+
+                        // Check if it's a custom range (doesn't start at 0)
+                        if (data.rangeMin !== 0) {
+                            document.getElementById('strategyRange').checked = true;
+                        } else {
+                            document.getElementById('strategyBitwidth').checked = true;
+                        }
+                    }
+
+                    // Update UI
+                    updateInputStats();
+                    updateStrategyPanels();
+                    validateInputRealtime();
+
+                    // Show notification
+                    if (data.source === 'poor-rng') {
+                        const notification = document.createElement('div');
+                        notification.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #9fef00; color: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 1000; font-weight: 600;';
+                        notification.textContent = `✓ Loaded ${data.numbers.split(',').length} numbers from Poor RNG Generator (seed: ${data.seed})`;
+                        document.body.appendChild(notification);
+
+                        setTimeout(() => {
+                            notification.style.opacity = '0';
+                            notification.style.transition = 'opacity 0.5s';
+                            setTimeout(() => notification.remove(), 500);
+                        }, 4000);
+                    }
+
+                    // Clear the pending test data
+                    localStorage.removeItem('pendingTest');
+
+                } catch (e) {
+                    console.error('Failed to load pending test data:', e);
+                    localStorage.removeItem('pendingTest');
+                }
+            }
+        });
 
         // Function to render NIST data with individual test cards
         function renderNistData(nistData) {

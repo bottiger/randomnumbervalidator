@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poor RNG Generator - Random Number Validator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.2em;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .warning-box strong {
+            color: #856404;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .warning-box p {
+            color: #856404;
+            margin: 0;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        input[type="number"],
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #9fef00;
+        }
+
+        .help-text {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin: 25px 0;
+        }
+
+        button {
+            flex: 1;
+            background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(159, 239, 0, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.secondary {
+            background: #6c757d;
+        }
+
+        button.secondary:hover {
+            box-shadow: 0 5px 20px rgba(108, 117, 125, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .output-section {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .output-section.visible {
+            display: block;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #9fef00;
+        }
+
+        .stat-label {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .output-box {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .output-box pre {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #333;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin: 0;
+        }
+
+        .info-section {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 4px;
+        }
+
+        .info-section h3 {
+            color: #1565c0;
+            margin-bottom: 15px;
+        }
+
+        .info-section p {
+            color: #0d47a1;
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+
+        .info-section ul {
+            margin-left: 20px;
+            color: #0d47a1;
+        }
+
+        .info-section li {
+            margin-bottom: 8px;
+        }
+
+        .code {
+            font-family: 'Courier New', monospace;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #d63384;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 30px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .back-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(159, 239, 0, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Poor RNG Generator</h1>
+        <p class="subtitle">Generate intentionally poor quality random numbers for testing</p>
+
+        <div class="warning-box">
+            <strong>⚠️ Educational Purpose Only</strong>
+            <p>This generator produces low-quality random numbers using an old Linear Congruential Generator (LCG).
+               Never use this for cryptography, security, or production applications!</p>
+        </div>
+
+        <div class="form-group">
+            <label for="count">Number of values to generate:</label>
+            <input type="number" id="count" value="100" min="10" max="100000" step="10">
+            <div class="help-text">Default: 100 numbers (Tier 2: ~3,200 bits with 32-bit encoding)</div>
+        </div>
+
+        <div class="form-group">
+            <label for="seed">Seed value (optional):</label>
+            <input type="number" id="seed" placeholder="Leave empty for timestamp-based seed">
+            <div class="help-text">Use the same seed to reproduce the same sequence</div>
+        </div>
+
+        <div class="form-group">
+            <label for="rangeMin">Range minimum:</label>
+            <input type="number" id="rangeMin" value="0" min="0">
+        </div>
+
+        <div class="form-group">
+            <label for="rangeMax">Range maximum:</label>
+            <input type="number" id="rangeMax" value="255" min="1">
+            <div class="help-text">Default: 0-255 (8-bit range)</div>
+        </div>
+
+        <div class="button-group">
+            <button onclick="generateNumbers()">🎲 Generate Poor Random Numbers</button>
+        </div>
+
+        <div id="outputSection" class="output-section">
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-label">Generated</div>
+                    <div class="stat-value" id="statCount">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Range</div>
+                    <div class="stat-value" id="statRange">0-0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Seed Used</div>
+                    <div class="stat-value" id="statSeed">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Estimated Bits</div>
+                    <div class="stat-value" id="statBits">0</div>
+                </div>
+            </div>
+
+            <div class="output-box">
+                <pre id="output"></pre>
+            </div>
+
+            <div class="button-group">
+                <button onclick="testInValidator()">🧪 Test These Numbers</button>
+                <button class="secondary" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h3>About This Generator</h3>
+            <p>
+                This implements a <strong>Linear Congruential Generator (LCG)</strong> based on the formula
+                used in old C standard library implementations:
+            </p>
+            <p style="text-align: center; font-family: 'Courier New', monospace; font-size: 1.1em; margin: 15px 0;">
+                X<sub>n+1</sub> = (1103515245 × X<sub>n</sub> + 12345) mod 2<sup>31</sup>
+            </p>
+            <p>
+                This was the actual implementation used in older versions of glibc <span class="code">rand()</span>
+                and is known for producing poor quality randomness.
+            </p>
+
+            <h3 style="margin-top: 25px;">Known Weaknesses</h3>
+            <ul>
+                <li><strong>Low-dimensional correlation:</strong> Sequential values are correlated in predictable patterns</li>
+                <li><strong>Short period:</strong> The sequence repeats after 2<sup>31</sup> values</li>
+                <li><strong>Spectral test failures:</strong> Points form hyperplanes in higher dimensions</li>
+                <li><strong>Low-order bits:</strong> The least significant bits have very short periods</li>
+                <li><strong>Predictability:</strong> The next value can be computed from previous values</li>
+            </ul>
+
+            <h3 style="margin-top: 25px;">Why Test With Poor RNGs?</h3>
+            <p>
+                Testing with known-poor generators helps validate that statistical tests can detect real-world
+                weaknesses. Many legacy systems still use LCGs, so understanding their failure modes is important.
+            </p>
+        </div>
+
+        <a href="/static/index.html" class="back-link">← Back to Validator</a>
+    </div>
+
+    <script>
+        let lastGenerated = [];
+        let lastSeed = 0;
+
+        // Classic LCG constants from old glibc rand()
+        const LCG_A = 1103515245;
+        const LCG_C = 12345;
+        const LCG_M = 2147483648; // 2^31
+
+        class PoorLCG {
+            constructor(seed) {
+                this.state = seed % LCG_M;
+            }
+
+            next() {
+                this.state = (LCG_A * this.state + LCG_C) % LCG_M;
+                return this.state;
+            }
+
+            // Generate value in specific range [min, max]
+            nextInRange(min, max) {
+                const range = max - min + 1;
+                // Note: This modulo method introduces additional bias (intentional for poor RNG)
+                return min + (this.next() % range);
+            }
+        }
+
+        function generateNumbers() {
+            const count = parseInt(document.getElementById('count').value);
+            const seedInput = document.getElementById('seed').value;
+            const rangeMin = parseInt(document.getElementById('rangeMin').value);
+            const rangeMax = parseInt(document.getElementById('rangeMax').value);
+
+            // Validation
+            if (count < 10 || count > 100000) {
+                alert('Please enter a count between 10 and 100,000');
+                return;
+            }
+
+            if (rangeMin >= rangeMax) {
+                alert('Range maximum must be greater than minimum');
+                return;
+            }
+
+            // Use provided seed or generate from timestamp
+            const seed = seedInput ? parseInt(seedInput) : Date.now();
+            lastSeed = seed;
+
+            // Initialize LCG
+            const rng = new PoorLCG(seed);
+
+            // Generate numbers
+            const numbers = [];
+            for (let i = 0; i < count; i++) {
+                numbers.push(rng.nextInRange(rangeMin, rangeMax));
+            }
+
+            lastGenerated = numbers;
+
+            // Update UI
+            document.getElementById('statCount').textContent = count.toLocaleString();
+            document.getElementById('statRange').textContent = `${rangeMin}-${rangeMax}`;
+            document.getElementById('statSeed').textContent = seed;
+
+            // Calculate estimated bits
+            const rangeSize = rangeMax - rangeMin + 1;
+            const bitsPerNumber = Math.log2(rangeSize);
+            const estimatedBits = Math.ceil(count * bitsPerNumber);
+            document.getElementById('statBits').textContent = estimatedBits.toLocaleString();
+
+            // Format output (10 numbers per line)
+            const lines = [];
+            for (let i = 0; i < numbers.length; i += 10) {
+                const chunk = numbers.slice(i, i + 10);
+                lines.push(chunk.join(', '));
+            }
+            document.getElementById('output').textContent = lines.join(',\n');
+
+            // Show output section
+            document.getElementById('outputSection').classList.add('visible');
+
+            // Scroll to output
+            document.getElementById('outputSection').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function testInValidator() {
+            if (lastGenerated.length === 0) {
+                alert('Please generate numbers first');
+                return;
+            }
+
+            // Store in localStorage to pass to main page
+            localStorage.setItem('pendingTest', JSON.stringify({
+                numbers: lastGenerated.join(', '),
+                rangeMin: parseInt(document.getElementById('rangeMin').value),
+                rangeMax: parseInt(document.getElementById('rangeMax').value),
+                source: 'poor-rng',
+                seed: lastSeed
+            }));
+
+            // Navigate to main validator
+            window.location.href = '/static/index.html';
+        }
+
+        function copyToClipboard() {
+            const text = document.getElementById('output').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✓ Copied!';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
+            }).catch(() => {
+                alert('Failed to copy to clipboard');
+            });
+        }
+
+        // Allow Enter key to generate
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    generateNumbers();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
