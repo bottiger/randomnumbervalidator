@@ -1203,9 +1203,13 @@
             // Show conversion strategy section when numbers are entered
             conversionStrategySection.style.display = 'block';
 
-            // Detect range
-            const actualMin = Math.min(...numbers);
-            const actualMax = Math.max(...numbers);
+            // Detect range (avoid spread operator for large arrays to prevent stack overflow)
+            let actualMin = numbers[0];
+            let actualMax = numbers[0];
+            for (let i = 1; i < numbers.length; i++) {
+                if (numbers[i] < actualMin) actualMin = numbers[i];
+                if (numbers[i] > actualMax) actualMax = numbers[i];
+            }
 
             // Auto-detect strategy
             let detectedText = '';
@@ -1426,8 +1430,13 @@
                 return;
             }
 
-            const actualMax = Math.max(...numbers);
-            const actualMin = Math.min(...numbers);
+            // Avoid spread operator for large arrays to prevent stack overflow
+            let actualMin = numbers[0];
+            let actualMax = numbers[0];
+            for (let i = 1; i < numbers.length; i++) {
+                if (numbers[i] < actualMin) actualMin = numbers[i];
+                if (numbers[i] > actualMax) actualMax = numbers[i];
+            }
             const bitWidth = parseInt(document.querySelector('input[name="bitwidth"]:checked').value);
 
             let maxValue = 0;
@@ -1464,8 +1473,13 @@
                 return; // No validation needed for empty input
             }
 
-            const actualMin = Math.min(...numberArray);
-            const actualMax = Math.max(...numberArray);
+            // Avoid spread operator for large arrays to prevent stack overflow
+            let actualMin = numberArray[0];
+            let actualMax = numberArray[0];
+            for (let i = 1; i < numberArray.length; i++) {
+                if (numberArray[i] < actualMin) actualMin = numberArray[i];
+                if (numberArray[i] > actualMax) actualMax = numberArray[i];
+            }
             const strategy = document.querySelector('input[name="strategy"]:checked').value;
 
             let errorMessage = null;
@@ -1728,7 +1742,8 @@
                 const statusIcon = test.passed ? '✓' : '✗';
                 const pValueClass = test.p_value < 0.01 ? 'bad' : test.p_value > 0.1 ? 'good' : 'warning';
 
-                let testFileName = test.name.toLowerCase().replace(/ test/g, '').replace(/ /g, '');
+                // Strip suffixes like -1, -2, -Forward, -Reverse, etc. for test page lookup
+                let testFileName = test.name.toLowerCase().replace(/ test/g, '').replace(/ /g, '').replace(/-\d+$/, '').replace(/-(forward|reverse)$/, '');
                 const hasTestPage = testPageMap.hasOwnProperty(testFileName);
                 const testNameDisplay = hasTestPage ?
                     `<a href="/static/tests/${testPageMap[testFileName]}.html" target="_blank" style="color: #333; text-decoration: none; border-bottom: 1px dashed #9fef00;">${test.name}</a>` :
@@ -1754,7 +1769,8 @@
                     const groupStatusIcon = allPassed ? '✓' : `${groupPassed}/${groupTotal}`;
                     const groupPValueClass = groupAvgPValue < 0.01 ? 'bad' : groupAvgPValue > 0.1 ? 'good' : 'warning';
 
-                    let testFileName = baseName.toLowerCase().replace(/ test/g, '').replace(/ /g, '');
+                    // Strip suffixes like -1, -2, -Forward, -Reverse, etc. for test page lookup
+                    let testFileName = baseName.toLowerCase().replace(/ test/g, '').replace(/ /g, '').replace(/-\d+$/, '').replace(/-(forward|reverse)$/, '');
                     const hasTestPage = testPageMap.hasOwnProperty(testFileName);
                     const testNameDisplay = hasTestPage ?
                         `<a href="/static/tests/${testPageMap[testFileName]}.html" target="_blank" style="color: #333; text-decoration: none; border-bottom: 1px dashed #9fef00;">${baseName}</a>` :
@@ -1794,9 +1810,16 @@
                     const statusIcon = test.passed ? '✓' : '✗';
                     const pValueClass = test.p_value < 0.01 ? 'bad' : test.p_value > 0.1 ? 'good' : 'warning';
 
+                    // Strip suffixes like -1, -2, -Forward, -Reverse, etc. for test page lookup
+                    let testFileName = test.name.toLowerCase().replace(/ test/g, '').replace(/ /g, '').replace(/-\d+$/, '').replace(/-(forward|reverse)$/, '');
+                    const hasTestPage = testPageMap.hasOwnProperty(testFileName);
+                    const testNameDisplay = hasTestPage ?
+                        `<a href="/static/tests/${testPageMap[testFileName]}.html" target="_blank" style="color: #333; text-decoration: none; border-bottom: 1px dashed #9fef00;">${test.name}</a>` :
+                        test.name;
+
                     html += `
                         <tr class="${rowClass}">
-                            <td class="test-name" data-sort-value="${test.name.toLowerCase()}">${test.name}</td>
+                            <td class="test-name" data-sort-value="${test.name.toLowerCase()}">${testNameDisplay}</td>
                             <td style="text-align: center;" data-sort-value="${test.p_value}">
                                 <span class="p-value ${pValueClass}">${test.p_value.toFixed(4)}</span>
                             </td>
@@ -1820,7 +1843,8 @@
                 const statusText = test.passed ? 'PASS ✓' : 'FAIL ✗';
                 const pValueColor = test.p_value < 0.01 ? 'red' : test.p_value > 0.1 ? 'green' : 'orange';
 
-                let testFileName = test.name.toLowerCase().replace(/ test/g, '').replace(/ /g, '');
+                // Strip suffixes like -1, -2, -Forward, -Reverse, etc. for test page lookup
+                let testFileName = test.name.toLowerCase().replace(/ test/g, '').replace(/ /g, '').replace(/-\d+$/, '').replace(/-(forward|reverse)$/, '');
                 const hasTestPage = testPageMap.hasOwnProperty(testFileName);
                 const testNameDisplay = hasTestPage ?
                     `<a href="/static/tests/${testPageMap[testFileName]}.html" target="_blank" style="color: #333; text-decoration: none; border-bottom: 1px solid #9fef00;">${test.name}</a>` :
@@ -2010,8 +2034,13 @@
                     return;
                 }
 
-                const actualMin = Math.min(...numberArray);
-                const actualMax = Math.max(...numberArray);
+                // Avoid spread operator for large arrays to prevent stack overflow
+                let actualMin = numberArray[0];
+                let actualMax = numberArray[0];
+                for (let i = 1; i < numberArray.length; i++) {
+                    if (numberArray[i] < actualMin) actualMin = numberArray[i];
+                    if (numberArray[i] > actualMax) actualMax = numberArray[i];
+                }
 
                 // Determine which strategy is selected
                 const strategy = document.querySelector('input[name="strategy"]:checked').value;
