@@ -70,16 +70,19 @@
         }
 
         input[type="number"],
-        input[type="text"] {
+        input[type="text"],
+        select {
             width: 100%;
             padding: 12px;
             border: 2px solid #ddd;
             border-radius: 8px;
             font-size: 14px;
             transition: border-color 0.3s;
+            background: white;
         }
 
-        input:focus {
+        input:focus,
+        select:focus {
             outline: none;
             border-color: #9fef00;
         }
@@ -242,40 +245,32 @@
 </head>
 <body>
     <div class="container">
-        <h1>Poor RNG Generator</h1>
-        <p class="subtitle">Generate intentionally poor quality random numbers for testing</p>
+        <h1>Random Number Generator</h1>
+        <p class="subtitle">Generate good or poor quality random numbers for testing</p>
 
-        <div class="warning-box">
-            <strong>⚠️ Educational Purpose Only</strong>
-            <p>This generator produces low-quality random numbers using a simplified Mersenne Twister with incomplete tempering.
-               The output looks random to the eye but has subtle statistical weaknesses. Never use this for cryptography, security, or production applications!</p>
+        <div class="form-group">
+            <label for="rngType">Type of random number generator:</label>
+            <select id="rngType" onchange="updateWarning()">
+                <option value="good">Good RNG (Cryptographically Secure)</option>
+                <option value="poor">Poor RNG (Simplified Mersenne Twister)</option>
+            </select>
+            <div class="help-text">Choose between secure random numbers or intentionally flawed ones</div>
         </div>
 
         <div class="form-group">
             <label for="count">Number of values to generate:</label>
             <input type="number" id="count" value="100" min="10" max="100000" step="10">
-            <div class="help-text">Default: 100 numbers (Tier 2: ~3,200 bits with 32-bit encoding)</div>
+            <div class="help-text">Range: 10 to 100,000 numbers (output will be 0-255)</div>
         </div>
 
-        <div class="form-group">
-            <label for="seed">Seed value (optional):</label>
-            <input type="number" id="seed" placeholder="Leave empty for timestamp-based seed">
-            <div class="help-text">Use the same seed to reproduce the same sequence</div>
-        </div>
-
-        <div class="form-group">
-            <label for="rangeMin">Range minimum:</label>
-            <input type="number" id="rangeMin" value="0" min="0">
-        </div>
-
-        <div class="form-group">
-            <label for="rangeMax">Range maximum:</label>
-            <input type="number" id="rangeMax" value="255" min="1">
-            <div class="help-text">Default: 0-255 (8-bit range)</div>
+        <div id="warningBox" class="warning-box" style="display: none;">
+            <strong>⚠️ Educational Purpose Only</strong>
+            <p>This generator produces low-quality random numbers using a simplified Mersenne Twister with incomplete tempering.
+               The output looks random to the eye but has subtle statistical weaknesses. Never use this for cryptography, security, or production applications!</p>
         </div>
 
         <div class="button-group">
-            <button onclick="generateNumbers()">🎲 Generate Poor Random Numbers</button>
+            <button onclick="generateNumbers()">🎲 Generate Random Numbers</button>
         </div>
 
         <div id="outputSection" class="output-section">
@@ -285,12 +280,12 @@
                     <div class="stat-value" id="statCount">0</div>
                 </div>
                 <div class="stat-box">
-                    <div class="stat-label">Range</div>
-                    <div class="stat-value" id="statRange">0-0</div>
+                    <div class="stat-label">RNG Type</div>
+                    <div class="stat-value" id="statType">-</div>
                 </div>
                 <div class="stat-box">
-                    <div class="stat-label">Seed Used</div>
-                    <div class="stat-value" id="statSeed">0</div>
+                    <div class="stat-label">Range</div>
+                    <div class="stat-value" id="statRange">0-255</div>
                 </div>
                 <div class="stat-box">
                     <div class="stat-label">Estimated Bits</div>
@@ -311,46 +306,40 @@
         <div class="info-section">
             <h3>About This Generator</h3>
             <p>
-                This implements a <strong>simplified Mersenne Twister (MT19937)</strong> - the same algorithm used
-                in old PHP <span class="code">mt_rand()</span>. However, this version uses incomplete tempering
-                (only 2 of 4 steps), which introduces subtle statistical weaknesses.
-            </p>
-            <p>
-                The numbers look completely random to human inspection and pass basic distribution checks, but
-                fail advanced statistical tests. This is similar to how many real-world implementations have
-                small bugs or simplifications that compromise quality.
+                This tool provides two types of random number generators for testing purposes:
             </p>
 
-            <h3 style="margin-top: 25px;">How It Works</h3>
+            <h3 style="margin-top: 20px;">Good RNG (Cryptographically Secure)</h3>
             <p>
-                Mersenne Twister generates numbers through a twist operation on a 624-element state array,
-                followed by tempering (bit mixing) to improve output quality. The standard implementation uses:
+                Uses the browser's <span class="code">crypto.getRandomValues()</span> which provides cryptographically
+                secure random numbers. This implementation:
             </p>
-            <ol style="margin-left: 30px; color: #0d47a1;">
-                <li>XOR with right shift by 11</li>
-                <li>XOR with left shift by 7 and AND with 0x9d2c5680</li>
-                <li>XOR with left shift by 15 and AND with 0xefc60000 <strong>(SKIPPED HERE)</strong></li>
-                <li>XOR with right shift by 18 <strong>(SKIPPED HERE)</strong></li>
-            </ol>
+            <ul>
+                <li><strong>High entropy:</strong> Uses the operating system's secure random source</li>
+                <li><strong>Unpredictable:</strong> Cannot be reproduced or predicted</li>
+                <li><strong>Suitable for security:</strong> Safe for cryptographic applications</li>
+                <li><strong>Should pass all tests:</strong> Designed to pass rigorous statistical tests</li>
+            </ul>
+
+            <h3 style="margin-top: 25px;">Poor RNG (Simplified Mersenne Twister)</h3>
             <p>
-                By skipping the last two tempering steps, we introduce correlation patterns that NIST tests can detect.
+                Implements a <strong>simplified Mersenne Twister (MT19937)</strong> with incomplete tempering
+                (only 2 of 4 steps). The numbers look random to human inspection but have subtle statistical weaknesses.
             </p>
 
-            <h3 style="margin-top: 25px;">Known Weaknesses</h3>
+            <p><strong>Known Weaknesses:</strong></p>
             <ul>
                 <li><strong>Incomplete tempering:</strong> Missing bit-mixing steps leave correlations in output</li>
                 <li><strong>Modulo bias:</strong> Simple range reduction introduces distribution bias</li>
-                <li><strong>State recovery:</strong> With enough output, the internal state can be reconstructed</li>
                 <li><strong>Linear artifacts:</strong> Fails linear complexity and matrix rank tests</li>
                 <li><strong>Not cryptographically secure:</strong> Fully deterministic and reversible</li>
-                <li><strong>Poor seeding:</strong> Simple seed initialization limits initial randomness</li>
             </ul>
 
-            <h3 style="margin-top: 25px;">Why Test With This?</h3>
+            <h3 style="margin-top: 25px;">Why Use Both?</h3>
             <p>
-                This represents a realistic "almost good" RNG - the kind you might encounter from a buggy
-                implementation, incomplete port, or simplified version. The output passes casual inspection
-                but fails rigorous testing, making it perfect for validating statistical test suites.
+                Compare results between good and poor RNG to understand how statistical tests detect quality issues.
+                The poor RNG represents a realistic "almost good" implementation - the kind you might encounter from
+                a buggy implementation or simplified version.
             </p>
         </div>
 
@@ -359,7 +348,21 @@
 
     <script>
         let lastGenerated = [];
-        let lastSeed = 0;
+        let lastRngType = 'good';
+
+        // Update warning visibility based on RNG type
+        function updateWarning() {
+            const rngType = document.getElementById('rngType').value;
+            const warningBox = document.getElementById('warningBox');
+            warningBox.style.display = rngType === 'poor' ? 'block' : 'none';
+        }
+
+        // Good RNG using browser's cryptographically secure random
+        function generateGoodRng(count) {
+            const numbers = new Uint8Array(count);
+            crypto.getRandomValues(numbers);
+            return Array.from(numbers);
+        }
 
         // Simplified Mersenne Twister (what old PHP used)
         // This version has reduced state size and simplified tempering
@@ -416,9 +419,7 @@
 
         function generateNumbers() {
             const count = parseInt(document.getElementById('count').value);
-            const seedInput = document.getElementById('seed').value;
-            const rangeMin = parseInt(document.getElementById('rangeMin').value);
-            const rangeMax = parseInt(document.getElementById('rangeMax').value);
+            const rngType = document.getElementById('rngType').value;
 
             // Validation
             if (count < 10 || count > 100000) {
@@ -426,35 +427,30 @@
                 return;
             }
 
-            if (rangeMin >= rangeMax) {
-                alert('Range maximum must be greater than minimum');
-                return;
-            }
-
-            // Use provided seed or generate from timestamp
-            const seed = seedInput ? parseInt(seedInput) : Date.now();
-            lastSeed = seed;
-
-            // Initialize Simplified MT
-            const rng = new SimplifiedMT(seed);
-
-            // Generate numbers
-            const numbers = [];
-            for (let i = 0; i < count; i++) {
-                numbers.push(rng.nextInRange(rangeMin, rangeMax));
+            // Generate numbers based on type
+            let numbers;
+            if (rngType === 'good') {
+                numbers = generateGoodRng(count);
+            } else {
+                // Use timestamp as seed for poor RNG
+                const seed = Date.now();
+                const rng = new SimplifiedMT(seed);
+                numbers = [];
+                for (let i = 0; i < count; i++) {
+                    numbers.push(rng.nextInRange(0, 255));
+                }
             }
 
             lastGenerated = numbers;
+            lastRngType = rngType;
 
             // Update UI
             document.getElementById('statCount').textContent = count.toLocaleString();
-            document.getElementById('statRange').textContent = `${rangeMin}-${rangeMax}`;
-            document.getElementById('statSeed').textContent = seed;
+            document.getElementById('statType').textContent = rngType === 'good' ? 'Good' : 'Poor';
+            document.getElementById('statRange').textContent = '0-255';
 
-            // Calculate estimated bits
-            const rangeSize = rangeMax - rangeMin + 1;
-            const bitsPerNumber = Math.log2(rangeSize);
-            const estimatedBits = Math.ceil(count * bitsPerNumber);
+            // Calculate estimated bits (8 bits per byte)
+            const estimatedBits = count * 8;
             document.getElementById('statBits').textContent = estimatedBits.toLocaleString();
 
             // Format output (10 numbers per line)
@@ -481,10 +477,9 @@
             // Store in localStorage to pass to main page
             localStorage.setItem('pendingTest', JSON.stringify({
                 numbers: lastGenerated.join(', '),
-                rangeMin: parseInt(document.getElementById('rangeMin').value),
-                rangeMax: parseInt(document.getElementById('rangeMax').value),
-                source: 'poor-rng',
-                seed: lastSeed
+                rangeMin: 0,
+                rangeMax: 255,
+                source: lastRngType === 'good' ? 'good-rng' : 'poor-rng'
             }));
 
             // Navigate to main validator
