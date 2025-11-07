@@ -302,7 +302,7 @@
                 <label for="rngType">RNG Type:</label>
                 <select id="rngType" onchange="updateWarning()">
                     <option value="good">Good (Crypto)</option>
-                    <option value="poor">Poor (LCG)</option>
+                    <option value="poor" selected>Poor (LCG)</option>
                 </select>
             </div>
 
@@ -312,7 +312,7 @@
             </div>
         </div>
 
-        <div id="warningBox" class="warning-box" style="display: none;">
+        <div id="warningBox" class="warning-box">
             <strong>⚠️ Educational Purpose Only</strong>
             <p>Uses a simple Linear Congruential Generator (LCG) like PHP's old rand(). Has obvious statistical flaws and should never be used in production!</p>
         </div>
