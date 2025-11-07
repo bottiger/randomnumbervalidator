@@ -41,23 +41,28 @@ jobs:
       - name: Copy deployment script
         run: |
           gcloud compute scp deploy.sh randomvalidator-instance:/tmp/deploy.sh \
-            --zone=${{ secrets.GCP_ZONE }}
+            --zone=${{ secrets.GCP_ZONE }} \
+            --tunnel-through-iap
 
       - name: Copy pre-built binary
         run: |
           gcloud compute ssh randomvalidator-instance \
             --zone=${{ secrets.GCP_ZONE }} \
+            --tunnel-through-iap \
             --command="sudo mkdir -p /opt/randomvalidator/target/release"
           gcloud compute scp target/release/server randomvalidator-instance:/tmp/server \
-            --zone=${{ secrets.GCP_ZONE }}
+            --zone=${{ secrets.GCP_ZONE }} \
+            --tunnel-through-iap
           gcloud compute ssh randomvalidator-instance \
             --zone=${{ secrets.GCP_ZONE }} \
+            --tunnel-through-iap \
             --command="sudo mv /tmp/server /opt/randomvalidator/target/release/server && sudo chmod +x /opt/randomvalidator/target/release/server"
 
       - name: Execute deployment
         run: |
           gcloud compute ssh randomvalidator-instance \
             --zone=${{ secrets.GCP_ZONE }} \
+            --tunnel-through-iap \
             --ssh-flag="-o ServerAliveInterval=60" \
             --ssh-flag="-o ServerAliveCountMax=120" \
             --command="
@@ -75,11 +80,14 @@ jobs:
       - name: Setup Cloudflare Tunnel
         run: |
           # Copy setup script to instance (to home directory to avoid permission issues)
-          gcloud compute scp setup-tunnel.sh randomvalidator-instance:~/setup-tunnel.sh --zone=${{ secrets.GCP_ZONE }}
+          gcloud compute scp setup-tunnel.sh randomvalidator-instance:~/setup-tunnel.sh \
+            --zone=${{ secrets.GCP_ZONE }} \
+            --tunnel-through-iap
 
           # Run setup script on instance (where it has correct IP for Cloudflare API)
           gcloud compute ssh randomvalidator-instance \
             --zone=${{ secrets.GCP_ZONE }} \
+            --tunnel-through-iap \
             --command="
               set -e
               chmod +x ~/setup-tunnel.sh
@@ -93,6 +101,7 @@ jobs:
           # Run DNS configuration from instance (where it has correct IP for Cloudflare API)
           gcloud compute ssh randomvalidator-instance \
             --zone=${{ secrets.GCP_ZONE }} \
+            --tunnel-through-iap \
             --command="
               set -e
 
@@ -195,6 +204,7 @@ jobs:
           echo "Verifying application is running on the instance..."
           gcloud compute ssh randomvalidator-instance \
             --zone=${{ secrets.GCP_ZONE }} \
+            --tunnel-through-iap \
             --command="curl -f -s http://localhost:3000 > /dev/null && echo '✓ Application is responding on localhost:3000' || (echo '❌ Application is not responding' && exit 1)"
 
           if [ -n "${{ vars.DOMAIN_NAME }}" ]; then
