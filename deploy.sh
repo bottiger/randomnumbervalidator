@@ -104,6 +104,30 @@ EOF
 echo "  ✅ Service configuration updated"
 
 echo ""
+echo "⚙️  Configuring systemd service..."
+cat > /etc/systemd/system/$SERVICE_NAME.service <<EOF
+[Unit]
+Description=Random Number Validator
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=$APP_DIR
+Environment="RUST_LOG=info"
+Environment="HOST=0.0.0.0"
+Environment="PORT=3000"
+Environment="DATABASE_URL=postgresql://$DB_USER:$DB_PASSWORD@localhost:5432/$DB_NAME"
+ExecStart=$APP_DIR/target/release/server
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+echo "  ✅ Service configuration updated"
+
+echo ""
 echo "🔄 Restarting application service..."
 systemctl daemon-reload
 systemctl restart "$SERVICE_NAME"
