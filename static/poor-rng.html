@@ -376,18 +376,19 @@
                 <li><strong>Should pass all tests:</strong> Designed to pass rigorous statistical tests</li>
             </ul>
 
-            <h3 style="margin-top: 25px;">Poor RNG (Simplified Mersenne Twister)</h3>
+            <h3 style="margin-top: 25px;">Poor RNG (Linear Congruential Generator)</h3>
             <p>
-                Implements a <strong>simplified Mersenne Twister (MT19937)</strong> with incomplete tempering
-                (only 2 of 4 steps). The numbers look random to human inspection but have subtle statistical weaknesses.
+                Implements a <strong>simple Linear Congruential Generator (LCG)</strong> using parameters similar to
+                old C library implementations (a = 1103515245, c = 12345, m = 2^31). This is the same type of RNG
+                used in PHP's old <span class="code">rand()</span> function and has well-documented statistical flaws.
             </p>
 
             <p><strong>Known Weaknesses:</strong></p>
             <ul>
-                <li><strong>Incomplete tempering:</strong> Missing bit-mixing steps leave correlations in output</li>
-                <li><strong>Modulo bias:</strong> Simple range reduction introduces distribution bias</li>
-                <li><strong>Linear artifacts:</strong> Fails linear complexity and matrix rank tests</li>
-                <li><strong>Not cryptographically secure:</strong> Fully deterministic and reversible</li>
+                <li><strong>Sequential correlation:</strong> Consecutive values show strong linear relationships</li>
+                <li><strong>Low-bit quality:</strong> Lower bits have shorter periods and more correlation</li>
+                <li><strong>Predictable patterns:</strong> Fails many statistical tests including spectral test</li>
+                <li><strong>Not cryptographically secure:</strong> State can be recovered from output</li>
             </ul>
 
             <h3 style="margin-top: 25px;">Why Use Both?</h3>
