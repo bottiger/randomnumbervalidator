@@ -850,11 +850,11 @@
                                 </div>
                             </div>
 
-                
+
 
                             <!-- Conversion Strategy Selector -->
 
-                            <div style="margin-top: 20px;">
+                            <div id="conversionStrategySection" style="margin-top: 20px; display: none;">
 
                                 <div style="font-weight: 600; margin-bottom: 10px; color: #333;">
 
@@ -1117,10 +1117,14 @@
         function updateInputStats() {
             const input = document.getElementById('numbers').value;
             const inputFormat = document.querySelector('input[name="inputFormat"]:checked').value;
+            const conversionStrategySection = document.getElementById('conversionStrategySection');
 
             if (inputFormat === 'base64') {
                 // Handle base64 input
                 const cleanInput = input.replace(/\s/g, ''); // Remove whitespace
+
+                // Hide conversion strategy for base64
+                conversionStrategySection.style.display = 'none';
 
                 if (cleanInput.length === 0) {
                     document.getElementById('numberCount').textContent = '0';
@@ -1150,8 +1154,13 @@
             if (numberCount === 0) {
                 document.getElementById('bitCount').textContent = '0';
                 document.getElementById('detectedInfo').style.display = 'none';
+                // Hide conversion strategy when no numbers entered
+                conversionStrategySection.style.display = 'none';
                 return;
             }
+
+            // Show conversion strategy section when numbers are entered
+            conversionStrategySection.style.display = 'block';
 
             // Detect range
             const actualMin = Math.min(...numbers);
