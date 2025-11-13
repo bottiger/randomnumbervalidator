@@ -229,3 +229,44 @@ fn test_integration_duplicate_numbers() {
     assert!(response.quality_score >= 0.0);
     assert!(response.quality_score <= 1.0);
 }
+
+#[test]
+fn test_integration_mostly_repeating_pattern() {
+    // Test with specific sequence that has many repeating values
+    // 162 appears 6 times out of 18 numbers (~33% of the sequence is just 162!)
+    // 123 appears 3 times, 153 appears 2 times
+    // Normalize to 0-255 range by prepending 0 to make it a valid 8-bit sequence
+    let input = "0,162,162,162,162,162,143,135,153,153,123,12,123,123,164,168,162,163";
+    let response = validate_random_numbers(input);
+
+    // BUG: This heavily repeating pattern should have VERY low quality score (< 40%)
+    // but NIST tests don't catch it with such small samples (only 144 bits = 18 numbers)
+    // NIST needs ~100,000 bits to run its full test suite effectively
+    // Currently this gets ~95% quality score when it should get < 40%
+    assert!(
+        response.quality_score < 0.4,
+        "BUG: Mostly repeating pattern got quality score {:.1}%, expected < 40%. \
+         162 appears 6 times out of 18 numbers! NIST tests need more data to detect patterns.",
+        response.quality_score * 100.0
+    );
+}
+
+#[test]
+fn test_integration_good_random_sequence() {
+    // Test with a well-distributed random sequence (26 numbers, all unique)
+    // Numbers are spread across the 0-255 range with no obvious patterns
+    let input =
+        "0,243,6,119,40,225,178,207,99,3,170,154,250,237,128,191,44,236,212,180,240,110,19,9,18,70";
+    let response = validate_random_numbers(input);
+
+    // Good random sequence should have high quality score (>= 80%)
+    assert!(
+        response.quality_score >= 0.8,
+        "Good random sequence got quality score {:.1}%, expected >= 80%",
+        response.quality_score * 100.0
+    );
+    assert!(
+        response.valid,
+        "Good random sequence should be marked as valid"
+    );
+}

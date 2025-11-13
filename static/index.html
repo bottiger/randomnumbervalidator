@@ -851,6 +851,48 @@
             font-style: italic;
             z-index: 1;
         }
+
+        /* Base64 validation - overlay to show red characters */
+        .textarea-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 12px;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow: auto;
+            pointer-events: none;
+            color: transparent;
+            z-index: 1;
+        }
+
+        .illegal-char {
+            color: #dc3545;
+            font-weight: bold;
+            background: #ffe6e6;
+            padding: 0 2px;
+        }
+
+        textarea.has-illegal-chars {
+            color: rgba(0, 0, 0, 0.3);
+        }
+
+        .base64-warning {
+            display: inline-block;
+            margin-left: 10px;
+            padding: 4px 8px;
+            background: #f8d7da;
+            color: #721c24;
+            border-radius: 4px;
+            font-size: 0.75em;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -866,6 +908,7 @@
                 </div>
                 <div class="textarea-wrapper">
                     <div id="exampleWatermark" class="textarea-watermark" style="display: none;">example</div>
+                    <div id="textareaOverlay" class="textarea-overlay"></div>
                     <textarea
                         id="numbers"
                         name="numbers"
@@ -874,6 +917,9 @@
                         required
                     ></textarea>
                 </div>
+
+                <!-- Base64 inline warning -->
+                <span id="base64Warning" class="base64-warning" style="display: none;"></span>
 
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
                     <button type="submit">Validate Numbers</button>
@@ -1172,6 +1218,130 @@
     <script>
         let autoDetectedStrategy = 'bitwidth';
         let autoDetectedBitWidth = 32;
+
+        // Base64 validation functions
+        function validateBase64(input) {
+            // Remove whitespace for validation
+            const cleanInput = input.replace(/\s/g, '');
+
+            if (cleanInput.length === 0) {
+                return {
+                    valid: true,
+                    illegalChars: [],
+                    needsPadding: false,
+                    paddedValue: '',
+                    message: ''
+                };
+            }
+
+            // Valid base64 characters: A-Z, a-z, 0-9, +, /, =
+            const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+
+            // Find illegal characters
+            const illegalChars = [];
+            const illegalPositions = [];
+            for (let i = 0; i < cleanInput.length; i++) {
+                const char = cleanInput[i];
+                if (!/[A-Za-z0-9+/=]/.test(char)) {
+                    illegalChars.push(char);
+                    illegalPositions.push(i);
+                }
+            }
+
+            // Check padding
+            const lengthMod4 = cleanInput.length % 4;
+            const needsPadding = lengthMod4 !== 0 && illegalChars.length === 0;
+            const paddingNeeded = needsPadding ? (4 - lengthMod4) : 0;
+            const paddedValue = needsPadding ? cleanInput + '='.repeat(paddingNeeded) : cleanInput;
+
+            // Check if padding is in correct position (only at the end)
+            const paddingMatch = cleanInput.match(/=+$/);
+            const hasPadding = paddingMatch !== null;
+            const paddingCount = hasPadding ? paddingMatch[0].length : 0;
+            const invalidPadding = cleanInput.includes('=') && (paddingCount > 2 || cleanInput.indexOf('=') !== cleanInput.length - paddingCount);
+
+            let valid = illegalChars.length === 0 && !needsPadding && !invalidPadding;
+            let message = '';
+
+            if (illegalChars.length > 0) {
+                const uniqueIllegal = [...new Set(illegalChars)];
+                message = `Found ${illegalChars.length} illegal character(s): ${uniqueIllegal.map(c => `'${c}'`).join(', ')}`;
+            } else if (invalidPadding) {
+                message = 'Invalid padding: "=" characters must only appear at the end (max 2)';
+            } else if (needsPadding) {
+                message = `Missing ${paddingNeeded} padding character(s). Length is ${cleanInput.length}, should be multiple of 4.`;
+            } else {
+                message = 'Valid base64 format';
+                valid = true;
+            }
+
+            return {
+                valid,
+                illegalChars,
+                illegalPositions,
+                needsPadding,
+                paddingNeeded,
+                paddedValue,
+                message,
+                invalidPadding
+            };
+        }
+
+        function highlightIllegalCharacters(input) {
+            const cleanInput = input.replace(/\s/g, '');
+            let result = '';
+
+            for (let i = 0; i < cleanInput.length; i++) {
+                const char = cleanInput[i];
+                const escaped = char.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+                if (!/[A-Za-z0-9+/=]/.test(char)) {
+                    result += `<span class="illegal-char">${escaped}</span>`;
+                } else {
+                    result += escaped;
+                }
+            }
+
+            return result;
+        }
+
+        function validateBase64Input() {
+            const input = document.getElementById('numbers').value;
+            const inputFormat = document.querySelector('input[name="inputFormat"]:checked').value;
+            const overlay = document.getElementById('textareaOverlay');
+            const textarea = document.getElementById('numbers');
+            const warning = document.getElementById('base64Warning');
+
+            // Only validate if base64 format is selected
+            if (inputFormat !== 'base64') {
+                overlay.innerHTML = '';
+                overlay.style.display = 'none';
+                textarea.classList.remove('has-illegal-chars');
+                warning.style.display = 'none';
+                return;
+            }
+
+            const validation = validateBase64(input);
+
+            if (input.replace(/\s/g, '').length === 0) {
+                overlay.innerHTML = '';
+                overlay.style.display = 'none';
+                textarea.classList.remove('has-illegal-chars');
+                warning.style.display = 'none';
+                return;
+            }
+
+            // Show illegal characters in overlay
+            if (validation.illegalChars.length > 0) {
+                overlay.innerHTML = highlightIllegalCharacters(input);
+                overlay.style.display = 'block';
+                textarea.classList.add('has-illegal-chars');
+            } else {
+                overlay.innerHTML = '';
+                overlay.style.display = 'none';
+                textarea.classList.remove('has-illegal-chars');
+            }
+        }
 
         // Update input statistics and auto-detect strategy
         function updateInputStats() {
@@ -1555,10 +1725,18 @@
             }
         }
 
+        // Sync overlay scroll with textarea
+        document.getElementById('numbers').addEventListener('scroll', (e) => {
+            const overlay = document.getElementById('textareaOverlay');
+            overlay.scrollTop = e.target.scrollTop;
+            overlay.scrollLeft = e.target.scrollLeft;
+        });
+
         // Event listeners
         document.getElementById('numbers').addEventListener('input', () => {
             updateInputStats();
             validateInputRealtime();
+            validateBase64Input();
         });
 
         document.getElementById('rangeMin').addEventListener('input', () => {
@@ -1593,6 +1771,7 @@
             radio.addEventListener('change', () => {
                 updateInputStats();
                 validateInputRealtime();
+                validateBase64Input();
             });
         });
 
@@ -2118,7 +2297,7 @@
         document.getElementById('validationForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const numbers = document.getElementById('numbers').value;
+            let numbers = document.getElementById('numbers').value;
             const resultsDiv = document.getElementById('results');
             const loadingDiv = document.getElementById('loading');
             const inputFormat = document.querySelector('input[name="inputFormat"]:checked').value;
@@ -2127,6 +2306,23 @@
             if (!numbers.trim()) {
                 alert('Please enter some data');
                 return;
+            }
+
+            // For base64, silently add padding if needed
+            if (inputFormat === 'base64') {
+                const validation = validateBase64(numbers);
+
+                // Block submission if illegal characters
+                if (validation.illegalChars.length > 0) {
+                    alert('Base64 contains illegal characters. Please remove them before validating.');
+                    return;
+                }
+
+                // Silently add padding if needed
+                if (validation.needsPadding) {
+                    numbers = validation.paddedValue;
+                    document.getElementById('numbers').value = numbers;
+                }
             }
 
             let range_min = null;
