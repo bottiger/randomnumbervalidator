@@ -1921,6 +1921,144 @@
             }
         });
 
+        // Function to render small sequence test results
+        function renderSmallSequenceData(smallSeqData) {
+            const passRate = (smallSeqData.tests_passed / smallSeqData.total_tests * 100).toFixed(1);
+            const assessment = passRate >= 80 ? 'Excellent' : passRate >= 60 ? 'Good' : passRate >= 40 ? 'Fair' : 'Poor';
+            const assessmentClass = passRate >= 80 ? 'excellent' : passRate >= 60 ? 'good' : passRate >= 40 ? 'fair' : 'poor';
+
+            let html = `
+                <div class="nist-assessment ${assessmentClass}">
+                    <div class="assessment-header">
+                        <h3>Overall Assessment: ${assessment}</h3>
+                        <div class="assessment-score">${passRate}%</div>
+                    </div>
+                    <div class="assessment-summary">
+                        <strong>${smallSeqData.number_count} numbers</strong> analyzed •
+                        <strong>${smallSeqData.total_tests} tests</strong> run •
+                        <strong>${smallSeqData.tests_passed} passed</strong> •
+                        <strong>${smallSeqData.unique_count} unique</strong>
+                    </div>
+                    <div class="assessment-bar">
+                        <div class="assessment-fill" style="width: ${passRate}%"></div>
+                    </div>
+                </div>`;
+
+            // Map test names to description URLs
+            const testDescMap = {
+                'Frequency Analysis': '/static/tests/frequency.html',
+                'Uniqueness Ratio': '/static/tests/uniqueness.html',
+                'Chi-Squared Uniformity': '/static/tests/chisquared.html',
+                'Serial Correlation': '/static/tests/autocorrelation.html',
+                'Sequential Pattern Detection': '/static/tests/runs.html'
+            };
+
+            // Test results table
+            html += `
+                <table class="test-table-compact" id="smallSeqTable" style="margin-top: 20px;">
+                    <thead>
+                        <tr>
+                            <th class="sortable" onclick="sortSmallSeqTable(0)" data-sort="none">Test Name</th>
+                            <th class="sortable" onclick="sortSmallSeqTable(1)" data-sort="none" style="text-align: center;">P-Value</th>
+                            <th class="sortable" onclick="sortSmallSeqTable(2)" data-sort="none" style="text-align: center;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="smallSeqTableBody">`;
+
+            for (const test of smallSeqData.individual_tests) {
+                const statusIcon = test.passed ? '✓' : '✗';
+                const statusClass = test.passed ? 'passed' : 'failed';
+                const pValue = test.p_value !== null && test.p_value !== undefined ? test.p_value.toFixed(4) : 'N/A';
+                const details = test.details || 'Test passed - no issues detected';
+
+                // Color coding based on p-value
+                let rowClass = '';
+                if (!test.passed) {
+                    rowClass = 'test-failed';
+                } else if (test.p_value !== null && test.p_value >= 0.8) {
+                    rowClass = 'test-excellent';
+                } else if (test.p_value !== null && test.p_value >= 0.5) {
+                    rowClass = 'test-good';
+                }
+
+                const testUrl = testDescMap[test.name] || '#';
+
+                html += `
+                    <tr class="${rowClass}" data-pvalue="${test.p_value || 0}" data-status="${test.passed ? 1 : 0}" data-name="${test.name}">
+                        <td>
+                            <a href="${testUrl}" style="color: #007bff; text-decoration: none; font-weight: 500;">
+                                ${test.name}
+                            </a>
+                            ${!test.passed ? `<div style="font-size: 0.85em; color: #d63031; margin-top: 4px;">${escapeHtml(details)}</div>` : ''}
+                        </td>
+                        <td style="text-align: center; font-family: monospace;">
+                            ${pValue}
+                        </td>
+                        <td class="test-status ${statusClass}" style="text-align: center;">
+                            ${statusIcon}
+                        </td>
+                    </tr>`;
+            }
+
+            html += `
+                    </tbody>
+                </table>`;
+
+            return html;
+        }
+
+        // Sort function for small sequence table
+        let smallSeqSortColumn = -1;
+        let smallSeqSortAsc = true;
+
+        function sortSmallSeqTable(column) {
+            const table = document.getElementById('smallSeqTable');
+            const tbody = document.getElementById('smallSeqTableBody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+
+            // Toggle sort direction if clicking same column
+            if (smallSeqSortColumn === column) {
+                smallSeqSortAsc = !smallSeqSortAsc;
+            } else {
+                smallSeqSortColumn = column;
+                smallSeqSortAsc = true;
+            }
+
+            // Update header indicators
+            const headers = table.querySelectorAll('th');
+            headers.forEach((header, i) => {
+                header.classList.remove('sort-asc', 'sort-desc');
+                if (i === column) {
+                    header.classList.add(smallSeqSortAsc ? 'sort-asc' : 'sort-desc');
+                    header.setAttribute('data-sort', smallSeqSortAsc ? 'asc' : 'desc');
+                } else {
+                    header.setAttribute('data-sort', 'none');
+                }
+            });
+
+            // Sort rows
+            rows.sort((a, b) => {
+                let aVal, bVal;
+
+                if (column === 0) { // Test Name
+                    aVal = a.getAttribute('data-name');
+                    bVal = b.getAttribute('data-name');
+                    return smallSeqSortAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                } else if (column === 1) { // P-Value
+                    aVal = parseFloat(a.getAttribute('data-pvalue'));
+                    bVal = parseFloat(b.getAttribute('data-pvalue'));
+                    return smallSeqSortAsc ? (aVal - bVal) : (bVal - aVal);
+                } else if (column === 2) { // Status
+                    aVal = parseInt(a.getAttribute('data-status'));
+                    bVal = parseInt(b.getAttribute('data-status'));
+                    return smallSeqSortAsc ? (aVal - bVal) : (bVal - aVal);
+                }
+            });
+
+            // Re-append sorted rows
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
         // Function to render NIST data with individual test cards
         function renderNistData(nistData) {
             // Check if fallback message exists
@@ -2442,8 +2580,14 @@
 
                 document.getElementById('message').textContent = data.message;
 
+                // Render small sequence data if available
+                if (data.small_sequence_data) {
+                    document.getElementById('nistResultsContainer').style.display = 'block';
+                    const smallSeqHtml = renderSmallSequenceData(data.small_sequence_data);
+                    document.getElementById('nistResults').innerHTML = smallSeqHtml;
+                }
                 // Render NIST data if available
-                if (data.nist_data) {
+                else if (data.nist_data) {
                     document.getElementById('nistResultsContainer').style.display = 'block';
                     let nistHtml = renderNistData(data.nist_data);
 

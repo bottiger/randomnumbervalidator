@@ -11,6 +11,7 @@ use tracing::{debug, info, warn};
 pub mod enhanced_stats;
 pub mod nist_tests;
 pub mod nist_wrapper;
+pub mod small_sequence_stats;
 
 /// Format of the input random numbers.
 ///
@@ -203,6 +204,10 @@ pub struct ValidationResponse {
     /// Structured NIST test results with detailed metrics.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub nist_data: Option<NistResults>,
+
+    /// Structured small-sequence test results (for sequences < 10,000 bits).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub small_sequence_data: Option<small_sequence_stats::SmallSequenceResults>,
 
     /// Path to debug bit stream file (only present if debug_log was enabled in request).
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -626,6 +631,23 @@ pub fn validate_random_numbers_full(
         debug_log
     );
 
+    // For number format, parse numbers first to check if we should use small-sequence analysis
+    let numbers_opt = if *input_format == InputFormat::Numbers {
+        // Parse numbers from input
+        let parsed: Result<Vec<u32>, _> = input
+            .split(|c: char| !c.is_ascii_digit())
+            .filter(|s| !s.is_empty())
+            .map(|s| s.parse::<u32>())
+            .collect();
+
+        match parsed {
+            Ok(nums) if !nums.is_empty() => Some(nums),
+            _ => None,
+        }
+    } else {
+        None
+    };
+
     // Prepare input based on format
     let bits = match prepare_input_with_format(input, input_format, range_min, range_max, bit_width)
     {
@@ -641,6 +663,7 @@ pub fn validate_random_numbers_full(
                 message: e,
                 nist_results: None,
                 nist_data: None,
+                small_sequence_data: None,
                 debug_file: None,
             };
         }
@@ -659,7 +682,74 @@ pub fn validate_random_numbers_full(
         None
     };
 
-    // Run NIST tests (always required)
+    // Check if we should use small-sequence analysis
+    // Use it for sequences with < 10,000 bits (NIST Tier 3 minimum for "Standard" tests)
+    // For 8-bit numbers (0-255): 10,000 bits / 8 = 1,250 numbers
+    // For 16-bit numbers: 10,000 / 16 = 625 numbers
+    // For 32-bit numbers: 10,000 / 32 = 313 numbers
+    //
+    // Why 10,000? Testing shows:
+    // - NIST Tier 1 (100 bits): Fails to detect obvious patterns, gives 94% to bad data
+    // - NIST Tier 1 "recommended" (1,000 bits): Still unreliable, crashes on some data
+    // - NIST Tier 3 (10,000 bits): Stable and runs full test suite
+    //
+    // NIST tests work on bit-level patterns and can't detect number-level repetition
+    // in small sequences. Small-sequence analysis tests the actual numbers.
+    if let Some(ref numbers) = numbers_opt {
+        let bits_count = bits.len();
+        if bits_count < 10_000 {
+            info!(
+                "Using small-sequence analysis for {} numbers ({} bits < 10,000 bits)",
+                numbers.len(),
+                bits_count
+            );
+            let small_seq_results = small_sequence_stats::analyze_small_sequence(numbers);
+
+            let quality_score = small_seq_results.quality_score;
+            let is_valid = quality_score >= 0.8;
+
+            let mut message = format!(
+                "Analyzed {} numbers using small-sequence tests ({}/{} passed, {:.1}% quality)",
+                small_seq_results.number_count,
+                small_seq_results.tests_passed,
+                small_seq_results.total_tests,
+                quality_score * 100.0
+            );
+
+            if !small_seq_results.issues.is_empty() {
+                message.push_str(&format!(
+                    "\nIssues detected: {}",
+                    small_seq_results.issues.join("; ")
+                ));
+            }
+
+            message.push_str(&format!(
+                "\nUnique values: {}/{}",
+                small_seq_results.unique_count, small_seq_results.number_count
+            ));
+
+            info!(
+                "Small-sequence validation: valid={}, quality_score={:.4}, numbers={}, unique={}, issues={}",
+                is_valid,
+                quality_score,
+                small_seq_results.number_count,
+                small_seq_results.unique_count,
+                small_seq_results.issues.len()
+            );
+
+            return ValidationResponse {
+                valid: is_valid,
+                quality_score,
+                message,
+                nist_results: None,
+                nist_data: None,
+                small_sequence_data: Some(small_seq_results),
+                debug_file,
+            };
+        }
+    }
+
+    // For larger sequences or base64 input, use NIST tests
     info!("Running NIST statistical tests");
     let wrapper = nist_wrapper::NistWrapper::new();
     let nist_data = match wrapper.run_tests(&bits) {
@@ -675,6 +765,7 @@ pub fn validate_random_numbers_full(
                 message: format!("NIST tests failed: {}", e),
                 nist_results: None,
                 nist_data: None,
+                small_sequence_data: None,
                 debug_file,
             };
         }
@@ -705,6 +796,7 @@ pub fn validate_random_numbers_full(
         ),
         nist_results: nist_data.raw_output.clone(),
         nist_data: Some(nist_data),
+        small_sequence_data: None,
         debug_file,
     }
 }

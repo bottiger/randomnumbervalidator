@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uniqueness Ratio Test - Small Sequence Analysis</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.2em;
+            border-bottom: 3px solid #9fef00;
+            padding-bottom: 15px;
+        }
+
+        .test-category {
+            display: inline-block;
+            background: #9fef00;
+            color: #333;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #333;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.6em;
+            border-left: 4px solid #9fef00;
+            padding-left: 12px;
+        }
+
+        h3 {
+            color: #555;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        p {
+            color: #666;
+            line-height: 1.8;
+            margin-bottom: 15px;
+            font-size: 1.05em;
+        }
+
+        ul {
+            margin-left: 25px;
+            margin-bottom: 15px;
+            color: #666;
+            line-height: 1.8;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .highlight-box {
+            background: #f8ffe8;
+            border-left: 4px solid #9fef00;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .example {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 30px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #9fef00 0%, #c5e063 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .back-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(159, 239, 0, 0.4);
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #d63384;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-label {
+            color: #888;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            color: #333;
+            font-size: 1.4em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <span class="test-category">Small Sequence Analysis</span>
+        <h1>Uniqueness Ratio Test</h1>
+
+        <div class="highlight-box">
+            <strong>Quick Summary:</strong> The Uniqueness Ratio Test measures how many distinct values appear in a sequence compared to the total count. In truly random sequences, we expect high uniqueness - excessive repetition of the same values indicates poor randomness or bias.
+        </div>
+
+        <h2>What It Tests For</h2>
+        <p>This test detects <strong>excessive repetition</strong> in small sequences. A truly random generator should produce varied outputs, not repeatedly favor the same values. This test specifically checks:</p>
+        <ul>
+            <li>Whether the generator is "stuck" producing the same values repeatedly</li>
+            <li>If the output range is artificially constrained</li>
+            <li>Whether there's a hidden bias toward specific numbers</li>
+        </ul>
+
+        <h2>How It Works</h2>
+        <h3>Step 1: Count Unique Values</h3>
+        <p>The test counts how many distinct numbers appear in your sequence:</p>
+        <div class="example">
+Sequence:      [5, 3, 7, 3, 9, 5, 2]
+Total:         7 numbers
+Unique:        5 values (2, 3, 5, 7, 9)
+Uniqueness:    5/7 = 71.4%
+        </div>
+
+        <h3>Step 2: Compare to Threshold</h3>
+        <p>The test applies different thresholds based on sequence size:</p>
+        <div class="example">
+Very Small (<10 numbers):  Expect ≥ 70% unique
+Small (10-20 numbers):     Expect ≥ 65% unique
+Larger (20+ numbers):      Expect ≥ 75% unique
+        </div>
+        <p>These thresholds account for the natural probability of some repetition in small samples while still catching obvious problems.</p>
+
+        <h3>Step 3: Calculate P-Value</h3>
+        <p>The test computes a p-value by comparing the observed uniqueness ratio to the threshold. Higher ratios (more unique values) produce higher p-values.</p>
+
+        <div class="info-box">
+            <strong>Understanding the Results:</strong>
+            <ul>
+                <li><strong>High Uniqueness (≥75%):</strong> EXCELLENT - Very good variety of values</li>
+                <li><strong>Good Uniqueness (65-75%):</strong> PASS - Acceptable for small sequences</li>
+                <li><strong>Low Uniqueness (<65%):</strong> FAIL - Too much repetition detected</li>
+            </ul>
+        </div>
+
+        <h2>Interpreting Results</h2>
+
+        <h3>Pass - High Uniqueness</h3>
+        <p>Your sequence shows good variety with minimal repetition. This suggests the generator is producing a diverse range of outputs as expected from a random source.</p>
+
+        <h3>Fail - Low Uniqueness</h3>
+        <p>Too many repeated values detected. Common causes include:</p>
+        <ul>
+            <li><strong>Broken Generator:</strong> The RNG may be stuck in a short cycle</li>
+            <li><strong>Seeding Issues:</strong> Poor initialization causing repeated patterns</li>
+            <li><strong>Range Problems:</strong> Output constrained to too narrow a range</li>
+            <li><strong>Modulo Bias:</strong> Using modulo operation causing value clustering</li>
+        </ul>
+
+        <div class="warning-box">
+            <strong>⚠️ Note:</strong> This test is specifically designed for small sequences (< 10,000 bits / ~300 numbers). For larger sequences, the standard NIST tests provide better statistical analysis.
+        </div>
+
+        <h2>Example Scenarios</h2>
+
+        <h3>Example 1: Good Random Sequence</h3>
+        <div class="example">
+Numbers:    [243, 6, 119, 40, 225, 178, 207, 99, 3, 170,
+             154, 250, 237, 128, 191, 44, 236, 212, 180, 240,
+             110, 19, 9, 18, 70]
+Total:      25 numbers
+Unique:     25 values (all different)
+Ratio:      100% - EXCELLENT ✓
+        </div>
+
+        <h3>Example 2: Poor Random Sequence</h3>
+        <div class="example">
+Numbers:    [162, 162, 162, 162, 162, 143, 135, 153, 153,
+             123, 12, 123, 123, 164, 168, 162, 163]
+Total:      17 numbers
+Unique:     9 values
+Ratio:      53% - FAIL ✗
+Problem:    Value 162 appears 6 times (35% of sequence)
+        </div>
+
+        <h2>Technical Details</h2>
+        <div class="stat-grid">
+            <div class="stat-card">
+                <div class="stat-label">Test Type</div>
+                <div class="stat-value">Distribution</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Best For</div>
+                <div class="stat-value">< 300 nums</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Min Threshold</div>
+                <div class="stat-value">65%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Optimal</div>
+                <div class="stat-value">≥75%</div>
+            </div>
+        </div>
+
+        <h2>Why This Test Matters</h2>
+        <p>Standard NIST tests work at the bit level and need thousands of bits to detect patterns. With small sequences, NIST tests can miss obvious number-level problems like a value appearing 6 times in 18 numbers. The Uniqueness Ratio Test catches these issues that would otherwise go undetected.</p>
+
+        <h2>Complementary Tests</h2>
+        <p>This test works alongside other small-sequence tests:</p>
+        <ul>
+            <li><strong>Frequency Analysis:</strong> Checks if any single value appears too often</li>
+            <li><strong>Chi-Squared:</strong> Tests overall distribution uniformity</li>
+            <li><strong>Serial Correlation:</strong> Detects dependencies between consecutive values</li>
+        </ul>
+
+        <a href="/" class="back-link">← Back to Validator</a>
+    </div>
+</body>
+</html>

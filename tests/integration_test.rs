@@ -30,11 +30,18 @@ fn test_integration_large_sequence() {
 
 #[test]
 fn test_integration_sequential_pattern_low_score() {
-    // Sequential patterns should be detected as non-random and get LOW quality scores
+    // Test with obvious sequential pattern (0,1,2,3,4,...)
+    // - 41 numbers in perfect ascending sequence
+    // - 100% of transitions are +1 (0→1, 1→2, 2→3, ...)
+    // - 328 bits total (< 10,000 threshold, uses small-sequence analysis)
     let input = "0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40";
     let response = validate_random_numbers(input);
 
-    // Sequential pattern should have VERY low quality (< 30%)
+    // Validates sequential pattern detection:
+    // - Small-sequence analysis includes sequential pattern test
+    // - Detects when >70% of transitions are +1 or -1
+    // - Applies severe 0.3x penalty for sequential patterns
+    // - Expected result: ~18% quality score (60% base × 0.3 penalty)
     assert!(
         response.quality_score < 0.3,
         "Sequential pattern got quality score {:.1}%, expected < 30%",
@@ -165,14 +172,20 @@ fn test_integration_response_serialization() {
 
 #[test]
 fn test_integration_very_large_input() {
-    // Test with 500 numbers (0-255 range for 8-bit)
+    // Test with 500 numbers (0-255 range for 8-bit) = 4,000 bits
+    // This is below 10,000 bit threshold, so uses small-sequence analysis
     let numbers: Vec<String> = (0..500).map(|n| (n % 256).to_string()).collect();
     let input = numbers.join(",");
     let response = validate_random_numbers(&input);
 
     assert!(response.quality_score >= 0.0);
     assert!(response.quality_score <= 1.0);
-    assert!(response.message.contains("bits"));
+    // Accept either "bits" (NIST) or "numbers" (small-sequence)
+    assert!(
+        response.message.contains("bits") || response.message.contains("numbers"),
+        "Message should contain 'bits' or 'numbers', got: {}",
+        response.message
+    );
 }
 
 #[test]
@@ -235,31 +248,44 @@ fn test_integration_mostly_repeating_pattern() {
     // Test with specific sequence that has many repeating values
     // 162 appears 6 times out of 18 numbers (~33% of the sequence is just 162!)
     // 123 appears 3 times, 153 appears 2 times
-    // Normalize to 0-255 range by prepending 0 to make it a valid 8-bit sequence
+    // Only 10 unique values out of 18 numbers (55.6% uniqueness)
     let input = "0,162,162,162,162,162,143,135,153,153,123,12,123,123,164,168,162,163";
     let response = validate_random_numbers(input);
 
-    // BUG: This heavily repeating pattern should have VERY low quality score (< 40%)
-    // but NIST tests don't catch it with such small samples (only 144 bits = 18 numbers)
-    // NIST needs ~100,000 bits to run its full test suite effectively
-    // Currently this gets ~95% quality score when it should get < 40%
+    // FIXED: This heavily repeating pattern now correctly gets low quality score (< 40%)
+    //
+    // Background: NIST Tier 1 tests (100 bits minimum) gave this 94.59% - completely failed!
+    // - NIST tests work on bit-level patterns, can't detect number-level repetition
+    // - Testing showed NIST is unreliable below 10,000 bits (crashes, gives bad scores)
+    //
+    // Solution: Use small-sequence analysis for < 10,000 bits
+    // - Tests actual numbers for: frequency distribution, uniqueness, patterns
+    // - This 18-number sequence (144 bits) now uses small-sequence analysis
+    // - Correctly detects: value 162 appears 33.3% (expected < 25%)
+    // - Correctly detects: only 55.6% unique values (expected >= 65%)
+    // - Result: ~36% quality score (was 94.59% with NIST)
     assert!(
         response.quality_score < 0.4,
-        "BUG: Mostly repeating pattern got quality score {:.1}%, expected < 40%. \
-         162 appears 6 times out of 18 numbers! NIST tests need more data to detect patterns.",
+        "Mostly repeating pattern got quality score {:.1}%, expected < 40%. \
+         162 appears 6/18 times! Small-sequence analysis should detect this.",
         response.quality_score * 100.0
     );
 }
 
 #[test]
 fn test_integration_good_random_sequence() {
-    // Test with a well-distributed random sequence (26 numbers, all unique)
-    // Numbers are spread across the 0-255 range with no obvious patterns
+    // Test with a well-distributed random sequence
+    // - 26 numbers, all unique (100% uniqueness)
+    // - Numbers spread across 0-255 range with no obvious patterns
+    // - No value appears more than once
+    // - 208 bits total (< 10,000 threshold, uses small-sequence analysis)
     let input =
         "0,243,6,119,40,225,178,207,99,3,170,154,250,237,128,191,44,236,212,180,240,110,19,9,18,70";
     let response = validate_random_numbers(input);
 
-    // Good random sequence should have high quality score (>= 80%)
+    // Validates small-sequence analysis correctly identifies good randomness:
+    // - Should pass all 5 small-sequence tests (frequency, uniqueness, chi-squared, serial correlation, sequential pattern)
+    // - Expected result: 100% quality score
     assert!(
         response.quality_score >= 0.8,
         "Good random sequence got quality score {:.1}%, expected >= 80%",

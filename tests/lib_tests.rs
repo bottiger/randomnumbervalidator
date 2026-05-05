@@ -142,16 +142,29 @@ fn test_prepare_input_leading_zeros() {
 
 #[test]
 fn test_validation_response_structure() {
-    // Generate enough numbers for NIST (at least 100 bits, so 13+ numbers with 8-bit encoding)
-    let numbers: Vec<String> = (0..20).map(|n| (n * 10).to_string()).collect();
+    // Generate enough numbers for NIST (need >= 10,000 bits)
+    // 10,000 bits / 8 bits per number = 1,250 numbers minimum
+    // Generate 1,300 to be safe
+    let numbers: Vec<String> = (0..1300)
+        .map(|n| ((n * 73 + 17) % 256).to_string())
+        .collect();
+
     let input = numbers.join(",");
     let response = validate_random_numbers(&input);
 
     // Verify all fields are populated
     assert!(response.quality_score >= 0.0 && response.quality_score <= 1.0);
     assert!(!response.message.is_empty());
-    assert!(response.nist_results.is_some());
-    assert!(response.nist_data.is_some());
+
+    // With 1,300 numbers (10,400 bits), NIST should be used
+    assert!(
+        response.nist_results.is_some(),
+        "Expected NIST results for 1,300 numbers"
+    );
+    assert!(
+        response.nist_data.is_some(),
+        "Expected NIST data for 1,300 numbers"
+    );
 }
 
 #[test]
