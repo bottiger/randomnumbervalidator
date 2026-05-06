@@ -278,7 +278,7 @@ fn test_chi_squared(numbers: &[u32], issue: &mut Option<String>) -> (bool, f64) 
     let threshold = k * 2.0;
 
     // P-value: 1 - (chi_squared / (threshold * 2)) clamped to [0, 1]
-    let p_value = (1.0 - (chi_squared / (threshold * 2.0))).max(0.0).min(1.0);
+    let p_value = (1.0 - (chi_squared / (threshold * 2.0))).clamp(0.0, 1.0);
 
     if chi_squared > threshold {
         *issue = Some(format!(
@@ -340,7 +340,7 @@ fn test_serial_correlation(numbers: &[u32], issue: &mut Option<String>) -> (bool
     };
 
     // P-value: 1 - (|correlation| / threshold) clamped to [0, 1]
-    let p_value = (1.0 - (correlation.abs() / threshold)).max(0.0).min(1.0);
+    let p_value = (1.0 - (correlation.abs() / threshold)).clamp(0.0, 1.0);
 
     if correlation.abs() > threshold {
         *issue = Some(format!(
@@ -384,7 +384,7 @@ fn test_sequential_pattern(numbers: &[u32], issue: &mut Option<String>) -> (bool
     let max_ratio = ascending_ratio.max(descending_ratio);
 
     // P-value: 1 - (max_ratio / threshold) clamped to [0, 1]
-    let p_value = (1.0 - (max_ratio / threshold)).max(0.0).min(1.0);
+    let p_value = (1.0 - (max_ratio / threshold)).clamp(0.0, 1.0);
 
     if ascending_ratio > threshold {
         *issue = Some(format!(
