@@ -1402,18 +1402,21 @@
 
             // Auto-detect strategy
             let detectedText = '';
-            if (actualMin === 0) {
+            // When all numbers are identical (min == max), a custom range is degenerate
+            // (rangeMax must be > rangeMin), so fall back to bitwidth — the backend will
+            // still report the (very low) quality of a constant sequence.
+            if (actualMin === 0 || actualMin === actualMax) {
                 // Standard range - suggest bitwidth
                 autoDetectedStrategy = 'bitwidth';
                 if (actualMax <= 255) {
                     autoDetectedBitWidth = 8;
-                    detectedText = `Numbers range 0-${actualMax} → Suggested <strong>8-bit fixed-width</strong>`;
+                    detectedText = `Numbers range ${actualMin}-${actualMax} → Suggested <strong>8-bit fixed-width</strong>`;
                 } else if (actualMax <= 65535) {
                     autoDetectedBitWidth = 16;
-                    detectedText = `Numbers range 0-${actualMax} → Suggested <strong>16-bit fixed-width</strong>`;
+                    detectedText = `Numbers range ${actualMin}-${actualMax} → Suggested <strong>16-bit fixed-width</strong>`;
                 } else {
                     autoDetectedBitWidth = 32;
-                    detectedText = `Numbers range 0-${actualMax} → Suggested <strong>32-bit fixed-width</strong>`;
+                    detectedText = `Numbers range ${actualMin}-${actualMax} → Suggested <strong>32-bit fixed-width</strong>`;
                 }
 
                 // Auto-select detected bitwidth

@@ -296,3 +296,23 @@ fn test_integration_good_random_sequence() {
         "Good random sequence should be marked as valid"
     );
 }
+
+#[test]
+fn test_integration_all_identical_values_submittable() {
+    // Regression: the frontend used to auto-switch to "custom range" strategy
+    // when actualMin != 0 and then set rangeMin == rangeMax, blocking submission
+    // with "Max must be greater than min". The backend must accept all-identical
+    // input (it has zero entropy and should be rated terrible, not rejected).
+    let input = "1,1,1,1,1,1,1,1";
+    let response = validate_random_numbers(input);
+
+    assert!(
+        response.quality_score < 0.3,
+        "All-identical sequence got quality score {:.1}%, expected < 30%",
+        response.quality_score * 100.0
+    );
+    assert!(
+        !response.valid,
+        "All-identical sequence should be marked as invalid"
+    );
+}
