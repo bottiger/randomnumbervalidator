@@ -1405,7 +1405,8 @@
             // When all numbers are identical (min == max), a custom range is degenerate
             // (rangeMax must be > rangeMin), so fall back to bitwidth — the backend will
             // still report the (very low) quality of a constant sequence.
-            if (actualMin === 0 || actualMin === actualMax) {
+            const allIdentical = actualMin === actualMax;
+            if (actualMin === 0 || allIdentical) {
                 // Standard range - suggest bitwidth
                 autoDetectedStrategy = 'bitwidth';
                 if (actualMax <= 255) {
@@ -1421,6 +1422,13 @@
 
                 // Auto-select detected bitwidth
                 document.getElementById(`bit${autoDetectedBitWidth}`).checked = true;
+
+                // For degenerate data (all-identical), also force the strategy radio back
+                // to bitwidth — custom range can't represent it, and we want to override
+                // any stale "range" selection from a prior keystroke.
+                if (allIdentical) {
+                    document.getElementById('strategyBitwidth').checked = true;
+                }
 
                 // Pre-fill custom range values in case user switches
                 if (!document.getElementById('rangeMin').value) {
@@ -1697,7 +1705,9 @@
                 const rangeMax = parseInt(document.getElementById('rangeMax').value);
 
                 if (rangeMin && rangeMax) {
-                    if (rangeMax <= rangeMin) {
+                    // Allow degenerate range (max == min) when the input data itself is
+                    // all-identical — the user has no other choice and the backend handles it.
+                    if (rangeMax < rangeMin || (rangeMax === rangeMin && actualMin !== actualMax)) {
                         errorMessage = `❌ Max (${rangeMax}) must be greater than min (${rangeMin})`;
                         errorLocation = 'range';
                     } else if (actualMin < rangeMin || actualMax > rangeMax) {
@@ -2500,7 +2510,9 @@
                     range_min = parseInt(rangeMinInput.value);
                     range_max = parseInt(rangeMaxInput.value);
 
-                    if (range_max <= range_min) {
+                    // Allow degenerate range (max == min) when the input data itself is
+                    // all-identical — the user has no other choice and the backend handles it.
+                    if (range_max < range_min || (range_max === range_min && actualMin !== actualMax)) {
                         alert('Range max must be greater than range min');
                         return;
                     }
