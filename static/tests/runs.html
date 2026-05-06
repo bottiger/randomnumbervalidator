@@ -197,12 +197,13 @@ Total:    5 runs
         <h3>Step 3: Compute Expected Runs</h3>
         <p>For a random sequence of length n with proportion π of 1s, the expected number of runs is:</p>
         <div class="example">
-Expected = 2 × n × π × (1 - π) + 1
+Expected = 2 × n × π × (1 - π) + 1   (Wald-Wolfowitz convention)
 
 Where:
 - n is the sequence length
 - π is the proportion of 1s
         </div>
+        <p><em>Note:</em> NIST SP 800-22 §2.3 uses the asymptotic form <code>2 × n × π × (1 - π)</code> (without the +1 term) inside its p-value formula. Both forms produce essentially identical p-values for non-trivial n; this implementation follows the Wald-Wolfowitz definition that includes the +1 term.</p>
 
         <h3>Step 4: Calculate Test Statistic</h3>
         <p>Compare observed runs to expected runs and compute a standardized test statistic that follows a normal distribution.</p>

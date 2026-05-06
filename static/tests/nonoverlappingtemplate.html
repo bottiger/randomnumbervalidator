@@ -199,8 +199,13 @@ For m=9:
         <div class="example">
 Sequence: [Block 1: M bits][Block 2: M bits]...[Block N: M bits]
 
-Typical block size M = 968 bits for m=9 templates
-Number of blocks N = 8 (minimum)
+NIST recommends:
+  Number of blocks N = 8
+  Block size       M = n / 8
+  Total length     n ≥ 1,000,000 bits  → M ≈ 125,000
+
+Minimum-data configuration (rarely sufficient in practice):
+  N = 8, M = 968  → n ≈ 7,744 bits
         </div>
 
         <h3>Step 3: Count Template Matches (Non-overlapping)</h3>

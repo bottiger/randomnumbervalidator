@@ -222,10 +222,13 @@ Count peaks where M[k] > T
         <h3>Step 5: Statistical Comparison</h3>
         <p>The observed percentage of peaks below the threshold is compared to the expected 95%:</p>
         <div class="example">
-N0 = number of peaks below threshold
-N1 = (95% of N/2) - expected count below threshold
-d = (N0 - N1) / sqrt(N * 0.95 * 0.05 / 4)
+N0 = 0.95 × (N/2)             — expected count below threshold
+N1 = observed peaks below T   — actual count below threshold
+d  = (N1 - N0) / sqrt(N * 0.95 * 0.05 / 4)
 p-value = erfc(|d| / sqrt(2))
+
+(NIST SP 800-22 §2.6 convention: N0 is the theoretical
+expectation, N1 is the observed value.)
         </div>
 
         <div class="info-box">

@@ -216,9 +216,10 @@ For each of the 16 patterns
         <div class="info-box">
             <strong>Understanding Results:</strong>
             <ul>
-                <li><strong>Low χ²:</strong> PASS - Patterns are uniformly distributed</li>
-                <li><strong>High χ²:</strong> FAIL - Some patterns occur too often or too rarely</li>
+                <li><strong>χ² &lt; 25:</strong> PASS - Patterns are uniformly distributed</li>
+                <li><strong>χ² ≥ 25:</strong> FAIL - Some patterns occur too often or too rarely</li>
             </ul>
+            <p>The fixed threshold of 25 is an approximation for 15 degrees of freedom. It runs as soon as there are at least 4 blocks (16 bits), but the threshold is only meaningful with roughly 100+ blocks.</p>
         </div>
 
         <h2>Interpreting Results</h2>
@@ -272,7 +273,7 @@ Result: FAIL - generator produces runs of identical bits
             </div>
             <div class="stat-card">
                 <div class="stat-label">Min Blocks</div>
-                <div class="stat-value">100+</div>
+                <div class="stat-value">4 (≥100 ideal)</div>
             </div>
             <div class="stat-card">
                 <div class="stat-label">Patterns Tested</div>

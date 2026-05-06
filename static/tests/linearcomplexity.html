@@ -188,9 +188,15 @@
         <h3>Step 1: Divide Into Blocks</h3>
         <p>The sequence is divided into M non-overlapping blocks of length N bits each (typically N = 500 or N = 1000):</p>
         <div class="example">
-Block size N = 500 bits
-Minimum M = 200 blocks
-Total bits needed: 100,000 minimum
+Block size M = 500–5000 bits (NIST notation: M)
+Minimum number of blocks N ≥ 200
+Theoretical minimum: 200 × 500 = 100,000 bits
+NIST recommendation:           ≥ 1,000,000 bits
+
+(Note: this page later uses N to mean block length in
+the formulas below; NIST uses M for block length and N
+for the number of blocks. The formulas are correct
+either way.)
         </div>
 
         <h3>Step 2: Calculate Linear Complexity for Each Block</h3>
@@ -307,8 +313,8 @@ Cause: Poor post-processing or non-random "randomization"
                 <div class="stat-value">500-1000</div>
             </div>
             <div class="stat-card">
-                <div class="stat-label">Min Bits</div>
-                <div class="stat-value">~1,000,000</div>
+                <div class="stat-label">Recommended Bits</div>
+                <div class="stat-value">≥ 1,000,000</div>
             </div>
             <div class="stat-card">
                 <div class="stat-label">Significance</div>

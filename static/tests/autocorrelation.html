@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Autocorrelation Test - Statistical Test Suite</title>
+    <title>Autocorrelation / Serial Correlation Test - Statistical Test Suite</title>
     <style>
         * {
             margin: 0;
@@ -160,194 +160,134 @@
 </head>
 <body>
     <div class="container">
-        <span class="test-category">Enhanced Statistical Test</span>
-        <h1>Autocorrelation Test</h1>
+        <span class="test-category">Enhanced / Small-Sequence Statistical Test</span>
+        <h1>Autocorrelation &amp; Serial Correlation Tests</h1>
 
         <div class="highlight-box">
-            <strong>Quick Summary:</strong> The Autocorrelation Test checks for correlations between bits at different positions (lag) in the sequence. It detects whether knowing past bits helps predict future bits, which would indicate the sequence is not truly random. Think of it as checking if the sequence has "memory" of its previous values.
+            <strong>Quick Summary:</strong> Two related tests check whether values in the sequence are independent of their neighbours. The <strong>bit-level Autocorrelation Test</strong> looks at lag-1 and lag-2 bit matches; the <strong>number-level Serial Correlation Test</strong> computes the lag-1 Pearson correlation on the numbers themselves. Both should give a result close to "no correlation" for random input.
         </div>
 
-        <h2>What It Tests For</h2>
-        <p>This test examines <strong>independence between bit positions</strong> separated by a fixed distance (lag). A truly random sequence should have no correlation between bits, regardless of how far apart they are. The test detects:</p>
-        <ul>
-            <li>Self-similarity in the bit sequence</li>
-            <li>Periodic patterns that repeat at regular intervals</li>
-            <li>Dependencies between bit positions</li>
-            <li>Hidden cyclic behavior in the generator</li>
-            <li>Linear feedback structures or predictable recurrence</li>
-        </ul>
+        <p>This page covers two distinct tests in this validator. They are described separately below because they operate on different data and use different formulas.</p>
 
-        <h2>How It Works</h2>
-        <h3>Step 1: Choose a Lag (d)</h3>
-        <p>The lag determines how far apart to compare bits. Common lags tested are d = 1, 2, 4, 8, 16, etc:</p>
+        <h2>Test A: Bit-Level Autocorrelation (Enhanced Stats)</h2>
+
+        <p>Operates on the bit stream produced from the input numbers. It is intentionally simple — it only looks at lags 1 and 2.</p>
+
+        <h3>How It Works</h3>
+        <p>For each lag <em>d</em> ∈ {1, 2}, count how often <code>bits[i] == bits[i+d]</code> across the stream and convert it into a deviation from the random expectation of 0.5:</p>
         <div class="example">
-Lag d = 1: Compare each bit with the next bit
-Lag d = 2: Compare each bit with the bit 2 positions ahead
-Lag d = 8: Compare each bit with the bit 8 positions ahead
+match_ratio(d) = (# i where bits[i] == bits[i+d]) / (n - d)
+deviation(d)   = | match_ratio(d) - 0.5 |
+statistic      = max(deviation(1), deviation(2))
         </div>
 
-        <h3>Step 2: Compute the Autocorrelation Function</h3>
-        <p>For a bit sequence of length n, compare each bit with the bit d positions ahead:</p>
-        <div class="example">
-Original sequence:  1 0 1 1 0 0 1 1 0 1 ...
-Shifted by d=2:     _ _ 1 0 1 1 0 0 1 1 ...
-
-For each position i, compare bit[i] with bit[i+d]
-Count matches and mismatches
-        </div>
-
-        <h3>Step 3: Calculate Correlation Coefficient</h3>
-        <p>The autocorrelation coefficient measures the similarity between the original and shifted sequences:</p>
-        <div class="example">
-C(d) = (1/n) × Σ [(2×b[i] - 1) × (2×b[i+d] - 1)]
-
-Where:
-  - b[i] is the bit at position i (0 or 1)
-  - Sum runs from i=0 to n-d
-  - Result ranges from -1 (perfect anti-correlation) to +1 (perfect correlation)
-        </div>
-
-        <h3>Step 4: Normalize and Compute Statistic</h3>
-        <p>Convert the correlation to a standardized test statistic:</p>
-        <div class="example">
-Z = C(d) × √(n-d)
-
-For random data:
-  - Z should be close to 0
-  - Z follows approximately normal distribution N(0,1)
-        </div>
+        <h3>Pass / Fail Rule</h3>
+        <p>The test passes if the statistic is below 0.15 (i.e. the lag-1 and lag-2 match ratios both fall in the range 0.35–0.65). There is no p-value.</p>
 
         <div class="info-box">
-            <strong>Understanding Results:</strong>
             <ul>
-                <li><strong>Z ≈ 0:</strong> PASS - No correlation detected, bits are independent</li>
-                <li><strong>Z >> 0:</strong> FAIL - Positive correlation, bits tend to repeat</li>
-                <li><strong>Z << 0:</strong> FAIL - Negative correlation, bits tend to alternate</li>
+                <li><strong>statistic &lt; 0.15:</strong> PASS — no significant lag-1/lag-2 dependency</li>
+                <li><strong>statistic ≥ 0.15:</strong> FAIL — adjacent or near-adjacent bits are too similar (or too different)</li>
             </ul>
         </div>
 
-        <h2>Interpreting Results</h2>
-
-        <h3>Pass (no correlation)</h3>
-        <p>Bits at different positions are statistically independent. Knowing the value of bit[i] provides no information about bit[i+d]. The generator produces uncorrelated output with no detectable memory or cyclic patterns.</p>
-
-        <h3>Fail (positive correlation)</h3>
-        <p>Bits tend to match their predecessors at the given lag. Common causes include:</p>
-        <ul>
-            <li><strong>Periodic Patterns:</strong> Sequence repeats with period related to the lag</li>
-            <li><strong>Long Runs:</strong> Generator produces extended sequences of identical bits</li>
-            <li><strong>Insufficient Mixing:</strong> State transitions don't adequately randomize output</li>
-            <li><strong>Linear Recurrence:</strong> Generator uses linear feedback that creates correlations</li>
-        </ul>
-
-        <h3>Fail (negative correlation)</h3>
-        <p>Bits tend to be opposite to their predecessors at the given lag. Common causes include:</p>
-        <ul>
-            <li><strong>Alternating Patterns:</strong> Excessive bit flipping at regular intervals</li>
-            <li><strong>Overcorrection:</strong> Generator tries too hard to balance 0s and 1s</li>
-            <li><strong>Phase Relationships:</strong> Internal state oscillates predictably</li>
-        </ul>
-
-        <h2>Common Failure Patterns</h2>
-
-        <h3>Example 1: Perfect Period</h3>
+        <h3>Examples</h3>
         <div class="example">
-Sequence: 10110101101011011010110101101...
-Pattern: "1011" repeats with period 4
+Sequence 01010101...
+match_ratio(1) ≈ 0.0  → deviation ≈ 0.5 → FAIL (anti-correlated)
 
-At lag d=4: Perfect correlation (C=1.0)
-Result: FAIL - sequence has period 4
-        </div>
+Sequence 11111111...
+match_ratio(1) = 1.0  → deviation = 0.5 → FAIL (over-correlated)
 
-        <h3>Example 2: Alternating Bits</h3>
-        <div class="example">
-Sequence: 10101010101010101010101010...
-
-At lag d=1: Perfect anti-correlation (C=-1.0)
-At lag d=2: Perfect correlation (C=1.0)
-Result: FAIL - strictly alternating sequence
-        </div>
-
-        <h3>Example 3: Long Runs</h3>
-        <div class="example">
-Sequence: 11111111110000000000111111111...
-
-At lag d=1,2,3: High positive correlation
-Result: FAIL - excessive runs of identical bits
-        </div>
-
-        <h3>Example 4: Weak PRNG</h3>
-        <div class="example">
-Linear Congruential Generator with short period:
-Sequence shows correlation at multiple lags
-
-At lag d=16: C(16) = 0.45
-At lag d=32: C(32) = 0.38
-Result: FAIL - generator has linear structure
-        </div>
-
-        <h2>Multiple Lag Testing</h2>
-        <p>The test is typically run at multiple lags to detect different types of patterns:</p>
-        <div class="example">
-Short lags (d=1,2,4):   Detect local patterns
-Medium lags (d=8,16):   Detect periodic behavior
-Long lags (d=64,128):   Detect generator period issues
+Random-looking bits
+match_ratio(1) ≈ 0.5  → deviation small → PASS
         </div>
 
         <div class="warning-box">
-            <strong>Important:</strong> A good random sequence should pass the test at ALL tested lags. Failure at any lag indicates a structural problem with the generator.
+            <strong>Limitations:</strong> Only lags 1 and 2 are checked. Periodicities at longer lags (e.g. a 32-bit cycle) will not be detected by this test. For a more thorough analysis, use the NIST DFT (Spectral) Test and the Serial Test.
+        </div>
+
+        <h2>Test B: Number-Level Serial Correlation (Small Sequence)</h2>
+
+        <p>Operates on the input numbers as floating-point values, not on the bit stream. It computes a standard lag-1 Pearson correlation coefficient.</p>
+
+        <h3>How It Works</h3>
+        <p>The numbers are first normalised to the range [0, 1] using their min and max. Then the lag-1 correlation is computed:</p>
+        <div class="example">
+xᵢ = (numbers[i] - min) / (max - min)
+mean = average of all xᵢ
+
+           Σ (xᵢ - mean) × (xᵢ₊₁ - mean)
+corr =  ───────────────────────────────────
+                 Σ (xᵢ - mean)²
+        </div>
+        <p>The result lies in [-1, +1]. Values near 0 indicate independence; values near +1 indicate that consecutive numbers tend to be similar; values near -1 indicate they tend to alternate.</p>
+
+        <h3>Pass / Fail Rule</h3>
+        <p>The threshold relaxes for shorter inputs, because small samples have higher natural variance:</p>
+        <div class="example">
+n &lt; 10  → fail if |corr| &gt; 0.6
+n &lt; 20  → fail if |corr| &gt; 0.5
+n ≥ 20  → fail if |corr| &gt; 0.4
+
+p-value (heuristic) = clamp(1 - |corr| / threshold, 0, 1)
+        </div>
+        <p>Edge case: if every input number is identical, the test fails immediately with the message "All numbers are identical".</p>
+
+        <h3>Examples</h3>
+        <div class="example">
+Numbers: 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
+Strictly increasing → corr ≈ +1.0 → FAIL
+
+Numbers: 50, 10, 50, 10, 50, 10, 50, 10
+Strict alternation → corr ≈ -1.0 → FAIL
+
+Numbers: 42, 7, 88, 23, 91, 4, 60, 71
+No obvious pattern → |corr| small → PASS
         </div>
 
         <h2>Technical Details</h2>
         <div class="stat-grid">
             <div class="stat-card">
-                <div class="stat-label">Test Type</div>
-                <div class="stat-value">Correlation</div>
+                <div class="stat-label">Test A — Lags</div>
+                <div class="stat-value">1, 2</div>
             </div>
             <div class="stat-card">
-                <div class="stat-label">Lags Tested</div>
-                <div class="stat-value">Multiple</div>
+                <div class="stat-label">Test A — Min Bits</div>
+                <div class="stat-value">10</div>
             </div>
             <div class="stat-card">
-                <div class="stat-label">Min Sequence</div>
-                <div class="stat-value">1000+ bits</div>
+                <div class="stat-label">Test B — Lag</div>
+                <div class="stat-value">1</div>
             </div>
             <div class="stat-card">
-                <div class="stat-label">Distribution</div>
-                <div class="stat-value">Normal</div>
+                <div class="stat-label">Test B — Min Numbers</div>
+                <div class="stat-value">3</div>
             </div>
         </div>
 
-        <h2>Mathematical Foundation</h2>
-        <p>The autocorrelation function is a fundamental tool in signal processing and time series analysis. For a random bit sequence, the theoretical autocorrelation is:</p>
-        <div class="example">
-E[C(d)] = 0 for all d > 0
-Var[C(d)] ≈ 1/(n-d)
+        <h2>What These Tests Catch</h2>
+        <ul>
+            <li><strong>Strict alternation</strong> like <code>0,1,0,1,...</code> or <code>5,10,5,10,...</code></li>
+            <li><strong>Long runs</strong> of identical bits or near-identical numbers</li>
+            <li><strong>Linear sequences</strong> like <code>1,2,3,4,...</code> (high positive correlation)</li>
+            <li><strong>Trivial generators</strong> whose successive outputs are tightly correlated</li>
+        </ul>
 
-Where E[] is expected value and Var[] is variance
-        </div>
+        <h2>What These Tests Miss</h2>
+        <ul>
+            <li>Periodicities at lags ≥ 3 (Test A only inspects lags 1 and 2)</li>
+            <li>Non-linear dependencies (Pearson correlation in Test B is linear-only)</li>
+            <li>Pattern biases at the multi-bit level — use the Serial, Poker, and FFT tests for those</li>
+        </ul>
 
         <h2>Relationship to Other Tests</h2>
-        <p>The Autocorrelation Test complements other randomness tests:</p>
         <ul>
-            <li><strong>Runs Test:</strong> Detects local run patterns (similar to lag d=1)</li>
-            <li><strong>Spectral Test:</strong> Detects periodicities using Fourier analysis</li>
-            <li><strong>Serial Test:</strong> Checks 2-bit pattern distributions</li>
-            <li><strong>Autocorrelation Test:</strong> Directly measures bit-to-bit dependencies at various lags</li>
+            <li><strong>NIST Runs Test:</strong> a more rigorous treatment of lag-1 bit transitions</li>
+            <li><strong>NIST Serial Test:</strong> checks the joint frequency of all m-bit patterns</li>
+            <li><strong>NIST DFT (Spectral) Test:</strong> detects periodicities at any frequency</li>
         </ul>
-
-        <h2>When to Use This Test</h2>
-        <p>This test is particularly valuable for:</p>
-        <ul>
-            <li>Detecting periodic behavior in the generator</li>
-            <li>Identifying linear feedback structures</li>
-            <li>Validating cryptographic generators (critical for stream ciphers)</li>
-            <li>Checking for short periods in PRNGs</li>
-            <li>Complementing frequency and distribution tests</li>
-        </ul>
-
-        <h2>Real-World Example</h2>
-        <p>A flawed LFSR (Linear Feedback Shift Register) generator might produce output where every 32nd bit is correlated due to its internal structure. The autocorrelation test at lag d=32 would detect this, even though the sequence might pass simpler frequency tests.</p>
+        <p>The two tests on this page are deliberately fast and shallow; treat them as a first pass, not as a substitute for the NIST suite.</p>
 
         <a href="/" class="back-link">← Back to Validator</a>
     </div>

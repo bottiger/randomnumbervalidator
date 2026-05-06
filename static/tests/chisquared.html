@@ -274,13 +274,13 @@ Numbers:     [5, 5, 5, 5, 3, 3, 7, 8]
 Unique:      4 values
 Expected:    2.0 per value
 Observed:
-  3: 2 times (OK)
-  5: 4 times (2× expected!) ← problem
-  7: 1 time (½ expected)
-  8: 1 time (½ expected)
-χ²:          4.0
-Threshold:   8.0
-Result:      Borderline, but value 5 shows concerning bias
+  3: 2 times (OK,    contributes (2-2)²/2 = 0.0)
+  5: 4 times (2×!,   contributes (4-2)²/2 = 2.0) ← problem
+  7: 1 time (½×,     contributes (1-2)²/2 = 0.5)
+  8: 1 time (½×,     contributes (1-2)²/2 = 0.5)
+χ²:          3.0
+Threshold:   8.0  (k × 2 with k = 4)
+Result:      PASS, but value 5 still shows concerning bias
         </div>
 
         <h3>Example 3: Clustered Values</h3>
